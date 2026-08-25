@@ -1,0 +1,17 @@
+node_modules
+dist
+.next
+.expo
+.turbo
+*.log
+.env
+.env.local
+coverage
+.DS_Store
+*.tsbuildinfo
+android
+ios
+web-build
+uploads
+apps/api/uploads/*
+!apps/api/uploads/.gitkeep

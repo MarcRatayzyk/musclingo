@@ -1,0 +1,16 @@
+import type { SeedQuestion } from "../anatomie-quiz-helpers";
+
+/**
+ * Question dédiée au mini-jeu. `checkpointKey` sert à ne tirer que les thèmes
+ * déjà abordés par le joueur.
+ */
+export type MiniGameQuestionSeed = SeedQuestion & {
+  checkpointKey?: string;
+};
+
+export function tagged(
+  checkpointKey: string,
+  questions: SeedQuestion[],
+): MiniGameQuestionSeed[] {
+  return questions.map((q) => ({ ...q, checkpointKey }));
+}

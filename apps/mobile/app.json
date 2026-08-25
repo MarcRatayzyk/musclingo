@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "Muscle Mind",
+    "slug": "muscle-mind",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "musclemind",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": false,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B0D10"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "app.musclemind.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0B0D10"
+      },
+      "package": "app.musclemind.mobile",
+      "versionCode": 1
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "apiUrl": "http://localhost:3001",
+      "posthogKey": "",
+      "posthogHost": "https://eu.i.posthog.com",
+      "router": {},
+      "eas": {
+        "projectId": "924d35f7-17ee-4a05-80f4-df35507f300d"
+      }
+    },
+    "owner": "marc.ratayzyk"
+  }
+}

@@ -11,6 +11,7 @@
     "web": "expo start --web --port 8090",
     "build:apk": "eas build -p android --profile preview",
     "build:aab": "eas build -p android --profile production",
+    "eas-build-post-install": "cd ../.. && pnpm --filter @muscle-mind/types build",
     "lint": "echo \"no lint\"",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

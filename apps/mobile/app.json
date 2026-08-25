@@ -23,7 +23,7 @@
         "backgroundColor": "#0B0D10"
       },
       "package": "app.musclemind.mobile",
-      "versionCode": 2
+      "versionCode": 3
     },
     "plugins": [
       "expo-router",

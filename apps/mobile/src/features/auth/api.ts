@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/shared/api/client";
+import { OFFLINE } from "@/shared/api/offline";
 import { tokenStorage } from "@/shared/storage/mmkv";
 import { analytics } from "@/shared/analytics/posthog";
 
@@ -110,6 +111,10 @@ export function useRegister() {
 }
 
 export function logout() {
+  if (OFFLINE) {
+    tokenStorage.setTokens("offline-access", "offline-refresh");
+    return;
+  }
   tokenStorage.clear();
   analytics.reset();
 }

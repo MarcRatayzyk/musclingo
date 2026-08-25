@@ -11,8 +11,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://localhost:3001",
-        "EXPO_PUBLIC_POSTHOG_HOST": "https://eu.i.posthog.com"
+        "EXPO_PUBLIC_OFFLINE": "1"
       }
     },
     "production": {
@@ -21,8 +20,7 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://localhost:3001",
-        "EXPO_PUBLIC_POSTHOG_HOST": "https://eu.i.posthog.com"
+        "EXPO_PUBLIC_OFFLINE": "1"
       }
     }
   },

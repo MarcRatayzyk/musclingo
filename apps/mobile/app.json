@@ -23,7 +23,7 @@
         "backgroundColor": "#0B0D10"
       },
       "package": "app.musclemind.mobile",
-      "versionCode": 1
+      "versionCode": 2
     },
     "plugins": [
       "expo-router",
@@ -34,9 +34,7 @@
       "typedRoutes": true
     },
     "extra": {
-      "apiUrl": "http://localhost:3001",
-      "posthogKey": "",
-      "posthogHost": "https://eu.i.posthog.com",
+      "offline": true,
       "router": {},
       "eas": {
         "projectId": "924d35f7-17ee-4a05-80f4-df35507f300d"

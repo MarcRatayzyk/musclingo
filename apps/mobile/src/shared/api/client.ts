@@ -1,8 +1,11 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 import { tokenStorage } from "../storage/mmkv";
+import { OFFLINE, offlineFetch } from "./offline";
 
 function resolveApiUrl(): string {
+  if (OFFLINE) return "";
+
   const configured =
     process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -30,6 +33,7 @@ export const API_URL = resolveApiUrl();
 export function resolveMediaUrl(path: string | null | undefined): string | null {
   if (!path) return null;
   if (/^https?:\/\//i.test(path)) return path;
+  if (OFFLINE || !API_URL) return null;
   return `${API_URL}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
@@ -43,6 +47,11 @@ export class ApiError extends Error {
 }
 
 async function refreshAccessToken(): Promise<string | null> {
+  if (OFFLINE) {
+    tokenStorage.setTokens("offline-access", "offline-refresh");
+    return "offline-access";
+  }
+
   const refreshToken = tokenStorage.getRefresh();
   if (!refreshToken) return null;
 
@@ -70,6 +79,10 @@ export async function apiFetch<T>(
   options: RequestInit = {},
   retry = true,
 ): Promise<T> {
+  if (OFFLINE) {
+    return offlineFetch<T>(path, options);
+  }
+
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string> | undefined),

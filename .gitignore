@@ -15,3 +15,8 @@ web-build
 uploads
 apps/api/uploads/*
 !apps/api/uploads/.gitkeep
+
+credentials/
+credentials.json
+apps/mobile/credentials/
+apps/mobile/credentials.json

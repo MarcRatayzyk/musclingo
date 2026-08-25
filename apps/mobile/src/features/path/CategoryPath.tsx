@@ -1,4 +1,3 @@
-import { MotiView } from "moti";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   Image,
@@ -55,42 +54,25 @@ function PulseWaves({ color, active }: { color: string; active: boolean }) {
         justifyContent: "center",
       }}
     >
-      {[0, 1, 2].map((i) => (
-        <MotiView
-          key={i}
-          from={{ scale: 1, opacity: 0.55 }}
-          animate={{ scale: 2.2, opacity: 0 }}
-          transition={{
-            type: "timing",
-            duration: 2200,
-            delay: i * 700,
-            loop: true,
-            repeatReverse: false,
-          }}
-          style={{
-            position: "absolute",
-            width: NODE_SIZE,
-            height: NODE_SIZE,
-            borderRadius: NODE_SIZE / 2,
-            borderWidth: 2.5,
-            borderColor: color,
-          }}
-        />
-      ))}
-      <MotiView
-        from={{ scale: 1, opacity: 0.22 }}
-        animate={{ scale: 1.4, opacity: 0.04 }}
-        transition={{
-          type: "timing",
-          duration: 1600,
-          loop: true,
+      <View
+        style={{
+          position: "absolute",
+          width: NODE_SIZE + 14,
+          height: NODE_SIZE + 14,
+          borderRadius: (NODE_SIZE + 14) / 2,
+          borderWidth: 2,
+          borderColor: color,
+          opacity: 0.35,
         }}
+      />
+      <View
         style={{
           position: "absolute",
           width: NODE_SIZE + 10,
           height: NODE_SIZE + 10,
           borderRadius: (NODE_SIZE + 10) / 2,
           backgroundColor: color,
+          opacity: 0.12,
         }}
       />
     </View>
@@ -100,7 +82,6 @@ function PulseWaves({ color, active }: { color: string; active: boolean }) {
 function GateNode({
   gate,
   color,
-  index,
   sideOffset,
   isCurrent,
   onPress,
@@ -119,18 +100,15 @@ function GateNode({
 
   const nodeBg = completed ? color : available ? "#1C2230" : "#141820";
   const nodeBorder = locked ? "#2A3344" : color;
+  const scale = pressed ? 0.9 : isCurrent ? 1.05 : 1;
 
   return (
     <View style={{ alignItems: "center", marginBottom: -12 }}>
-      <MotiView
-        from={{ opacity: 0, translateY: 8 }}
-        animate={{ opacity: 1, translateY: 0, translateX: sideOffset }}
-        transition={{
-          type: "timing",
-          duration: 280,
-          delay: Math.min(index * 35, 280),
+      <View
+        style={{
+          alignItems: "center",
+          transform: [{ translateX: sideOffset }],
         }}
-        style={{ alignItems: "center" }}
       >
         <Pressable
           disabled={locked}
@@ -149,15 +127,7 @@ function GateNode({
           >
             <PulseWaves color={color} active={isCurrent} />
 
-            <MotiView
-              animate={{
-                scale: pressed ? 0.9 : isCurrent ? 1.05 : 1,
-              }}
-              transition={
-                isCurrent && !pressed
-                  ? { type: "timing", duration: 1100, loop: true }
-                  : { type: "spring", damping: 16 }
-              }
+            <View
               style={{
                 width: NODE_SIZE,
                 height: NODE_SIZE,
@@ -168,6 +138,7 @@ function GateNode({
                 opacity: locked ? 0.55 : 1,
                 alignItems: "center",
                 justifyContent: "center",
+                transform: [{ scale }],
                 shadowColor: isCurrent || completed ? color : "transparent",
                 shadowOpacity: isCurrent ? 0.55 : completed ? 0.32 : 0,
                 shadowRadius: isCurrent ? 16 : 8,
@@ -187,7 +158,7 @@ function GateNode({
               >
                 ⚡
               </Text>
-            </MotiView>
+            </View>
 
             {completed && (
               <View
@@ -229,7 +200,7 @@ function GateNode({
             </Text>
           </View>
         </Pressable>
-      </MotiView>
+      </View>
     </View>
   );
 }
@@ -238,7 +209,6 @@ function LessonNode({
   lesson,
   color,
   icon,
-  index,
   sideOffset,
   isCurrent,
   onPress,
@@ -259,22 +229,15 @@ function LessonNode({
   const nodeBg = completed ? color : available ? "#1C2230" : "#141820";
   const nodeBorder = locked ? "#2A3344" : color;
   const iconTint = completed ? "#0B0F14" : available ? "#FFFFFF" : "#7A8499";
+  const scale = pressed ? 0.9 : isCurrent ? 1.05 : 1;
 
   return (
     <View style={{ alignItems: "center", marginBottom: -12 }}>
-      <MotiView
-        from={{ opacity: 0, translateY: 8 }}
-        animate={{
-          opacity: 1,
-          translateY: 0,
-          translateX: sideOffset,
+      <View
+        style={{
+          alignItems: "center",
+          transform: [{ translateX: sideOffset }],
         }}
-        transition={{
-          type: "timing",
-          duration: 280,
-          delay: Math.min(index * 35, 280),
-        }}
-        style={{ alignItems: "center" }}
       >
         <Pressable
           disabled={locked}
@@ -293,15 +256,7 @@ function LessonNode({
           >
             <PulseWaves color={color} active={isCurrent} />
 
-            <MotiView
-              animate={{
-                scale: pressed ? 0.9 : isCurrent ? 1.05 : 1,
-              }}
-              transition={
-                isCurrent && !pressed
-                  ? { type: "timing", duration: 1100, loop: true }
-                  : { type: "spring", damping: 16 }
-              }
+            <View
               style={{
                 width: NODE_SIZE,
                 height: NODE_SIZE,
@@ -313,6 +268,7 @@ function LessonNode({
                 alignItems: "center",
                 justifyContent: "center",
                 overflow: "hidden",
+                transform: [{ scale }],
                 shadowColor: isCurrent || completed ? color : "transparent",
                 shadowOpacity: isCurrent ? 0.55 : completed ? 0.32 : 0,
                 shadowRadius: isCurrent ? 16 : 8,
@@ -329,7 +285,7 @@ function LessonNode({
                   tintColor: iconTint,
                 }}
               />
-            </MotiView>
+            </View>
 
             {completed && (
               <View
@@ -364,18 +320,12 @@ function LessonNode({
             </Text>
 
             {isCurrent ? (
-              <MotiView
-                from={{ opacity: 0.4 }}
-                animate={{ opacity: 1 }}
-                transition={{ type: "timing", duration: 850, loop: true }}
+              <Text
+                className="mt-0.5 text-center text-[11px] font-medium"
+                style={{ color }}
               >
-                <Text
-                  className="mt-0.5 text-center text-[11px] font-medium"
-                  style={{ color }}
-                >
-                  À toi de jouer
-                </Text>
-              </MotiView>
+                À toi de jouer
+              </Text>
             ) : (
               <Text className="mt-0.5 text-center text-[11px] text-muted">
                 {locked ? "Verrouillé" : available ? "Disponible" : "Apprise"}
@@ -383,7 +333,7 @@ function LessonNode({
             )}
           </View>
         </Pressable>
-      </MotiView>
+      </View>
     </View>
   );
 }

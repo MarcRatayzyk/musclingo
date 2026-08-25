@@ -1,4 +1,3 @@
-import { MotiView } from "moti";
 import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useUpdatePreferredCategory } from "@/features/auth/api";
@@ -60,10 +59,10 @@ export default function CategoriesScreen() {
                 });
               }}
             >
-              <MotiView
-                from={{ opacity: 0, translateY: 16 }}
-                animate={{ opacity: 1, translateY: 0 }}
-                transition={{ delay: index * 80 }}
+              <View
+                
+                
+                
                 className="mb-4 flex-row items-center gap-4 rounded-3xl border border-border bg-surface p-4"
                 style={{
                   borderColor: cat.color + "55",
@@ -110,7 +109,7 @@ export default function CategoriesScreen() {
                     {cat.completedCount}/{cat.lessonCount} leçons · {cat.xp} XP
                   </Text>
                 </View>
-              </MotiView>
+              </View>
             </Pressable>
           );
         })}

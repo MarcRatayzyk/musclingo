@@ -1,14 +1,6 @@
 import { router } from "expo-router";
-import { MotiView } from "moti";
 import { useEffect, useRef, useState } from "react";
-import {
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  useWindowDimensions,
-  View,
-} from "react-native";
+import { Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { useMe } from "@/features/auth/api";
 import { useSubmitMemoryGameScore } from "@/features/memory-game/api";
 import { useMemoryGame } from "@/features/memory-game/useMemoryGame";
@@ -178,11 +170,11 @@ export default function MemoryGameScreen() {
               const faceUp = game.isFaceUp(card.id);
               const matched = game.isMatched(card.id);
               return (
-                <MotiView
+                <View
                   key={card.id}
-                  from={{ opacity: 0, scale: 0.85 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 25, type: "timing", duration: 200 }}
+                  
+                  
+                  
                 >
                   <Pressable
                     onPress={() => game.flipCard(card.id)}
@@ -215,7 +207,7 @@ export default function MemoryGameScreen() {
                       {faceUp ? card.symbol : "?"}
                     </Text>
                   </Pressable>
-                </MotiView>
+                </View>
               );
             })}
           </View>

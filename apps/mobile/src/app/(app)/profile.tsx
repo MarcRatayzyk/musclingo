@@ -1,5 +1,4 @@
 import { router } from "expo-router";
-import { MotiView } from "moti";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { logout, useMe } from "@/features/auth/api";
 import { useCategories } from "@/features/home/api";
@@ -31,9 +30,9 @@ export default function ProfileScreen() {
         {meLoading || !me ? (
           <Text className="mt-6 text-muted">Chargement…</Text>
         ) : (
-          <MotiView
-            from={{ opacity: 0, translateY: 12 }}
-            animate={{ opacity: 1, translateY: 0 }}
+          <View
+            
+            
             className="mt-6 rounded-3xl border border-border bg-surface p-5"
           >
             <View className="flex-row items-center gap-4">
@@ -64,7 +63,7 @@ export default function ProfileScreen() {
                 niveau {me.level + 1}
               </Text>
             </View>
-          </MotiView>
+          </View>
         )}
 
         <Text className="mb-3 mt-8 text-lg font-semibold text-white">
@@ -77,11 +76,11 @@ export default function ProfileScreen() {
           {categories?.map((cat, index) => {
             const pct = Math.round(cat.progress * 100);
             return (
-              <MotiView
+              <View
                 key={cat.id}
-                from={{ opacity: 0, translateY: 14 }}
-                animate={{ opacity: 1, translateY: 0 }}
-                transition={{ delay: index * 70 }}
+                
+                
+                
                 className="rounded-3xl border border-border bg-surface p-5"
                 style={{ borderColor: `${cat.color}66` }}
               >
@@ -111,7 +110,7 @@ export default function ProfileScreen() {
                 <Text className="mt-2 text-xs text-muted">
                   {cat.xp} neurolift acquis
                 </Text>
-              </MotiView>
+              </View>
             );
           })}
         </View>

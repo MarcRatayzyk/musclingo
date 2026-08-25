@@ -1,15 +1,7 @@
 import { MINI_GAME_MIN_DURATION_SEC } from "@muscle-mind/types";
 import { router, useLocalSearchParams } from "expo-router";
-import { MotiText, MotiView } from "moti";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Image,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { ConfettiBurst } from "@/features/gamification/confetti";
 import {
   useMiniGameQuestions,
@@ -172,11 +164,11 @@ export default function FlashQuizScreen() {
 
       {game.phase === "countdown" && (
         <View className="flex-1 items-center justify-center">
-          <MotiText
+          <Text
             key={game.countdown}
-            from={{ opacity: 0, scale: 0.4 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ type: "spring", damping: 12 }}
+            
+            
+            
             style={{
               color,
               fontSize: 96,
@@ -184,7 +176,7 @@ export default function FlashQuizScreen() {
             }}
           >
             {game.countdown > 0 ? String(game.countdown) : "Go"}
-          </MotiText>
+          </Text>
           <Text className="mt-4 text-sm text-muted">Prépare-toi…</Text>
         </View>
       )}
@@ -212,9 +204,9 @@ export default function FlashQuizScreen() {
           </View>
 
           {game.combo >= 3 && (
-            <MotiView
-              from={{ opacity: 0, translateY: -6 }}
-              animate={{ opacity: 1, translateY: 0 }}
+            <View
+              
+              
               className="mb-3 self-center rounded-full px-4 py-1"
               style={{ backgroundColor: color + "22" }}
             >
@@ -224,7 +216,7 @@ export default function FlashQuizScreen() {
               >
                 Série de {game.combo}
               </Text>
-            </MotiView>
+            </View>
           )}
 
           <ScrollView showsVerticalScrollIndicator={false}>

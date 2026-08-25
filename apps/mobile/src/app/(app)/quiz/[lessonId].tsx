@@ -1,17 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { MotiView } from "moti";
 import { useMemo, useState } from "react";
-import {
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  useWindowDimensions,
-  View,
-} from "react-native";
+import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { ConfettiBurst } from "@/features/gamification/confetti";
 import { useQuizByLesson, useSubmitQuiz } from "@/features/home/api";
 import { ApiError, resolveMediaUrl } from "@/shared/api/client";
@@ -131,20 +120,20 @@ export default function QuizScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerClassName="flex-grow justify-center pb-8"
         >
-          <MotiView
-            from={{ scale: 0.92, opacity: 0 }}
-            animate={{ opacity: 1, scale: 1 }}
+          <View
+            
+            
             className="flex-1 justify-center"
           >
-            <MotiView
-              from={{ translateY: 20, opacity: 0 }}
-              animate={{ translateY: 0, opacity: 1 }}
-              transition={{ delay: 150 }}
+            <View
+              
+              
+              
             >
               <Text className="text-5xl font-semibold text-accent">
                 +{result.xpEarned} neurolift
               </Text>
-            </MotiView>
+            </View>
 
             <Text className="mt-3 text-lg text-white">
               {result.passed
@@ -236,7 +225,7 @@ export default function QuizScreen() {
                 <Text className="text-sm text-muted">Voir le parcours</Text>
               </Pressable>
             </View>
-          </MotiView>
+          </View>
         </ScrollView>
       </Screen>
     );
@@ -258,10 +247,10 @@ export default function QuizScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <MotiView
+          <View
             key={question?.id}
-            from={{ opacity: 0, translateX: 28 }}
-            animate={{ opacity: 1, translateX: 0 }}
+            
+            
           >
             <Text className="text-2xl font-semibold text-white">
               {question?.prompt}
@@ -338,7 +327,7 @@ export default function QuizScreen() {
                 })}
               </View>
             )}
-          </MotiView>
+          </View>
         </ScrollView>
 
         <View className="mb-4 gap-2">

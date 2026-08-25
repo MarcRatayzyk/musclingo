@@ -1,5 +1,4 @@
 import { router } from "expo-router";
-import { MotiView } from "moti";
 import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { useMiniGames } from "@/features/mini-games/api";
 import { getPathIcon } from "@/features/path/icons";
@@ -28,10 +27,10 @@ function GameTile({
 }) {
   return (
     <Pressable onPress={onPress} style={{ width: "48%" }}>
-      <MotiView
-        from={{ opacity: 0, translateY: 12 }}
-        animate={{ opacity: 1, translateY: 0 }}
-        transition={{ delay: index * 70 }}
+      <View
+        
+        
+        
         style={{
           width: "100%",
           alignItems: "center",
@@ -73,7 +72,7 @@ function GameTile({
         >
           {title}
         </Text>
-      </MotiView>
+      </View>
     </Pressable>
   );
 }

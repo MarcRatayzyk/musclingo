@@ -1,4 +1,3 @@
-import { MotiView } from "moti";
 import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { Redirect, router } from "expo-router";
 import { useMe, useUpdatePreferredCategory } from "@/features/auth/api";
@@ -54,10 +53,10 @@ export default function OnboardingScreen() {
                 });
               }}
             >
-              <MotiView
-                from={{ opacity: 0, translateY: 16 }}
-                animate={{ opacity: 1, translateY: 0 }}
-                transition={{ delay: index * 80 }}
+              <View
+                
+                
+                
                 className="mb-4 flex-row items-center gap-4 rounded-3xl border border-border bg-surface p-4"
                 style={{
                   borderColor: cat.color + "55",
@@ -95,7 +94,7 @@ export default function OnboardingScreen() {
                     {cat.lessonCount} leçons
                   </Text>
                 </View>
-              </MotiView>
+              </View>
             </Pressable>
           );
         })}

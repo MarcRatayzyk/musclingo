@@ -1,4 +1,3 @@
-import { MotiView } from "moti";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
@@ -22,11 +21,9 @@ export function XpBar({
       }}
     >
       {trackWidth > 0 && (
-        <MotiView
-          from={{ width: 0 }}
-          animate={{ width: fillWidth }}
-          transition={{ type: "timing", duration: 700 }}
+        <View
           style={{
+            width: fillWidth,
             height: "100%",
             borderRadius: 999,
             backgroundColor: color,

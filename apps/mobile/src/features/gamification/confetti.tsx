@@ -1,15 +1,14 @@
-import { MotiView } from "moti";
 import { useEffect, useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 
-/** Lightweight confetti burst for perfect quiz — no heavy native deps. */
+/** Lightweight confetti burst for perfect quiz — no Moti / heavy deps. */
 export function ConfettiBurst({ active }: { active: boolean }) {
   const [pieces] = useState(() =>
     Array.from({ length: 18 }, (_, i) => ({
       id: i,
       left: `${(i * 17) % 100}%`,
-      delay: (i % 6) * 40,
       color: ["#7CFFB2", "#5B8CFF", "#FF8C5B", "#C77DFF", "#FFB84D"][i % 5]!,
+      top: 40 + (i % 5) * 28,
       rotate: (i * 37) % 360,
     })),
   );
@@ -17,24 +16,20 @@ export function ConfettiBurst({ active }: { active: boolean }) {
   if (!active) return null;
 
   return (
-    <View
-      pointerEvents="none"
-      className="absolute inset-0 overflow-hidden"
-    >
+    <View pointerEvents="none" className="absolute inset-0 overflow-hidden">
       {pieces.map((p) => (
-        <MotiView
+        <View
           key={p.id}
-          from={{ translateY: -20, opacity: 1, rotate: "0deg" }}
-          animate={{ translateY: 420, opacity: 0, rotate: `${p.rotate}deg` }}
-          transition={{ type: "timing", duration: 1600, delay: p.delay }}
           style={{
             position: "absolute",
             left: p.left as `${number}%`,
-            top: 40,
+            top: p.top,
             width: 8,
             height: 14,
             borderRadius: 2,
             backgroundColor: p.color,
+            transform: [{ rotate: `${p.rotate}deg` }],
+            opacity: 0.85,
           }}
         />
       ))}

@@ -115,8 +115,14 @@ async function main() {
       });
 
       if (quiz) {
-        const answers = quiz.questions.map((q) => buildQuizAnswer(q));
-        await quizzesService.submit(quiz.id, user.id, { answers });
+        const alreadyPassed = await prisma.quizResult.findFirst({
+          where: { userId: user.id, quizId: quiz.id, perfect: true },
+          select: { id: true },
+        });
+        if (!alreadyPassed) {
+          const answers = quiz.questions.map((q) => buildQuizAnswer(q));
+          await quizzesService.submit(quiz.id, user.id, { answers });
+        }
       }
       lessonCount += 1;
 
@@ -128,22 +134,28 @@ async function main() {
       const gate = gates.find((g) => g.checkpointOrder === lesson.checkpointOrder);
       if (!gate) continue;
 
-      const gateWithQuestions = await prisma.checkpointGate.findUnique({
-        where: { id: gate.id },
-        include: {
-          questions: { include: { answers: true }, orderBy: { order: "asc" } },
-        },
+      const alreadyPassedGate = await prisma.checkpointGateResult.findFirst({
+        where: { userId: user.id, gateId: gate.id, passed: true },
+        select: { id: true },
       });
-      if (!gateWithQuestions) continue;
-
-      const answers = gateWithQuestions.questions.map((q) => {
-        const correct = q.answers.find((a) => a.isCorrect);
-        return { questionId: q.id, selectedAnswerIds: correct ? [correct.id] : [] };
-      });
-      await checkpointsService.submit(gate.id, user.id, {
-        answers,
-        timeSpentSec: 30,
-      });
+      if (!alreadyPassedGate) {
+        const gateWithQuestions = await prisma.checkpointGate.findUnique({
+          where: { id: gate.id },
+          include: {
+            questions: { include: { answers: true }, orderBy: { order: "asc" } },
+          },
+        });
+        if (gateWithQuestions) {
+          const answers = gateWithQuestions.questions.map((q) => {
+            const correct = q.answers.find((a) => a.isCorrect);
+            return { questionId: q.id, selectedAnswerIds: correct ? [correct.id] : [] };
+          });
+          await checkpointsService.submit(gate.id, user.id, {
+            answers,
+            timeSpentSec: 30,
+          });
+        }
+      }
       gateCount += 1;
     }
   }

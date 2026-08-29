@@ -1,5 +1,10 @@
 # Changelog
 
+## [Non publié] - 2026-08-29 (audit)
+
+### Corrigé
+- Script `apps/api/prisma/create-completed-account.ts` : les quiz et checkpoints déjà réussis étaient resoumis à chaque exécution, ce qui gonflait l'XP du compte indéfiniment sans changement de contenu (25 245 XP après 3 exécutions sur un contenu inchangé). Le script vérifie désormais qu'un résultat parfait/réussi existe déjà avant de resoumettre.
+
 ## [Non publié] - 2026-08-29
 
 ### Ajouté

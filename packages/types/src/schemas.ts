@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  LESSON_QUIZ_QUESTION_COUNT,
+  LESSON_QUIZ_TOTAL_TIME_SEC,
+} from "./levels";
 
 export const RoleSchema = z.enum(["USER", "ADMIN"]);
 export type Role = z.infer<typeof RoleSchema>;
@@ -13,6 +17,7 @@ export const QuestionTypeSchema = z.enum([
   "ORDER",
   "MATCH",
   "TEXT",
+  "HOTSPOT",
 ]);
 export type QuestionType = z.infer<typeof QuestionTypeSchema>;
 
@@ -56,25 +61,34 @@ export type UpdatePreferredCategoryInput = z.infer<
   typeof UpdatePreferredCategorySchema
 >;
 
+
+export const SubmitQuizAnswerSchema = z.object({
+  questionId: z.string().min(1),
+  selectedAnswerIds: z.array(z.string().min(1)).min(1).max(1),
+  timeSpentSec: z
+    .number()
+    .int()
+    .min(1)
+    .max(LESSON_QUIZ_TOTAL_TIME_SEC),
+});
+
 export const SubmitQuizSchema = z.object({
-  answers: z.array(
-    z.object({
-      questionId: z.string().cuid(),
-      selectedAnswerIds: z.array(z.string().cuid()).default([]),
-      orderedAnswerIds: z.array(z.string().cuid()).optional(),
-      textAnswer: z.string().max(200).optional(),
-      matches: z
-        .array(
-          z.object({
-            leftId: z.string().cuid(),
-            rightId: z.string().cuid(),
-          }),
-        )
-        .optional(),
-    }),
-  ),
+  sessionId: z.string().cuid(),
+  answers: z.array(SubmitQuizAnswerSchema).length(LESSON_QUIZ_QUESTION_COUNT),
+  totalTimeSpentSec: z
+    .number()
+    .int()
+    .min(1)
+    .max(LESSON_QUIZ_TOTAL_TIME_SEC),
 });
 export type SubmitQuizInput = z.infer<typeof SubmitQuizSchema>;
+
+export const CheckQuizAnswerSchema = z.object({
+  sessionId: z.string().cuid(),
+  questionId: z.string().min(1),
+  selectedAnswerIds: z.array(z.string().min(1)).min(1).max(1),
+});
+export type CheckQuizAnswerInput = z.infer<typeof CheckQuizAnswerSchema>;
 
 export const SubmitCheckpointGateSchema = z.object({
   answers: z.array(

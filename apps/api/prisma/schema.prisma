@@ -24,6 +24,7 @@ enum QuestionType {
   ORDER
   MATCH
   TEXT
+  HOTSPOT
 }
 
 enum Difficulty {
@@ -54,6 +55,7 @@ model User {
   updatedAt            DateTime         @updatedAt
   lessonProgress         LessonProgress[]
   quizResults            QuizResult[]
+  quizSessions           QuizSession[]
   checkpointGateResults  CheckpointGateResult[]
   miniGameResults        MiniGameResult[]
   xpTransactions         XpTransaction[]
@@ -119,6 +121,7 @@ model Quiz {
   updatedAt      DateTime     @updatedAt
   questions      Question[]
   results        QuizResult[]
+  sessions       QuizSession[]
 }
 
 model Question {
@@ -164,16 +167,33 @@ model LessonProgress {
 }
 
 model QuizResult {
-  id        String   @id @default(cuid())
-  userId    String
-  quizId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  quiz      Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  score     Float
-  perfect   Boolean  @default(false)
-  xpEarned  Int
-  answers   Json
-  createdAt DateTime @default(now())
+  id           String   @id @default(cuid())
+  userId       String
+  quizId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quiz         Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  score        Float
+  perfect      Boolean  @default(false)
+  xpEarned     Int
+  answers      Json
+  stars        Int      @default(0)
+  timeSpentSec Int?
+  passed       Boolean  @default(false)
+  questionIds  Json     @default("[]")
+  createdAt    DateTime @default(now())
+
+  @@index([userId, quizId])
+}
+
+model QuizSession {
+  id          String   @id @default(cuid())
+  userId      String
+  quizId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  questionIds Json
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
 
   @@index([userId, quizId])
 }

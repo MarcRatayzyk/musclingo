@@ -1,0 +1,107 @@
+import { CP } from "./checkpoints";
+import { buildLesson } from "./build-lesson";
+
+export const THEME_4_LESSONS = [
+  buildLesson(
+    "La double progression",
+    "3 × 8–12 : reps puis charge.",
+    [
+      `Exemple de **double progression** : 3 × 8–12. Tant que le pratiquant reste dans la plage, il cherche à ajouter des répétitions. Une fois 12/12/12 atteint avec le RIR prévu, on augmente la charge. Puis on recommence.`,
+      `C'est l'un des systèmes les plus **simples** et les plus **robustes** pour progresser sur le long terme.`,
+      `Pas besoin de calculs complexes : reps d'abord, charge ensuite.`,
+      `À retenir : remplir la plage de reps → monter la charge → redescendre dans la plage.`,
+    ],
+    ["double-progression", "reps"],
+    CP.progression,
+    {
+      q1: ["En double progression 3 × 8–12, on augmente d'abord…", "Les répétitions dans la plage", ["La charge chaque série", "Le nombre de jours de repos", "Le tempo"], "Reps avant charge."],
+      q2: ["Quand augmenter la charge en 3 × 8–12 ?", "Quand 12/12/12 est atteint au RIR visé", ["Dès la première séance", "Jamais", "Sans remplir la plage"], "Plage complète = signal."],
+      q3: ["La double progression est…", "Simple et robuste", ["Trop complexe pour débuter", "Réservée aux pros uniquement", "Sans effet"], "Méthode éprouvée."],
+      blank: ["Double progression : d'abord les ___, puis la charge.", "répétitions", ["séries de repos", "couleurs", "miroirs"], "Reps → charge."],
+      tf1: ["Après avoir monté la charge, on repart généralement plus bas dans la plage de reps.", true, "Vrai : cycle reps puis charge."],
+      tf2: ["En double progression, on change la charge à chaque série.", false, "Faux : on progresse en reps d'abord."],
+    },
+  ),
+  buildLesson(
+    "La progression en charge",
+    "Micro-charges et alternatives.",
+    [
+      `La progression peut être : 100 → 102,5 → 105 → 107,5 kg. Mais les petits incréments sont parfois difficiles selon le matériel.`,
+      `On peut utiliser : **micro-charges**, répétitions supplémentaires, séries supplémentaires, ou variations d'exercice.`,
+      `La progression en charge n'est qu'un levier parmi d'autres.`,
+      `À retenir : si +2,5 kg est impossible, progresser autrement.`,
+    ],
+    ["progression-charge", "increment"],
+    CP.progression,
+    {
+      q1: ["Si les micro-plaques manquent, on peut progresser par…", "Reps ou séries supplémentaires", ["Arrêter de progresser", "Changer tout chaque jour", "Réduire le volume"], "Alternatives à la charge."],
+      q2: ["Progression en charge typique…", "100 → 102,5 → 105 kg", ["100 → 150 en une séance", "Jamais augmenter", "Diminuer chaque semaine"], "Incréments graduels."],
+      q3: ["Les micro-charges servent à…", "Progresser quand les gros incréments sont trop", ["Remplacer le volume", "Supprimer l'effort", "Éviter toute surcharge"], "Petits pas de charge."],
+      blank: ["La progression en charge n'est qu'un ___ parmi d'autres.", "levier", ["obstacle", "mythe", "problème"], "Reps, séries, technique aussi."],
+      tf1: ["On peut progresser sans augmenter la charge à chaque séance.", true, "Vrai : reps, séries, qualité."],
+      tf2: ["Il faut toujours ajouter 10 kg par semaine.", false, "Faux : incréments adaptés au niveau."],
+    },
+  ),
+  buildLesson(
+    "La progression en répétitions",
+    "Une rep de plus = progression.",
+    [
+      `Exemple 3 × 8–10 :\n\n- Semaine 1 : 8/8/8\n- Semaine 2 : 9/8/8\n- Semaine 3 : 9/9/8\n- Semaine 4 : 10/9/9\n- Semaine 5 : 10/10/10\n\nPuis augmentation de charge.`,
+      `La progression n'a pas besoin d'être spectaculaire. **Une répétition supplémentaire est déjà une progression.**`,
+      `Noter les reps dans un logbook pour voir la progression fine.`,
+      `À retenir : +1 rep = progrès mesurable.`,
+    ],
+    ["progression-reps", "logbook"],
+    CP.progression,
+    {
+      q1: ["Passer de 8/8/8 à 9/8/8 représente…", "Une progression", ["Aucun changement", "Une régression", "Un deload"], "+1 rep = progrès."],
+      q2: ["La progression peut être…", "Modeste (une rep de plus)", ["Uniquement spectaculaire", "Uniquement en charge", "Impossible sans dopage"], "Petits pas comptent."],
+      q3: ["Avant d'augmenter la charge en 3 × 8–10…", "Viser 10/10/10 au RIR visé", ["Changer d'exercice", "Ignorer les reps", "Aller à 20 reps"], "Plage haute atteinte."],
+      blank: ["Une ___ supplémentaire est déjà une progression.", "répétition", ["séance", "miroir", "photo"], "Progrès fin mais réel."],
+      tf1: ["Noter les répétitions aide à voir la progression.", true, "Vrai : logbook essentiel."],
+      tf2: ["Seule l'augmentation de charge compte comme progression.", false, "Faux : reps, séries, qualité aussi."],
+    },
+  ),
+  buildLesson(
+    "La progression en séries",
+    "Ajouter une série avec prudence.",
+    [
+      `Si la performance stagne malgré une bonne récupération, on peut ajouter une **série**. Exemple : semaines 1–2 à 3 séries, semaines 3–4 à 4 séries.`,
+      `Cette stratégie doit être utilisée avec **prudence** car elle augmente la fatigue et le volume rapidement.`,
+      `Vérifier récupération et qualité des séries avant d'ajouter.`,
+      `À retenir : +1 série = +volume significatif — pas le premier levier.`,
+    ],
+    ["progression-series", "volume"],
+    CP.progression,
+    {
+      q1: ["Ajouter une série…", "Augmente le volume et la fatigue", ["Diminue toujours la fatigue", "N'a aucun effet", "Remplace la progression"], "Prudence requise."],
+      q2: ["On peut ajouter une série si…", "La récupération est bonne et la perf stagne", ["On est épuisé", "On dort 4 h", "Sans diagnostic"], "Après vérification récup."],
+      q3: ["Exemple : 3 séries → 4 séries sur 2 semaines…", "Augmente progressivement le volume", ["Diminue le stimulus", "Supprime le travail", "Est un deload"], "Progression volume prudente."],
+      blank: ["La progression en séries doit être utilisée avec ___.", "prudence", ["négligence", "hâte", "hasard"], "Fatigue augmente vite."],
+      tf1: ["+1 série par exercice augmente significativement le volume hebdo.", true, "Vrai : impact non négligeable."],
+      tf2: ["Ajouter des séries est toujours la première solution à un plateau.", false, "Faux : diagnostiquer avant."],
+    },
+    "INTERMEDIATE",
+  ),
+  buildLesson(
+    "La progression technique",
+    "Amplitude, contrôle, stabilité.",
+    [
+      `La progression ne se résume pas aux chiffres. Une meilleure répétition peut représenter une amélioration : amplitude supérieure, trajectoire plus stable, contrôle amélioré, moins de compensation, meilleure régularité.`,
+      `Pour un **débutant**, les progrès techniques peuvent être énormes avant même d'ajouter beaucoup de charge.`,
+      `Filmer ses séries ou noter la qualité aide à voir cette progression.`,
+      `À retenir : meilleure rep = progression, même à charge égale.`,
+    ],
+    ["progression-technique", "qualite"],
+    CP.progression,
+    {
+      q1: ["Une progression technique peut être…", "Plus d'amplitude ou meilleur contrôle", ["Uniquement +10 kg", "Ignorer la forme", "Compenser plus"], "Qualité du mouvement."],
+      q2: ["Pour un débutant…", "Les progrès techniques peuvent être énormes", ["La technique n'a aucune importance", "Seule la charge compte", "Pas de progression possible"], "Technique = marge de progrès."],
+      q3: ["Même charge, meilleure répétition…", "C'est une forme de progression", ["Ne compte pas", "Est une régression", "Remplace le volume"], "Progrès non linéaire en kg."],
+      blank: ["Progression technique : moins de ___, meilleure stabilité.", "compensation", ["effort", "travail", "tension"], "Mouvement plus propre."],
+      tf1: ["Une rep plus contrôlée à charge égale est un progrès.", true, "Vrai : qualité = adaptation."],
+      tf2: ["Seuls les chiffres sur la barre comptent comme progression.", false, "Faux : technique et contrôle aussi."],
+    },
+    "INTERMEDIATE",
+  ),
+];

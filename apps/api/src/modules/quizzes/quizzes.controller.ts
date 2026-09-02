@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Post } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
-import { SubmitQuizSchema } from "@muscle-mind/types";
+import { CheckQuizAnswerSchema, SubmitQuizSchema } from "@muscle-mind/types";
 import { AuthUser, CurrentUser } from "../../common/decorators";
 import { ZodValidationPipe } from "../../common/zod-validation.pipe";
 import { QuizzesService } from "./quizzes.service";
@@ -17,6 +17,15 @@ export class QuizzesController {
     @CurrentUser() user: AuthUser,
   ) {
     return this.quizzes.getByLessonId(lessonId, user.userId);
+  }
+
+  @Post(":id/check-answer")
+  checkAnswer(
+    @Param("id") id: string,
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(CheckQuizAnswerSchema)) body: unknown,
+  ) {
+    return this.quizzes.checkAnswer(id, user.userId, body as never);
   }
 
   @Post(":id/submit")

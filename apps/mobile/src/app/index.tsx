@@ -14,7 +14,9 @@ export default function Index() {
     );
   }
 
-  if (tokenStorage.getAccess()) {
+  const isAuthenticated = useSessionStore((s) => s.isAuthenticated);
+
+  if (isAuthenticated && tokenStorage.getAccess()) {
     return <Redirect href="/(app)/home" />;
   }
 

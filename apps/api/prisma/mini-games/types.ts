@@ -6,6 +6,8 @@ import type { SeedQuestion } from "../anatomie-quiz-helpers";
  */
 export type MiniGameQuestionSeed = SeedQuestion & {
   checkpointKey?: string;
+  /** Tags thématiques (ex. humerus, avant-bras) pour le quiz de fin de leçon. */
+  themeTags?: string[];
 };
 
 export function tagged(
@@ -13,4 +15,12 @@ export function tagged(
   questions: SeedQuestion[],
 ): MiniGameQuestionSeed[] {
   return questions.map((q) => ({ ...q, checkpointKey }));
+}
+
+export function themed(
+  checkpointKey: string,
+  themeTags: string[],
+  questions: SeedQuestion[],
+): MiniGameQuestionSeed[] {
+  return questions.map((q) => ({ ...q, checkpointKey, themeTags }));
 }

@@ -15,36 +15,28 @@ import { CategoryPathView } from "@/features/path/CategoryPath";
 import { useCategoryPath } from "@/features/path/api";
 import { getPathIcon } from "@/features/path/icons";
 import { SectionBanner } from "@/features/path/SectionBanner";
+import { unitKeyFromLessonScroll } from "@/features/path/scroll-sync";
 import { UnitDetailSheet } from "@/features/path/UnitDetailSheet";
+import {
+  AnatomyPathOnboarding,
+  hasSeenAnatomyOnboarding,
+} from "@/features/mascot";
 import { Screen } from "@/shared/ui/primitives";
 
-function unitKeyFromScroll(
-  units: Array<{ checkpointKey: string }>,
-  layouts: Record<string, number>,
-  scrollY: number,
-) {
-  let current: string | null = null;
-  for (const unit of units) {
-    const y = layouts[unit.checkpointKey];
-    if (y == null) continue;
-    if (y <= scrollY + 32) current = unit.checkpointKey;
-  }
-  return current;
-}
-
 export default function HomeScreen() {
-  const { data: me, isLoading: meLoading } = useMe();
+  const { data: me, isLoading: meLoading, isError: meError } = useMe();
   const { data: ongoing } = useOngoingPaths();
-  const { data: categories } = useCategories();
+  const { data: categories, isError: categoriesError } = useCategories();
 
   const scrollRef = useRef<ScrollView>(null);
   const scrollH = useRef(0);
   const layouts = useRef<Record<string, { y: number; height: number }>>({});
-  const unitLayouts = useRef<Record<string, number>>({});
+  const scrollY = useRef(0);
   const scrolledFor = useRef<string | null>(null);
 
   const [activeUnitKey, setActiveUnitKey] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [anatomyOnboardingOpen, setAnatomyOnboardingOpen] = useState(false);
 
   const activeCategoryId = useMemo(() => {
     if (me?.preferredCategory?.id) return me.preferredCategory.id;
@@ -103,30 +95,54 @@ export default function HomeScreen() {
   useEffect(() => {
     scrolledFor.current = null;
     layouts.current = {};
-    unitLayouts.current = {};
+    scrollY.current = 0;
   }, [activeCategoryId, focusLessonId]);
+
+  const syncActiveUnit = useCallback(
+    (offsetY: number) => {
+      if (!path) return;
+      const next = unitKeyFromLessonScroll(path.units, layouts.current, offsetY);
+      if (next) {
+        setActiveUnitKey((prev) => (next !== prev ? next : prev));
+      }
+    },
+    [path],
+  );
 
   useEffect(() => {
     const t = setTimeout(scrollToFocus, 80);
     return () => clearTimeout(t);
   }, [scrollToFocus, path]);
 
+  const pathSlug = path?.slug ?? me?.preferredCategory?.slug ?? "anatomie";
+
+  useEffect(() => {
+    if (pathLoading || !path) return;
+    if (path.slug !== "anatomie") return;
+    if (lessonCount === 0) return;
+    if (hasSeenAnatomyOnboarding()) return;
+    setAnatomyOnboardingOpen(true);
+  }, [path, pathLoading, lessonCount]);
+
   const onScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       if (!path) return;
       const y = e.nativeEvent.contentOffset.y;
-      const next = unitKeyFromScroll(path.units, unitLayouts.current, y);
-      if (next && next !== activeUnitKey) setActiveUnitKey(next);
+      scrollY.current = y;
+      syncActiveUnit(y);
     },
-    [path, activeUnitKey],
+    [path, syncActiveUnit],
   );
 
   if (!meLoading && me && !me.preferredCategory) {
     return <Redirect href="/(app)/onboarding" />;
   }
 
+  const showLoadError =
+    !meLoading &&
+    (meError || categoriesError || (!me && !meLoading) || !activeCategoryId);
+
   const pathColor = path?.color ?? me?.preferredCategory?.color ?? "#7CFFB2";
-  const pathSlug = path?.slug ?? me?.preferredCategory?.slug ?? "anatomie";
   const activeUnit =
     path?.units.find((u) => u.checkpointKey === activeUnitKey) ??
     path?.units[0];
@@ -186,11 +202,28 @@ export default function HomeScreen() {
         onScroll={onScroll}
         scrollEventThrottle={16}
       >
-        {(meLoading || pathLoading) && (
+        {(meLoading || pathLoading) && !showLoadError && (
           <Text className="text-muted">Chargement du parcours…</Text>
         )}
 
-        {isError && (
+        {showLoadError && (
+          <View className="mt-10 items-center px-6">
+            <Text className="text-center text-lg text-white">
+              Impossible de charger l&apos;accueil
+            </Text>
+            <Text className="mt-2 text-center text-sm text-muted">
+              Vérifie que l&apos;API tourne, puis reconnecte-toi si besoin.
+            </Text>
+            <Pressable
+              onPress={() => router.replace("/(auth)/login" as never)}
+              className="mt-6 rounded-xl border border-accent px-6 py-3"
+            >
+              <Text className="text-accent">Se reconnecter</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {isError && !showLoadError && (
           <Text className="text-muted">
             {error instanceof Error ? error.message : "Parcours introuvable"}
           </Text>
@@ -211,11 +244,9 @@ export default function HomeScreen() {
           <CategoryPathView
             path={path}
             focusLessonId={focusLessonId ?? undefined}
-            onUnitLayout={(checkpointKey, y) => {
-              unitLayouts.current[checkpointKey] = y;
-            }}
             onLessonLayout={(lessonId, y, height) => {
               layouts.current[lessonId] = { y, height };
+              syncActiveUnit(scrollY.current);
               if (lessonId === focusLessonId) {
                 scrollToFocus();
               }
@@ -248,6 +279,11 @@ export default function HomeScreen() {
           }}
         />
       )}
+      <AnatomyPathOnboarding
+        visible={anatomyOnboardingOpen}
+        onClose={() => setAnatomyOnboardingOpen(false)}
+        accentColor={pathColor}
+      />
     </Screen>
   );
 }

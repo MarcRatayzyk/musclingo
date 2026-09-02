@@ -11,57 +11,13 @@
  */
 import { NestFactory } from "@nestjs/core";
 import * as bcrypt from "bcrypt";
-import type { QuestionType } from "@prisma/client";
+import { LESSON_QUIZ_QUESTION_COUNT } from "@muscle-mind/types";
 import { AppModule } from "../src/app.module";
 import { PrismaService } from "../src/prisma/prisma.service";
 import { LessonsService } from "../src/modules/lessons/lessons.service";
 import { QuizzesService } from "../src/modules/quizzes/quizzes.service";
+import { QuestionPoolService } from "../src/modules/questions/question-pool.service";
 import { CheckpointsService } from "../src/modules/checkpoints/checkpoints.service";
-
-type AnswerRow = {
-  id: string;
-  label: string;
-  isCorrect: boolean;
-  order: number;
-  matchKey: string | null;
-};
-
-function buildQuizAnswer(question: {
-  id: string;
-  type: QuestionType;
-  answers: AnswerRow[];
-}) {
-  const correct = question.answers.filter((a) => a.isCorrect);
-
-  if (question.type === "ORDER") {
-    const ordered = [...question.answers]
-      .sort((a, b) => a.order - b.order)
-      .map((a) => a.id);
-    return { questionId: question.id, selectedAnswerIds: [], orderedAnswerIds: ordered };
-  }
-
-  if (question.type === "MATCH") {
-    const pairs = question.answers.filter((a) => a.matchKey);
-    const matches = pairs.map((a) => {
-      const partner = question.answers.find(
-        (b) => b.matchKey === a.matchKey && b.id !== a.id,
-      );
-      return { leftId: a.id, rightId: partner?.id ?? a.id };
-    });
-    return { questionId: question.id, selectedAnswerIds: [], matches };
-  }
-
-  if (question.type === "TEXT") {
-    return {
-      questionId: question.id,
-      selectedAnswerIds: [],
-      textAnswer: correct[0]?.label ?? "",
-    };
-  }
-
-  // SINGLE, TRUE_FALSE, MULTI
-  return { questionId: question.id, selectedAnswerIds: correct.map((a) => a.id) };
-}
 
 async function main() {
   const email = process.env.ACCOUNT_EMAIL ?? "alldone@musclemind.app";
@@ -75,6 +31,7 @@ async function main() {
   const prisma = app.get(PrismaService);
   const lessonsService = app.get(LessonsService);
   const quizzesService = app.get(QuizzesService);
+  const questionPool = app.get(QuestionPoolService);
   const checkpointsService = app.get(CheckpointsService);
 
   const passwordHash = await bcrypt.hash(password, 10);
@@ -109,19 +66,31 @@ async function main() {
 
       const quiz = await prisma.quiz.findUnique({
         where: { lessonId: lesson.id },
-        include: {
-          questions: { include: { answers: true }, orderBy: { order: "asc" } },
-        },
       });
 
       if (quiz) {
         const alreadyPassed = await prisma.quizResult.findFirst({
-          where: { userId: user.id, quizId: quiz.id, perfect: true },
+          where: { userId: user.id, quizId: quiz.id, stars: 3 },
           select: { id: true },
         });
         if (!alreadyPassed) {
-          const answers = quiz.questions.map((q) => buildQuizAnswer(q));
-          await quizzesService.submit(quiz.id, user.id, { answers });
+          const session = await quizzesService.getByLessonId(lesson.id, user.id);
+          const internal = await questionPool.resolveSessionQuestions(
+            session.sessionId,
+            user.id,
+            quiz.id,
+          );
+          const totalTimeSpentSec = 30;
+          const answers = internal.map((q) => ({
+            questionId: q.id,
+            selectedAnswerIds: [q.correctChoiceId],
+            timeSpentSec: 3,
+          }));
+          await quizzesService.submit(quiz.id, user.id, {
+            sessionId: session.sessionId,
+            answers,
+            totalTimeSpentSec,
+          });
         }
       }
       lessonCount += 1;

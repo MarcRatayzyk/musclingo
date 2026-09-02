@@ -6,12 +6,17 @@ import { getLessonIllustrations } from "@muscle-mind/types";
 import { ANATOMIE_LESSONS } from "./anatomie-lessons";
 import { NUTRITION_LESSONS } from "./nutrition-lessons";
 import { RECUPERATION_LESSONS } from "./recuperation-lessons";
+import { BIOMECANIQUE_LESSONS } from "./biomecanique-lessons";
+import { PROGRAMMATION_LESSONS } from "./programmation-lessons";
 import {
   NUTRITION_GATES,
   type NutritionGateSeed,
 } from "./nutrition-gates";
 import { ANATOMIE_MINI_GAME_QUESTIONS } from "./mini-games/anatomie-questions";
+import { BIOMECANIQUE_MINI_GAME_QUESTIONS } from "./mini-games/biomecanique-questions";
 import { NUTRITION_MINI_GAME_QUESTIONS } from "./mini-games/nutrition-questions";
+import { PROGRAMMATION_MINI_GAME_QUESTIONS } from "./mini-games/programmation-questions";
+import { RECUPERATION_MINI_GAME_QUESTIONS } from "./mini-games/recuperation-questions";
 import type { MiniGameQuestionSeed } from "./mini-games/types";
 
 const prisma = new PrismaClient();
@@ -40,18 +45,26 @@ function ensureLessonIllustration(
   return url;
 }
 
-type SeedQuestionAnswer = { label: string; isCorrect: boolean };
+type SeedQuestionAnswer = {
+  label: string;
+  isCorrect: boolean;
+  order?: number;
+  matchKey?: string;
+};
 
 type SeedQuestion = {
-  type: "SINGLE" | "TRUE_FALSE" | "TEXT";
+  type:
+    | "SINGLE"
+    | "TRUE_FALSE"
+    | "TEXT"
+    | "MULTI"
+    | "ORDER"
+    | "MATCH"
+    | "HOTSPOT";
   prompt: string;
   explanation: string;
   answers: SeedQuestionAnswer[];
-  payload?: {
-    imageUrl: string;
-    color: string;
-    aliases?: string[];
-  };
+  payload?: Prisma.InputJsonValue;
 };
 
 type SeedLesson = {
@@ -91,7 +104,8 @@ function buildQuizQuestionCreates(lesson: SeedLesson) {
           create: q.answers.map((a, i) => ({
             label: a.label,
             isCorrect: a.isCorrect,
-            order: i,
+            order: a.order ?? i,
+            matchKey: a.matchKey ?? undefined,
           })),
         },
       };
@@ -179,299 +193,8 @@ function resolveCheckpoint(lesson: SeedLesson) {
 const PATHS: Record<string, SeedLesson[]> = {
   anatomie: ANATOMIE_LESSONS,
   nutrition: NUTRITION_LESSONS,
-  biomecanique: [
-    {
-      title: "Levier et moment de force",
-      subtitle: "Pourquoi un exercice « pique ».",
-      markdown: `# Levier
-
-Plus le bras de levier est long, plus le moment est grand.
-Changer l’angle change la difficulté ressentie.
-Comprendre ça = mieux choisir ses variantes.`,
-      durationSec: 80,
-      difficulty: "BEGINNER",
-      order: 0,
-      xpReward: 25,
-      tags: ["levier"],
-      quizPrompt: "Un bras de levier plus long…",
-      quizCorrect: "Augmente souvent le moment de force",
-      quizWrong: ["Supprime la gravité", "Annule le muscle", "Fixe le 1RM"],
-      tfPrompt:
-        "Tous les angles d’un même exercice demandent exactement le même effort.",
-      tfIsTrue: false,
-      tfExplanation: "Faux : le moment varie avec l’angle.",
-    },
-    {
-      title: "Chaîne ouverte vs fermée",
-      subtitle: "Pied / main libre ou fixée.",
-      markdown: `# Chaînes
-
-Chaîne fermée : extrémité fixée (squat).
-Chaîne ouverte : extrémité libre (leg curl).
-Les deux ont leur place selon l’objectif.`,
-      durationSec: 70,
-      difficulty: "BEGINNER",
-      order: 1,
-      xpReward: 25,
-      tags: ["chaine"],
-      quizPrompt: "Le squat est typiquement…",
-      quizCorrect: "Une chaîne fermée",
-      quizWrong: [
-        "Une chaîne ouverte pure",
-        "Un cardio HIIT",
-        "Un stretch passif",
-      ],
-      tfPrompt: "Seules les chaînes ouvertes construisent du muscle.",
-      tfIsTrue: false,
-      tfExplanation: "Faux : les deux modalités sont utiles.",
-    },
-    {
-      title: "Stabilité et base d’appui",
-      subtitle: "Moins stable ≠ toujours mieux.",
-      markdown: `# Stabilité
-
-Surface instable augmente la demande d’équilibre.
-Mais peut réduire la charge utile pour l’hypertrophie.
-Choisir la stabilité selon l’objectif (force vs proprio).`,
-      durationSec: 75,
-      difficulty: "BEGINNER",
-      order: 2,
-      xpReward: 25,
-      tags: ["stabilite"],
-      quizPrompt:
-        "Pour maximiser la charge en hypertrophie, on privilégie souvent…",
-      quizCorrect: "Une base stable",
-      quizWrong: [
-        "Un ballon exclusivement",
-        "Les yeux fermés",
-        "Zéro chaussures obligatoires",
-      ],
-      tfPrompt: "Plus c’est instable, plus on prend forcément du muscle.",
-      tfIsTrue: false,
-      tfExplanation: "Faux : l’instabilité peut limiter la charge.",
-    },
-    {
-      title: "Trajectoire de barre au développé",
-      subtitle: "Ligne légèrement en J.",
-      markdown: `# Bench path
-
-La barre ne monte pas en ligne parfaitement verticale.
-Légère courbe vers les épaules en lockout.
-Omoplates serrées = base solide.`,
-      durationSec: 90,
-      difficulty: "INTERMEDIATE",
-      order: 3,
-      xpReward: 30,
-      tags: ["bench"],
-      quizPrompt: "Au développé couché, les omoplates…",
-      quizCorrect: "Sont souvent rétractées pour une base stable",
-      quizWrong: [
-        "Doivent protraire à chaque rep",
-        "Sont inutiles",
-        "Remplacent la ceinture",
-      ],
-      tfPrompt:
-        "La barre doit forcément rester au-dessus des yeux tout le mouvement.",
-      tfIsTrue: false,
-      tfExplanation: "Faux : la trajectoire est un peu courbe.",
-    },
-    {
-      title: "Squat : genoux et hanches",
-      subtitle: "Qui mène la danse ?",
-      markdown: `# Squat mechanics
-
-Genoux avancent, hanches reculent, dosage selon morphologie.
-Talons au sol, thorax organique.
-La profondeur utile = celle que tu contrôles.`,
-      durationSec: 95,
-      difficulty: "INTERMEDIATE",
-      order: 4,
-      xpReward: 30,
-      tags: ["squat"],
-      quizPrompt: "Dans un squat contrôlé, les talons…",
-      quizCorrect: "Restent au sol",
-      quizWrong: [
-        "Doivent décoller",
-        "Tournent vers l’intérieur forcé",
-        "Sont inutiles",
-      ],
-      tfPrompt:
-        "Tout le monde doit squatter identiquement, même profondeur et même stance.",
-      tfIsTrue: false,
-      tfExplanation: "Faux : morphologie et mobilité changent la technique.",
-    },
-    {
-      title: "Deadlift : wedges et tension",
-      subtitle: "Tirer le monde sans perdre le dos.",
-      markdown: `# Deadlift
-
-Wedge dans le sol, tension avant la décollée.
-Barre proche des tibias/cuisses.
-Verrouillage = hanches + genoux, pas un hyper-extension lombaire.`,
-      durationSec: 100,
-      difficulty: "ADVANCED",
-      order: 5,
-      xpReward: 35,
-      tags: ["deadlift"],
-      quizPrompt: "Avant de décoller la barre, on cherche surtout…",
-      quizCorrect: "À créer de la tension",
-      quizWrong: [
-        "À retenir son souffle 2 minutes",
-        "À regarder le plafond",
-        "À arrondir volontairement",
-      ],
-      tfPrompt:
-        "Finir un deadlift en cambrant maximalement le bas du dos est idéal.",
-      tfIsTrue: false,
-      tfExplanation: "Faux : verrouiller sans hyperlordose excessive.",
-    },
-  ],
-  programmation: [
-    {
-      title: "Volume, intensité, fréquence",
-      subtitle: "Les 3 leviers de base.",
-      markdown: `# Leviers
-
-**Volume** : quantité de travail.
-**Intensité** : charge / proximité de l’échec.
-**Fréquence** : fois par muscle / semaine.
-On ajuste un levier à la fois.`,
-      durationSec: 80,
-      difficulty: "BEGINNER",
-      order: 0,
-      xpReward: 25,
-      tags: ["volume"],
-      quizPrompt: "Le volume désigne surtout…",
-      quizCorrect: "La quantité de travail",
-      quizWrong: [
-        "La couleur des haltères",
-        "Le nom du coach",
-        "La musique de la salle",
-      ],
-      tfPrompt:
-        "Augmenter volume, intensité et fréquence d’un coup est toujours optimal.",
-      tfIsTrue: false,
-      tfExplanation:
-        "Faux : progresser un levier à la fois limite le burn-out.",
-    },
-    {
-      title: "Surcharge progressive",
-      subtitle: "Le moteur des gains.",
-      markdown: `# Progressive overload
-
-Plus de charge, reps, séries, ou meilleur contrôle.
-Sans progression mesurable, adaptation stagne.
-Tenir un logbook aide.`,
-      durationSec: 70,
-      difficulty: "BEGINNER",
-      order: 1,
-      xpReward: 25,
-      tags: ["progression"],
-      quizPrompt: "La surcharge progressive consiste à…",
-      quizCorrect: "Augmenter graduellement la demande",
-      quizWrong: [
-        "Changer d’exercice chaque jour au hasard",
-        "Ne jamais noter ses perfs",
-        "Couper le sommeil",
-      ],
-      tfPrompt:
-        "Faire toujours exactement la même chose 2 ans garantit des gains infinis.",
-      tfIsTrue: false,
-      tfExplanation: "Faux : sans surcharge, plateau probable.",
-    },
-    {
-      title: "Full body vs split",
-      subtitle: "Choisir selon ton emploi du temps.",
-      markdown: `# Splits
-
-Full body : fréquent, bien pour débutants.
-Split : plus de volume par séance et muscle.
-Le meilleur plan = celui que tu suis.`,
-      durationSec: 75,
-      difficulty: "BEGINNER",
-      order: 2,
-      xpReward: 25,
-      tags: ["split"],
-      quizPrompt: "Un full body convient souvent aux…",
-      quizCorrect: "Débutants / agendas chargés",
-      quizWrong: [
-        "Personnes qui détestent s’entraîner",
-        "Robots uniquement",
-        "Séances de 10 secondes",
-      ],
-      tfPrompt: "Le split PPL est le seul format scientifique valide.",
-      tfIsTrue: false,
-      tfExplanation: "Faux : plusieurs splits marchent si volume/récup OK.",
-    },
-    {
-      title: "RPE et proximité de l’échec",
-      subtitle: "S’arrêter à 1–3 reps en réserve.",
-      markdown: `# RPE
-
-RPE 7–9 = zone hypertrophie fréquente.
-Aller à l’échec souvent = fatigue élevée.
-Apprendre à estimer les reps en réserve.`,
-      durationSec: 85,
-      difficulty: "INTERMEDIATE",
-      order: 3,
-      xpReward: 30,
-      tags: ["rpe"],
-      quizPrompt: "Un RPE élevé signifie…",
-      quizCorrect: "Une série proche de l’échec",
-      quizWrong: ["Une série très facile", "Un cardio long", "Un étirement"],
-      tfPrompt: "Chaque série de chaque exercice doit être à l’échec absolu.",
-      tfIsTrue: false,
-      tfExplanation: "Faux : doser l’échec selon le contexte.",
-    },
-    {
-      title: "Déload : la pause stratégique",
-      subtitle: "Baisser pour mieux remonter.",
-      markdown: `# Deload
-
-Réduire volume/intensité 1 semaine.
-Dissipe fatigue, garde la technique.
-Utile après blocs durs ou signes de stagnation.`,
-      durationSec: 70,
-      difficulty: "INTERMEDIATE",
-      order: 4,
-      xpReward: 30,
-      tags: ["deload"],
-      quizPrompt: "Un déload sert surtout à…",
-      quizCorrect: "Réduire la fatigue accumulée",
-      quizWrong: [
-        "Supprimer les protéines",
-        "Doubler le volume",
-        "Arrêter de dormir",
-      ],
-      tfPrompt: "Un déload signifie forcément 0 entraînement.",
-      tfIsTrue: false,
-      tfExplanation: "Faux : on réduit, on n’efface pas toujours tout.",
-    },
-    {
-      title: "Périodisation simple",
-      subtitle: "Blocs accumulation → intensification.",
-      markdown: `# Périodisation
-
-Bloc volume → bloc intensité → test / deload.
-Évite de tout maximiser en même temps.
-Adapte la durée des blocs à ta récupération.`,
-      durationSec: 95,
-      difficulty: "ADVANCED",
-      order: 5,
-      xpReward: 35,
-      tags: ["periodisation"],
-      quizPrompt: "Une périodisation simple alterne souvent…",
-      quizCorrect: "Volume puis intensité",
-      quizWrong: [
-        "Uniquement du cardio",
-        "Uniquement du stretching",
-        "Zéro planification",
-      ],
-      tfPrompt: "Changer de programme chaque semaine sans fil rouge est idéal.",
-      tfIsTrue: false,
-      tfExplanation: "Faux : la continuité sur un bloc compte.",
-    },
-  ],
+  biomecanique: BIOMECANIQUE_LESSONS,
+  programmation: PROGRAMMATION_LESSONS,
   recuperation: RECUPERATION_LESSONS,
 };
 
@@ -606,6 +329,10 @@ async function replaceMiniGameQuestions(
 
   for (const [order, q] of questions.entries()) {
     if (q.payload?.imageUrl) ensureUploadFile(q.payload.imageUrl);
+    const payload = {
+      ...(q.payload ?? {}),
+      ...(q.themeTags?.length ? { themeTags: q.themeTags } : {}),
+    };
     await prisma.miniGameQuestion.create({
       data: {
         categoryId,
@@ -614,12 +341,16 @@ async function replaceMiniGameQuestions(
         prompt: q.prompt,
         explanation: q.explanation,
         order,
-        payload: q.payload ? (q.payload as Prisma.InputJsonValue) : undefined,
+        payload:
+          Object.keys(payload).length > 0
+            ? (payload as Prisma.InputJsonValue)
+            : undefined,
         answers: {
           create: q.answers.map((a, i) => ({
             label: a.label,
             isCorrect: a.isCorrect,
-            order: i,
+            order: a.order ?? i,
+            matchKey: a.matchKey ?? undefined,
           })),
         },
       },
@@ -804,16 +535,41 @@ async function main() {
     NUTRITION_MINI_GAME_QUESTIONS,
   );
 
+  const biomecaniqueCategory = await prisma.category.findUniqueOrThrow({
+    where: { slug: "biomecanique" },
+  });
+  const programmationCategory = await prisma.category.findUniqueOrThrow({
+    where: { slug: "programmation" },
+  });
+  const recuperationCategory = await prisma.category.findUniqueOrThrow({
+    where: { slug: "recuperation" },
+  });
+  await replaceMiniGameQuestions(
+    biomecaniqueCategory.id,
+    BIOMECANIQUE_MINI_GAME_QUESTIONS,
+  );
+  await replaceMiniGameQuestions(
+    programmationCategory.id,
+    PROGRAMMATION_MINI_GAME_QUESTIONS,
+  );
+  await replaceMiniGameQuestions(
+    recuperationCategory.id,
+    RECUPERATION_MINI_GAME_QUESTIONS,
+  );
+
+  const miniGameTotal =
+    ANATOMIE_MINI_GAME_QUESTIONS.length +
+    NUTRITION_MINI_GAME_QUESTIONS.length +
+    BIOMECANIQUE_MINI_GAME_QUESTIONS.length +
+    PROGRAMMATION_MINI_GAME_QUESTIONS.length +
+    RECUPERATION_MINI_GAME_QUESTIONS.length;
+
   console.log("Seed complete");
   console.log(`Admin: ${adminEmail} / ${adminPassword}`);
   console.log(`Demo user (mobile): ${demoEmail} / ${demoPassword}`);
   console.log(`Lessons seeded: ${total}`);
   console.log(`Nutrition gates seeded: ${NUTRITION_GATES.length}`);
-  console.log(
-    `Mini-game questions seeded: ${
-      ANATOMIE_MINI_GAME_QUESTIONS.length + NUTRITION_MINI_GAME_QUESTIONS.length
-    }`,
-  );
+  console.log(`Mini-game questions seeded: ${miniGameTotal}`);
 }
 
 main()

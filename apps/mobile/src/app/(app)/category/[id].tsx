@@ -10,42 +10,39 @@ import {
 import { CategoryPathView } from "@/features/path/CategoryPath";
 import { useCategoryPath } from "@/features/path/api";
 import { SectionBanner } from "@/features/path/SectionBanner";
+import { unitKeyFromLessonScroll } from "@/features/path/scroll-sync";
 import { UnitDetailSheet } from "@/features/path/UnitDetailSheet";
+import {
+  AnatomyPathOnboarding,
+  hasSeenAnatomyOnboarding,
+} from "@/features/mascot";
 import { Screen } from "@/shared/ui/primitives";
-
-function unitKeyFromScroll(
-  units: Array<{ checkpointKey: string }>,
-  layouts: Record<string, number>,
-  scrollY: number,
-) {
-  let current: string | null = null;
-  for (const unit of units) {
-    const y = layouts[unit.checkpointKey];
-    if (y == null) continue;
-    if (y <= scrollY + 32) current = unit.checkpointKey;
-  }
-  return current;
-}
 
 export default function CategoryPathScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, isLoading, isError, error } = useCategoryPath(id);
 
   const scrollRef = useRef<ScrollView>(null);
-  const unitLayouts = useRef<Record<string, number>>({});
+  const lessonLayouts = useRef<Record<string, { y: number; height: number }>>({});
+  const scrollY = useRef(0);
   const [activeUnitKey, setActiveUnitKey] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [anatomyOnboardingOpen, setAnatomyOnboardingOpen] = useState(false);
+
+  const lessons = useMemo(
+    () => data?.units.flatMap((u) => u.lessons) ?? [],
+    [data],
+  );
 
   const focusLessonId = useMemo(() => {
     if (!data) return null;
-    const lessons = data.units.flatMap((u) => u.lessons);
     const available = lessons.find((l) => l.state === "available");
     if (available) return available.id;
     const completed = [...lessons]
       .reverse()
       .find((l) => l.state === "completed");
     return completed?.id ?? lessons[0]?.id ?? null;
-  }, [data]);
+  }, [data, lessons]);
 
   const focusUnitKey = useMemo(() => {
     if (!data) return null;
@@ -58,16 +55,44 @@ export default function CategoryPathScreen() {
   useEffect(() => {
     setActiveUnitKey(focusUnitKey);
     setSheetOpen(false);
-    unitLayouts.current = {};
+    lessonLayouts.current = {};
+    scrollY.current = 0;
   }, [focusUnitKey]);
+
+  const syncActiveUnit = useCallback(
+    (units: NonNullable<typeof data>["units"], offsetY: number) => {
+      const next = unitKeyFromLessonScroll(units, lessonLayouts.current, offsetY);
+      if (next) {
+        setActiveUnitKey((prev) => (next !== prev ? next : prev));
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (isLoading || !data) return;
+    if (data.slug !== "anatomie") return;
+    const count = data.units.reduce((n, u) => n + u.lessons.length, 0);
+    if (count === 0) return;
+    if (hasSeenAnatomyOnboarding()) return;
+    setAnatomyOnboardingOpen(true);
+  }, [data, isLoading]);
 
   const onScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       if (!data) return;
       const y = e.nativeEvent.contentOffset.y;
-      const next = unitKeyFromScroll(data.units, unitLayouts.current, y);
-      if (next && next !== activeUnitKey) setActiveUnitKey(next);
+      scrollY.current = y;
+      syncActiveUnit(data.units, y);
     },
+    [data, syncActiveUnit],
+  );
+
+  const activeUnit = useMemo(
+    () =>
+      data?.units.find((u) => u.checkpointKey === activeUnitKey) ??
+      data?.units[0] ??
+      null,
     [data, activeUnitKey],
   );
 
@@ -94,8 +119,6 @@ export default function CategoryPathScreen() {
     (n, u) => n + u.lessons.filter((l) => l.state === "completed").length,
     0,
   );
-  const activeUnit =
-    data.units.find((u) => u.checkpointKey === activeUnitKey) ?? data.units[0];
 
   return (
     <Screen>
@@ -138,8 +161,9 @@ export default function CategoryPathScreen() {
           <CategoryPathView
             path={data}
             focusLessonId={focusLessonId ?? undefined}
-            onUnitLayout={(checkpointKey, y) => {
-              unitLayouts.current[checkpointKey] = y;
+            onLessonLayout={(lessonId, y, height) => {
+              lessonLayouts.current[lessonId] = { y, height };
+              syncActiveUnit(data.units, scrollY.current);
             }}
             onPressLesson={(lesson) => {
               if (lesson.state === "locked") return;
@@ -166,6 +190,11 @@ export default function CategoryPathScreen() {
           if (gate.state === "locked") return;
           router.push(`/(app)/checkpoint/${gate.id}` as never);
         }}
+      />
+      <AnatomyPathOnboarding
+        visible={anatomyOnboardingOpen}
+        onClose={() => setAnatomyOnboardingOpen(false)}
+        accentColor={data.color}
       />
     </Screen>
   );

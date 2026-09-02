@@ -8,7 +8,7 @@ import {
   GATE_PASS_THRESHOLD,
   QUIZ_PASS_THRESHOLD,
   isGateScorePassing,
-  isQuizScorePassing,
+  isLessonQuizPassed,
 } from "@muscle-mind/types";
 import { PrismaService } from "../../prisma/prisma.service";
 
@@ -28,6 +28,7 @@ export type PathLessonNode = {
   state: PathNodeState;
   hasQuiz: boolean;
   bestScore: number | null;
+  bestStars: 0 | 1 | 2 | 3 | null;
   passed: boolean;
   readingCompleted: boolean;
 };
@@ -308,8 +309,8 @@ export class PathService {
               _count: { select: { questions: true } },
               results: {
                 where: { userId },
-                select: { score: true },
-                orderBy: { score: "desc" },
+                select: { score: true, stars: true, passed: true },
+                orderBy: [{ stars: "desc" }, { score: "desc" }],
                 take: 1,
               },
             },
@@ -339,10 +340,14 @@ export class PathService {
       const readingCompleted =
         lesson.progress[0]?.status === ProgressStatus.COMPLETED;
       const hasQuiz = !!lesson.quiz;
-      const bestScore = lesson.quiz?.results[0]?.score ?? null;
-      const questionCount = lesson.quiz?._count.questions ?? 0;
+      const bestResult = lesson.quiz?.results[0] ?? null;
+      const bestScore = bestResult?.score ?? null;
+      const bestStars = bestResult
+        ? (bestResult.stars as 0 | 1 | 2 | 3)
+        : null;
       const passed = hasQuiz
-        ? bestScore !== null && isQuizScorePassing(bestScore, questionCount)
+        ? bestResult !== null &&
+          (bestResult.passed || isLessonQuizPassed(bestResult.stars))
         : readingCompleted;
 
       return {
@@ -358,6 +363,7 @@ export class PathService {
         checkpointOrder: lesson.checkpointOrder,
         hasQuiz,
         bestScore,
+        bestStars,
         passed,
         readingCompleted,
       };

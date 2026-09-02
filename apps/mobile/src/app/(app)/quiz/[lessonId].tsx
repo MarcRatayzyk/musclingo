@@ -1,58 +1,233 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { useMemo, useState } from "react";
-import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 import { ConfettiBurst } from "@/features/gamification/confetti";
 import { useQuizByLesson, useSubmitQuiz } from "@/features/home/api";
-import { ApiError, resolveMediaUrl } from "@/shared/api/client";
+import { ApiError } from "@/shared/api/client";
 import { PrimaryButton, Screen } from "@/shared/ui/primitives";
 
 type SubmitResult = {
   score: number;
   perfect: boolean;
   passed: boolean;
-  passThreshold: number;
+  stars: 0 | 1 | 2 | 3;
+  timeSpentSec: number;
   nextLessonId: string | null;
-  categoryId: string;
   xpEarned: number;
-  level: number;
-  xpTotal: number;
   feedback: Array<{
     questionId: string;
     isCorrect: boolean;
     explanation: string;
-    correctAnswerIds: string[];
   }>;
-  badges: Array<{ code: string; name: string }>;
-  streak: { current: number; longest: number };
 };
 
-type QuestionPayload = {
-  imageUrl?: string;
-  color?: string;
+type AnswerRecord = {
+  questionId: string;
+  selectedAnswerIds: string[];
+  timeSpentSec: number;
 };
+
+function formatTimer(sec: number) {
+  const safe = Number.isFinite(sec) ? Math.max(0, Math.floor(sec)) : 0;
+  const m = Math.floor(safe / 60);
+  const s = safe % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+function StarRow({ stars, size = 32 }: { stars: number; size?: number }) {
+  return (
+    <View className="flex-row gap-1">
+      {[1, 2, 3].map((n) => (
+        <Text
+          key={n}
+          style={{ fontSize: size, opacity: n <= stars ? 1 : 0.25 }}
+          className="text-accent"
+        >
+          ★
+        </Text>
+      ))}
+    </View>
+  );
+}
+
+function TimeProgressBar({
+  timeLeft,
+  totalSec,
+}: {
+  timeLeft: number;
+  totalSec: number;
+}) {
+  const safeLeft = Number.isFinite(timeLeft) ? timeLeft : 0;
+  const safeTotal = Number.isFinite(totalSec) && totalSec > 0 ? totalSec : 60;
+  const ratio = Math.max(0, Math.min(1, safeLeft / safeTotal));
+  const barColor =
+    ratio <= 1 / 6 ? "#F87171" : ratio <= 1 / 3 ? "#FBBF24" : "#7CFFCB";
+
+  return (
+    <View className="mt-2">
+      <View className="h-2 overflow-hidden rounded-full bg-border">
+        <View
+          style={{
+            width: `${ratio * 100}%`,
+            height: "100%",
+            backgroundColor: barColor,
+          }}
+        />
+      </View>
+      <Text className="mt-1 text-right text-xs text-muted">
+        {formatTimer(safeLeft)} · 10 questions
+      </Text>
+    </View>
+  );
+}
 
 export default function QuizScreen() {
   const { lessonId } = useLocalSearchParams<{ lessonId: string }>();
-  const { data: quiz, isLoading, isError, error } = useQuizByLesson(lessonId);
+  const { data: quiz, isLoading, isError, error, refetch } = useQuizByLesson(
+    lessonId,
+  );
   const submit = useSubmitQuiz();
+
   const [index, setIndex] = useState(0);
-  const [selected, setSelected] = useState<Record<string, string>>({});
-  const [textAnswers, setTextAnswers] = useState<Record<string, string>>({});
+  const [timeLeft, setTimeLeft] = useState(60);
+  const [answers, setAnswers] = useState<AnswerRecord[]>([]);
   const [result, setResult] = useState<SubmitResult | null>(null);
-  const [showCorrection, setShowCorrection] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [wrongFlash, setWrongFlash] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const { width: screenW } = useWindowDimensions();
+  const [lockedChoice, setLockedChoice] = useState<string | null>(null);
+
+  const deadlineRef = useRef(Date.now() + 60_000);
+  const accountedTimeRef = useRef(0);
+
+  const quizTimeSec = quiz?.quizTimeSec ?? 60;
+  const wrongPenaltySec = quiz?.wrongPenaltySec ?? 1;
+  const answerKeys = useMemo(
+    () => quiz?.answerKeys ?? {},
+    [quiz?.answerKeys],
+  );
+
+  const syncTimerFromDeadline = useCallback(() => {
+    const left = Math.max(
+      0,
+      Math.ceil((deadlineRef.current - Date.now()) / 1000),
+    );
+    setTimeLeft(left);
+    return left;
+  }, []);
+
+  const resetTimer = useCallback(
+    (durationSec: number) => {
+      deadlineRef.current = Date.now() + durationSec * 1000;
+      accountedTimeRef.current = 0;
+      syncTimerFromDeadline();
+    },
+    [syncTimerFromDeadline],
+  );
+
+  const resetQuiz = useCallback(() => {
+    setIndex(0);
+    setAnswers([]);
+    setResult(null);
+    setFailed(false);
+    setWrongFlash(null);
+    setSubmitError(null);
+    setLockedChoice(null);
+    resetTimer(quizTimeSec);
+    void refetch();
+  }, [quizTimeSec, refetch, resetTimer]);
+
+  useEffect(() => {
+    if (!quiz) return;
+    resetTimer(quiz.quizTimeSec);
+  }, [quiz?.sessionId, quiz?.quizTimeSec, resetTimer]);
 
   const question = quiz?.questions[index];
-  const answers = useMemo(() => question?.answers ?? [], [question]);
   const isLast = !!quiz && index >= quiz.questions.length - 1;
-  const isText = question?.type === "TEXT";
-  const payload = (question?.payload ?? null) as QuestionPayload | null;
-  const imageUri = resolveMediaUrl(payload?.imageUrl ?? null);
-  const colorSwatch = payload?.color;
-  const hasAnswer = isText
-    ? !!(question && textAnswers[question.id]?.trim())
-    : !!(question && selected[question.id]);
+
+  useEffect(() => {
+    if (!quiz || result || failed) return;
+
+    syncTimerFromDeadline();
+    const id = setInterval(() => {
+      const left = syncTimerFromDeadline();
+      if (left <= 0) setFailed(true);
+    }, 250);
+
+    return () => clearInterval(id);
+  }, [quiz, result, failed, syncTimerFromDeadline]);
+
+  const elapsedTotalSec = () => {
+    const left = Math.max(
+      0,
+      Math.ceil((deadlineRef.current - Date.now()) / 1000),
+    );
+    return Math.max(0, Math.min(quizTimeSec, quizTimeSec - left));
+  };
+
+  const pickAnswer = async (choiceId: string) => {
+    if (!quiz || !question || result || failed || lockedChoice) return;
+
+    const correctId = answerKeys[question.id];
+    if (!correctId) return;
+
+    setSubmitError(null);
+    setLockedChoice(choiceId);
+
+    const isCorrect = choiceId === correctId;
+
+    if (!isCorrect) {
+      setWrongFlash(choiceId);
+      deadlineRef.current -= wrongPenaltySec * 1000;
+      syncTimerFromDeadline();
+      setTimeout(() => {
+        setWrongFlash(null);
+        setLockedChoice(null);
+      }, 350);
+      return;
+    }
+
+    const totalSoFar = elapsedTotalSec();
+    const questionSpent = Math.max(1, totalSoFar - accountedTimeRef.current);
+    accountedTimeRef.current = totalSoFar;
+
+    const record: AnswerRecord = {
+      questionId: question.id,
+      selectedAnswerIds: [choiceId],
+      timeSpentSec: questionSpent,
+    };
+    const nextAnswers = [...answers, record];
+
+    if (!isLast) {
+      setTimeout(() => {
+        setAnswers(nextAnswers);
+        setIndex((i) => i + 1);
+        setLockedChoice(null);
+      }, 180);
+      return;
+    }
+
+    const totalTimeSpentSec = Math.max(1, accountedTimeRef.current);
+    try {
+      const resSubmit = await submit.mutateAsync({
+        quizId: quiz.id,
+        sessionId: quiz.sessionId,
+        answers: nextAnswers,
+        totalTimeSpentSec,
+      });
+      setResult(resSubmit);
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error ? err.message : "Impossible d'envoyer le quiz",
+      );
+      setLockedChoice(null);
+    }
+  };
 
   if (isError) {
     const locked = error instanceof ApiError && error.status === 403;
@@ -60,9 +235,6 @@ export default function QuizScreen() {
       <Screen>
         <Text className="text-lg text-white">
           {locked ? "Leçon verrouillée" : "Quiz indisponible"}
-        </Text>
-        <Text className="mt-2 text-muted">
-          {error instanceof Error ? error.message : "Erreur"}
         </Text>
         <View className="mt-8">
           <PrimaryButton
@@ -82,128 +254,50 @@ export default function QuizScreen() {
     );
   }
 
-  if (result) {
-    const thresholdPct = Math.round(result.passThreshold * 100);
-    const scorePct = Math.round(result.score * 100);
-    const feedbackByQuestion = new Map(
-      result.feedback.map((f) => [f.questionId, f]),
-    );
-
-    const getUserAnswerLabel = (questionId: string, type: string) => {
-      const q = quiz.questions.find((item) => item.id === questionId);
-      if (!q) return "—";
-      if (type === "TEXT") {
-        return textAnswers[questionId]?.trim() || "—";
-      }
-      const answerId = selected[questionId];
-      return q.answers.find((a) => a.id === answerId)?.label ?? "—";
-    };
-
-    const getCorrectAnswerLabel = (
-      questionId: string,
-      correctAnswerIds: string[],
-    ) => {
-      const q = quiz.questions.find((item) => item.id === questionId);
-      if (!q) return "—";
-      return (
-        q.answers
-          .filter((a) => correctAnswerIds.includes(a.id))
-          .map((a) => a.label)
-          .join(", ") || "—"
-      );
-    };
-
+  if (failed) {
     return (
       <Screen>
-        <ConfettiBurst active={result.passed && result.perfect} />
+        <View className="flex-1 items-center justify-center">
+          <Text className="text-2xl font-semibold text-white">
+            Temps écoulé
+          </Text>
+          <Text className="mt-3 text-center text-muted">
+            Les 10 questions doivent être répondues en moins d&apos;une minute.
+          </Text>
+          <View className="mt-10 w-full">
+            <PrimaryButton label="Réessayer" onPress={resetQuiz} />
+          </View>
+        </View>
+      </Screen>
+    );
+  }
+
+  if (result) {
+    return (
+      <Screen>
+        <ConfettiBurst active={result.stars === 3} />
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerClassName="flex-grow justify-center pb-8"
         >
-          <View
-            
-            
-            className="flex-1 justify-center"
-          >
-            <View
-              
-              
-              
-            >
-              <Text className="text-5xl font-semibold text-accent">
-                +{result.xpEarned} neurolift
-              </Text>
-            </View>
-
-            <Text className="mt-3 text-lg text-white">
+          <View className="flex-1 items-center justify-center">
+            <StarRow stars={result.stars} size={40} />
+            <Text className="mt-4 text-lg text-white">
               {result.passed
-                ? `Score ${scorePct} %`
-                : `Score ${scorePct} % · ${thresholdPct} % requis`}
+                ? `${result.stars} étoile${result.stars > 1 ? "s" : ""}`
+                : "Quiz non validé"}
+            </Text>
+            <Text className="mt-2 text-sm text-muted">
+              Temps total {formatTimer(result.timeSpentSec)} /{" "}
+              {formatTimer(quizTimeSec)}
+            </Text>
+            <Text className="mt-6 text-5xl font-semibold text-accent">
+              +{result.xpEarned} neurolift
             </Text>
 
-            <Pressable
-              onPress={() => setShowCorrection((v) => !v)}
-              className="mt-6 self-start active:opacity-70"
-            >
-              <Text className="text-sm text-muted underline">
-                {showCorrection ? "Masquer la correction" : "Voir correction"}
-              </Text>
-            </Pressable>
-
-            {showCorrection && (
-              <View className="mt-4 gap-4">
-                {quiz.questions.map((q, i) => {
-                  const fb = feedbackByQuestion.get(q.id);
-                  if (!fb) return null;
-                  return (
-                    <View
-                      key={q.id}
-                      className="rounded-2xl border border-border bg-surface px-4 py-3"
-                    >
-                      <Text className="text-xs text-muted">
-                        Question {i + 1} · {fb.isCorrect ? "✓" : "✗"}
-                      </Text>
-                      <Text className="mt-1 text-base text-white">
-                        {q.prompt}
-                      </Text>
-                      <Text className="mt-2 text-sm text-muted">
-                        Ta réponse :{" "}
-                        <Text className="text-white">
-                          {getUserAnswerLabel(q.id, q.type)}
-                        </Text>
-                      </Text>
-                      {!fb.isCorrect && (
-                        <Text className="mt-1 text-sm text-muted">
-                          Bonne réponse :{" "}
-                          <Text className="text-accent">
-                            {getCorrectAnswerLabel(q.id, fb.correctAnswerIds)}
-                          </Text>
-                        </Text>
-                      )}
-                      {fb.explanation ? (
-                        <Text className="mt-2 text-sm text-muted">
-                          {fb.explanation}
-                        </Text>
-                      ) : null}
-                    </View>
-                  );
-                })}
-              </View>
-            )}
-
-            <View className="mt-10 gap-4">
+            <View className="mt-10 w-full gap-4">
               {!result.passed ? (
-                <PrimaryButton
-                  label="Réessayer le quiz"
-                  onPress={() => {
-                    setResult(null);
-                    setShowCorrection(false);
-                    setIndex(0);
-                    setSelected({});
-                    setTextAnswers({});
-                    setSubmitError(null);
-                  }}
-                />
+                <PrimaryButton label="Réessayer le quiz" onPress={resetQuiz} />
               ) : result.nextLessonId ? (
                 <PrimaryButton
                   label="Leçon suivante"
@@ -217,7 +311,6 @@ export default function QuizScreen() {
                   onPress={() => router.replace("/(app)/home")}
                 />
               )}
-
               <Pressable
                 onPress={() => router.replace("/(app)/home")}
                 className="items-center py-2 active:opacity-70"
@@ -231,159 +324,52 @@ export default function QuizScreen() {
     );
   }
 
-  const imgW = screenW - 48;
-
   return (
     <Screen>
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      <View>
         <Text className="text-xs text-muted">
           Question {index + 1}/{quiz.questions.length}
         </Text>
-        <ScrollView
-          className="mt-4 flex-1"
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View
-            key={question?.id}
-            
-            
-          >
-            <Text className="text-2xl font-semibold text-white">
-              {question?.prompt}
-            </Text>
+        <TimeProgressBar timeLeft={timeLeft} totalSec={quizTimeSec} />
+      </View>
 
-            {imageUri ? (
-              <Image
-                source={{ uri: imageUri }}
-                accessibilityLabel="Illustration du quiz"
-                style={{
-                  width: imgW,
-                  height: Math.min(imgW * 1.1, 280),
-                  marginTop: 16,
-                  alignSelf: "center",
-                }}
-                resizeMode="contain"
-              />
-            ) : null}
+      <ScrollView
+        className="mt-4 flex-1"
+        showsVerticalScrollIndicator={false}
+      >
+        <Text className="text-2xl font-semibold text-white">
+          {question?.prompt}
+        </Text>
 
-            {colorSwatch ? (
-              <View className="mt-4 flex-row items-center gap-3">
-                <View
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 6,
-                    backgroundColor: colorSwatch,
-                    borderWidth:
-                      colorSwatch.toLowerCase() === "#f5f5f5" ? 1 : 0,
-                    borderColor: "rgba(255,255,255,0.35)",
-                  }}
-                />
-                <Text className="text-sm text-muted">Cette couleur</Text>
-              </View>
-            ) : null}
-
-            {isText ? (
-              <TextInput
-                value={question ? textAnswers[question.id] ?? "" : ""}
-                onChangeText={(value) => {
-                  if (!question) return;
-                  setTextAnswers((s) => ({ ...s, [question.id]: value }));
-                }}
-                placeholder="Écris le nom de la structure…"
-                placeholderTextColor="rgba(255,255,255,0.35)"
-                autoCapitalize="none"
-                autoCorrect={false}
-                className="mt-6 rounded-2xl border border-border bg-surface px-4 py-4 text-base text-white"
-              />
-            ) : (
-              <View className="mt-6 gap-3">
-                {answers.map((answer) => {
-                  const isSelected = selected[question!.id] === answer.id;
-                  return (
-                    <Pressable
-                      key={answer.id}
-                      onPress={() =>
-                        setSelected((s) => ({
-                          ...s,
-                          [question!.id]: answer.id,
-                        }))
-                      }
-                      className={`rounded-2xl border px-4 py-4 ${
-                        isSelected
-                          ? "border-accent bg-accent/10"
-                          : "border-border bg-surface"
-                      }`}
-                    >
-                      <Text className="text-base text-white">
-                        {answer.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            )}
-          </View>
-        </ScrollView>
-
-        <View className="mb-4 gap-2">
-          {submitError ? (
-            <Text className="text-center text-sm text-red-400">
-              {submitError}
-            </Text>
-          ) : null}
-          <PrimaryButton
-            label={
-              submit.isPending
-                ? "Correction…"
-                : isLast
-                  ? "Voir mon score"
-                  : "Suivant"
-            }
-            disabled={!question || !hasAnswer || submit.isPending}
-            onPress={async () => {
-              if (!question) return;
-              if (!isLast) {
-                setIndex((i) => i + 1);
-                return;
-              }
-              setSubmitError(null);
-              try {
-                const answersPayload = quiz.questions.map((q) => {
-                  if (q.type === "TEXT") {
-                    return {
-                      questionId: q.id,
-                      selectedAnswerIds: [] as string[],
-                      textAnswer: textAnswers[q.id]?.trim() ?? "",
-                    };
-                  }
-                  return {
-                    questionId: q.id,
-                    selectedAnswerIds: selected[q.id]
-                      ? [selected[q.id]!]
-                      : [],
-                  };
-                });
-                const res = await submit.mutateAsync({
-                  quizId: quiz.id,
-                  answers: answersPayload,
-                });
-                setResult(res);
-              } catch (err) {
-                setSubmitError(
-                  err instanceof Error
-                    ? err.message
-                    : "Impossible d’envoyer le quiz",
-                );
-              }
-            }}
-          />
+        <View className="mt-6 gap-3">
+          {question?.choices.map((choice) => {
+            const isWrong = wrongFlash === choice.id;
+            const isLocked = lockedChoice === choice.id;
+            return (
+              <Pressable
+                key={choice.id}
+                disabled={!!lockedChoice}
+                onPress={() => void pickAnswer(choice.id)}
+                className={`rounded-2xl border px-4 py-4 ${
+                  isWrong
+                    ? "border-red-500 bg-red-500/10"
+                    : isLocked
+                      ? "border-accent bg-accent/10"
+                      : "border-border bg-surface"
+                }`}
+              >
+                <Text className="text-base text-white">{choice.label}</Text>
+              </Pressable>
+            );
+          })}
         </View>
-      </KeyboardAvoidingView>
+
+        {submitError ? (
+          <Text className="mt-4 text-center text-sm text-red-400">
+            {submitError}
+          </Text>
+        ) : null}
+      </ScrollView>
     </Screen>
   );
 }

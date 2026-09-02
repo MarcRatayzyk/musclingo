@@ -1,6 +1,7 @@
 export * from "./levels";
 export * from "./schemas";
 export * from "./illustration-legends";
+export * from "./hotspot-regions";
 
 export const ANALYTICS_EVENTS = {
   LOGIN: "login",

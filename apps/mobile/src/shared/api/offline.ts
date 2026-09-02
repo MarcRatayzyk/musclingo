@@ -1,7 +1,8 @@
-/**
- * Mode 100 % offline : aucune requête réseau.
- * Contenu démo local pour parcourir l'app sur un APK natif.
- */
+import {
+  computeLessonQuizStars,
+  getLessonQuizXpMultiplier,
+  isLessonQuizPassed,
+} from "@muscle-mind/types";
 
 export const OFFLINE =
   process.env.EXPO_PUBLIC_OFFLINE === "1" ||
@@ -30,6 +31,7 @@ type OfflineState = {
   lesson1Done: boolean;
   lesson2Done: boolean;
   quiz1Passed: boolean;
+  quiz1BestStars: 0 | 1 | 2 | 3;
   gate1Passed: boolean;
   xpTotal: number;
   level: number;
@@ -37,13 +39,18 @@ type OfflineState = {
   miniBest: number;
   miniPlayed: number;
   streak: number;
+  quizSessionId: string;
+  quizQuestionIds: string[];
 };
+
+const OFFLINE_SESSION = "offline_session_quiz";
 
 const state: OfflineState = {
   preferredCategoryId: CAT_ID,
   lesson1Done: false,
   lesson2Done: false,
   quiz1Passed: false,
+  quiz1BestStars: 0,
   gate1Passed: false,
   xpTotal: 40,
   level: 1,
@@ -51,6 +58,8 @@ const state: OfflineState = {
   miniBest: 0,
   miniPlayed: 0,
   streak: 1,
+  quizSessionId: OFFLINE_SESSION,
+  quizQuestionIds: [],
 };
 
 function categoryMeta() {
@@ -108,6 +117,7 @@ function lessonNode(
     passed: boolean;
     readingCompleted: boolean;
     bestScore: number | null;
+    bestStars: 0 | 1 | 2 | 3 | null;
   }> = {},
 ) {
   return {
@@ -124,6 +134,7 @@ function lessonNode(
     state: stateNode,
     hasQuiz: extras.hasQuiz ?? true,
     bestScore: extras.bestScore ?? null,
+    bestStars: extras.bestStars ?? null,
     passed: extras.passed ?? false,
     readingCompleted: extras.readingCompleted ?? false,
   };
@@ -160,7 +171,8 @@ function categoryPath() {
           lessonNode(LESSON_1, "Qu'est-ce qu'un muscle ?", 1, l1State, {
             readingCompleted: state.lesson1Done,
             passed: state.quiz1Passed,
-            bestScore: state.quiz1Passed ? 100 : null,
+            bestScore: state.quiz1Passed ? 1 : null,
+            bestStars: state.quiz1BestStars || null,
           }),
           lessonNode(LESSON_2, "Fibres et contraction", 2, l2State, {
             hasQuiz: false,
@@ -211,38 +223,64 @@ function lessonDetail(id: string) {
   };
 }
 
+const OFFLINE_QUIZ_POOL: Array<{
+  id: string;
+  prompt: string;
+  explanation: string;
+  correctId: string;
+  choices: Array<{ id: string; label: string }>;
+}> = Array.from({ length: 10 }, (_, i) => {
+  const n = i + 1;
+  const correctId = `offline_ca${n}`;
+  return {
+    id: `mini:offline_mq${n}`,
+    prompt:
+      n % 2 === 1
+        ? `Question ${n} : un muscle produit principalement un mouvement.`
+        : `Question ${n} : les tendons relient le muscle à l'os.`,
+    explanation: "Réponse démo hors ligne.",
+    correctId,
+    choices: [
+      { id: correctId, label: n % 2 === 1 ? "Vrai" : "Vrai" },
+      {
+        id: `offline_cw${n}`,
+        label: n % 2 === 1 ? "Faux" : "Faux",
+      },
+    ],
+  };
+});
+
 function quizPayload() {
+  state.quizQuestionIds = OFFLINE_QUIZ_POOL.map((q) => q.id);
+  const answerKeys = Object.fromEntries(
+    OFFLINE_QUIZ_POOL.map((q) => [q.id, q.correctId]),
+  );
   return {
     id: QUIZ_1,
     lessonId: LESSON_1,
     lessonTitle: "Qu'est-ce qu'un muscle ?",
+    sessionId: OFFLINE_SESSION,
     xpReward: 15,
     perfectBonusXp: 5,
-    questions: [
-      {
-        id: Q1,
-        type: "SINGLE",
-        prompt: "Un muscle sert principalement à…",
-        order: 0,
-        payload: null,
-        answers: [
-          { id: A1, label: "Produire un mouvement", order: 0 },
-          { id: A2, label: "Digérer les aliments", order: 1 },
-        ],
-      },
-      {
-        id: Q2,
-        type: "TRUE_FALSE",
-        prompt: "Les tendons relient le muscle à l'os.",
-        order: 1,
-        payload: null,
-        answers: [
-          { id: A3, label: "Vrai", order: 0 },
-          { id: A4, label: "Faux", order: 1 },
-        ],
-      },
-    ],
+    questionCount: 10,
+    quizTimeSec: 60,
+    wrongPenaltySec: 1,
+    questions: OFFLINE_QUIZ_POOL.map(({ id, prompt, choices }) => ({
+      id,
+      prompt,
+      choices,
+    })),
+    answerKeys,
   };
+}
+
+function offlineCheckAnswer(
+  questionId: string,
+  selectedAnswerIds: string[],
+): boolean {
+  const q = OFFLINE_QUIZ_POOL.find((item) => item.id === questionId);
+  if (!q) return false;
+  return selectedAnswerIds[0] === q.correctId;
 }
 
 function parseBody(init?: RequestInit): Record<string, unknown> {
@@ -369,41 +407,68 @@ export async function offlineFetch<T>(
     return quizPayload() as T;
   }
 
+  const quizCheck = path.match(/^\/quizzes\/([^/]+)\/check-answer$/);
+  if (quizCheck && method === "POST") {
+    const questionId = String(body.questionId ?? "");
+    const selected = (body.selectedAnswerIds as string[]) ?? [];
+    return {
+      correct: offlineCheckAnswer(questionId, selected),
+    } as T;
+  }
+
   const quizSubmit = path.match(/^\/quizzes\/([^/]+)\/submit$/);
   if (quizSubmit && method === "POST") {
-    const answers = (body.answers as Array<{
-      questionId: string;
-      selectedAnswerIds: string[];
-    }>) ?? [];
-    const correctMap: Record<string, string> = { [Q1]: A1, [Q2]: A3 };
+    const answers =
+      (body.answers as Array<{
+        questionId: string;
+        selectedAnswerIds: string[];
+        timeSpentSec: number;
+      }>) ?? [];
+    const totalTimeSpentSec = Number(body.totalTimeSpentSec ?? 0);
     let correct = 0;
-    const feedback = Object.keys(correctMap).map((questionId) => {
+    const feedback = state.quizQuestionIds.map((questionId) => {
       const selected =
         answers.find((a) => a.questionId === questionId)?.selectedAnswerIds ??
         [];
-      const isCorrect = selected[0] === correctMap[questionId];
+      const isCorrect = offlineCheckAnswer(questionId, selected);
       if (isCorrect) correct += 1;
+      const q = OFFLINE_QUIZ_POOL.find((item) => item.id === questionId);
       return {
         questionId,
         isCorrect,
-        explanation: isCorrect ? "Bonne réponse." : "Revois la leçon.",
-        correctAnswerIds: [correctMap[questionId]],
+        explanation: q?.explanation ?? "",
+        correctAnswerIds: q ? [q.correctId] : [],
+        timeSpentSec:
+          answers.find((a) => a.questionId === questionId)?.timeSpentSec ?? 0,
       };
     });
-    const score = Math.round((correct / 2) * 100);
-    const passed = score >= 70;
+    const allCorrect = correct === state.quizQuestionIds.length;
+    const stars = allCorrect
+      ? computeLessonQuizStars(totalTimeSpentSec)
+      : 0;
+    const passed = allCorrect && isLessonQuizPassed(stars);
+    const score = correct / Math.max(1, state.quizQuestionIds.length);
+    const perfect = stars === 3;
+    const xpEarned = passed
+      ? Math.round(15 * getLessonQuizXpMultiplier(stars)) + (perfect ? 5 : 0)
+      : 0;
     if (passed) {
       state.quiz1Passed = true;
-      state.xpTotal += score === 100 ? 20 : 15;
+      state.quiz1BestStars = Math.max(
+        state.quiz1BestStars,
+        stars,
+      ) as 0 | 1 | 2 | 3;
+      state.xpTotal += xpEarned;
     }
     return {
       score,
-      perfect: score === 100,
+      perfect,
       passed,
-      passThreshold: 70,
-      nextLessonId: LESSON_2,
+      stars,
+      timeSpentSec: totalTimeSpentSec,
+      nextLessonId: passed ? LESSON_2 : null,
       categoryId: CAT_ID,
-      xpEarned: passed ? (score === 100 ? 20 : 15) : 0,
+      xpEarned,
       level: state.level,
       xpTotal: state.xpTotal,
       feedback,

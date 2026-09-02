@@ -1,5 +1,6 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
+import { invalidateSession } from "../auth/session";
 import { tokenStorage } from "../storage/mmkv";
 import { OFFLINE, offlineFetch } from "./offline";
 
@@ -62,7 +63,7 @@ async function refreshAccessToken(): Promise<string | null> {
   });
 
   if (!res.ok) {
-    tokenStorage.clear();
+    invalidateSession();
     return null;
   }
 
@@ -98,6 +99,7 @@ export async function apiFetch<T>(
     if (newAccess) {
       return apiFetch<T>(path, options, false);
     }
+    invalidateSession();
   }
 
   if (!res.ok) {

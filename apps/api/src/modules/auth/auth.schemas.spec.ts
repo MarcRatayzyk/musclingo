@@ -32,15 +32,17 @@ describe("auth schemas", () => {
 });
 
 describe("quiz submit schema", () => {
-  it("requires answers array", () => {
+  it("requires session, 10 timed answers and total time", () => {
+    const answers = Array.from({ length: 10 }, (_, i) => ({
+      questionId: `mini:q${i}`,
+      selectedAnswerIds: [`a${i}`],
+      timeSpentSec: 30,
+    }));
     const parsed = SubmitQuizSchema.parse({
-      answers: [
-        {
-          questionId: "clxxxxxxxxxxxxxxxxxxxxxxxxx",
-          selectedAnswerIds: ["claaaaaaaaaaaaaaaaaaaaaaaa"],
-        },
-      ],
+      sessionId: "clxxxxxxxxxxxxxxxxxxxxxxxxx",
+      answers,
+      totalTimeSpentSec: 45,
     });
-    expect(parsed.answers).toHaveLength(1);
+    expect(parsed.answers).toHaveLength(10);
   });
 });

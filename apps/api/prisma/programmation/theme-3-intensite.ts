@@ -1,0 +1,107 @@
+import { CP } from "./checkpoints";
+import { buildLesson } from "./build-lesson";
+
+export const THEME_3_LESSONS = [
+  buildLesson(
+    "Intensité de charge",
+    "Pourcentage du maximum.",
+    [
+      `L'**intensité relative** correspond notamment à la charge utilisée par rapport au maximum. Exemple : 100 kg max → 80 kg = 80 % du maximum.`,
+      `Cette approche est particulièrement utile pour la programmation de **force**. Mais elle devient moins précise pour l'hypertrophie car la performance varie selon fatigue, exercice, technique, amplitude et récupération.`,
+      `Utiliser les % du max avec discernement selon l'objectif.`,
+      `À retenir : % du 1RM = outil force ; RIR/RPE souvent plus utiles en hypertrophie.`,
+    ],
+    ["intensite-charge", "pourcentage"],
+    CP.intensite,
+    {
+      q1: ["L'intensité relative correspond à…", "La charge par rapport au maximum", ["Le nombre de séries", "La durée du repos", "La couleur des plaques"], "% du 1RM typiquement."],
+      q2: ["80 kg avec un max de 100 kg représente…", "80 % du maximum", ["8 % du maximum", "100 % du maximum", "0 % du maximum"], "Calcul simple d'intensité."],
+      q3: ["Les % du max sont surtout utiles pour…", "La programmation de force", ["Uniquement le cardio", "La digestion", "Le sommeil"], "Force = charges relatives précises."],
+      blank: ["Pour l'hypertrophie, l'intensité en % devient moins ___ car la perf varie.", "précise", ["utile", "importante", "mesurable"], "Fatigue et exercice modifient la perf."],
+      tf1: ["La performance varie selon fatigue et exercice, ce qui limite les % en hypertrophie.", true, "Vrai : RIR/RPE souvent préférables."],
+      tf2: ["80 % du 1RM signifie toujours exactement la même difficulté ressentie.", false, "Faux : contexte modifie la perception."],
+    },
+  ),
+  buildLesson(
+    "RIR comme outil de programmation",
+    "Cible d'effort, pas charge arbitraire.",
+    [
+      `Le **RIR** (Reps In Reserve) permet d'autoréguler les séries. Exemple : 3 × 8 à 2 RIR = terminer chaque série avec environ deux répétitions encore réalisables.`,
+      `L'intérêt est énorme : le programme indique une **cible d'effort**, pas seulement une charge arbitraire. La charge s'ajuste selon la forme du jour.`,
+      `Le RIR individualise l'intensité d'effort sans recalculer des % chaque séance.`,
+      `À retenir : RIR = combien de reps il reste en réserve en fin de série.`,
+    ],
+    ["rir", "effort"],
+    CP.intensite,
+    {
+      q1: ["RIR signifie…", "Reps In Reserve (répétitions en réserve)", ["Repos Inutile Rapidement", "Rythme Intense Répété", "Rien"], "Répétitions encore possibles."],
+      q2: ["3 × 8 à 2 RIR signifie…", "Finir avec environ 2 reps encore possibles", ["Aller à l'échec absolu", "Arrêter à 2 reps totales", "Ne jamais s'efforcer"], "Cible d'effort claire."],
+      q3: ["Le RIR permet au programme d'indiquer…", "Une cible d'effort plutôt qu'une charge fixe", ["Uniquement le nom de l'exercice", "La couleur des haltères", "Le BPM"], "Autorégulation de l'intensité."],
+      blank: ["Avec 2 RIR, il reste environ 2 ___ encore réalisables en fin de série.", "répétitions", ["séries", "kg", "minutes"], "Réserve en fin de série."],
+      tf1: ["Le RIR aide à s'adapter à la forme du jour.", true, "Vrai : charge ajustée à l'effort visé."],
+      tf2: ["Le RIR impose une charge fixe identique chaque séance.", false, "Faux : l'effort guide la charge."],
+    },
+  ),
+  buildLesson(
+    "RPE et RIR",
+    "Estimation de l'effort.",
+    [
+      `**RPE** et **RIR** peuvent être utilisés ensemble. Approximation courante :\n\n| RIR | RPE |\n| 4 | 6 |\n| 3 | 7 |\n| 2 | 8 |\n| 1 | 9 |\n| 0 | 10 |`,
+      `Ces valeurs ne sont pas parfaites. Le RPE est une **estimation**. Le pratiquant doit apprendre à calibrer son jugement avec l'expérience.`,
+      `Commencer par le RIR (plus intuitif) puis affiner avec le RPE si besoin.`,
+      `À retenir : RIR et RPE sont des outils d'estimation, pas des mesures de laboratoire.`,
+    ],
+    ["rpe", "rir"],
+    CP.intensite,
+    {
+      q1: ["RIR 0 correspond approximativement à RPE…", "10", ["5", "1", "0"], "Échec = 0 rep en réserve."],
+      q2: ["RIR 2 correspond approximativement à RPE…", "8", ["6", "10", "4"], "2 reps en réserve ≈ RPE 8."],
+      q3: ["Le RPE est…", "Une estimation de l'effort", ["Une mesure parfaite au kg près", "Inutile en musculation", "Identique pour tous sans apprentissage"], "Calibration nécessaire."],
+      blank: ["Le pratiquant doit apprendre à ___ son jugement RPE/RIR.", "calibrer", ["ignorer", "supprimer", "copier"], "Expérience améliore l'estimation."],
+      tf1: ["RIR et RPE peuvent être utilisés ensemble.", true, "Vrai : outils complémentaires."],
+      tf2: ["RPE 8 est une mesure parfaitement exacte sans pratique.", false, "Faux : estimation à affiner."],
+    },
+  ),
+  buildLesson(
+    "Effort et volume",
+    "Volume élevé + effort maximal = risque.",
+    [
+      `Plus une série est proche de l'échec, plus elle peut être stimulante. Mais plus elle peut également coûter en **fatigue**.`,
+      `Ainsi : **volume élevé + effort maximal permanent = problème potentiel**.`,
+      `On peut gérer cela avec différentes zones d'effort selon les exercices. Exemple : polyarticulaire lourd **2–3 RIR**, isolation **0–2 RIR**.`,
+      `À retenir : doser l'effort selon l'exercice et le volume total.`,
+    ],
+    ["effort-volume", "fatigue"],
+    CP.intensite,
+    {
+      q1: ["Plus une série est proche de l'échec…", "Plus elle peut coûter en fatigue", ["Moins elle stimule", "Moins elle fatigue", "Plus elle repose"], "Effort élevé = coût fatigue."],
+      q2: ["Volume élevé + effort maximal permanent…", "Peut poser problème", ["Est toujours optimal", "Supprime la récupération nécessaire", "Remplace le sommeil"], "Combiner les deux avec prudence."],
+      q3: ["Sur un polyarticulaire lourd, on peut viser…", "2–3 RIR", ["0 RIR sur chaque série", "10 RIR systématique", "Aucun effort"], "Marge de sécurité et technique."],
+      blank: ["Sur une isolation, on peut accepter un effort plus proche de l'___ (0–2 RIR).", "échec", ["repos", "début", "échauffement"], "Moins de risque systémique."],
+      tf1: ["Différencier l'effort selon polyarticulaire vs isolation est une bonne pratique.", true, "Vrai : gestion fatigue + stimulus."],
+      tf2: ["Il faut toujours aller à l'échec sur tous les exercices.", false, "Faux : doser selon contexte."],
+    },
+    "INTERMEDIATE",
+  ),
+  buildLesson(
+    "Distribuer l'effort",
+    "Progression du RIR sur plusieurs semaines.",
+    [
+      `Il est possible de créer une **progression de l'effort** sur plusieurs semaines. Exemple :\n\n- Semaine 1 : 3 RIR\n- Semaine 2 : 2–3 RIR\n- Semaine 3 : 2 RIR\n- Semaine 4 : 1–2 RIR\n- Semaine 5 : 1 RIR\n- Semaine 6 : deload`,
+      `Cela permet d'accumuler du travail sans commencer directement à très haute fatigue.`,
+      `L'effort monte progressivement dans le bloc, puis on récupère.`,
+      `À retenir : monter l'effort sur le bloc, pas d'emblée au maximum.`,
+    ],
+    ["progression-effort", "bloc"],
+    CP.intensite,
+    {
+      q1: ["Progresser l'effort sur un bloc permet de…", "Accumuler du travail sans fatigue maximale d'emblée", ["Supprimer le volume", "Éviter toute progression", "Remplacer le deload"], "Montée graduelle du RIR."],
+      q2: ["Exemple de progression : semaine 1…", "3 RIR", ["0 RIR immédiat", "10 RIR fixe", "Pas d'effort"], "Début plus conservateur."],
+      q3: ["Après plusieurs semaines d'effort croissant…", "Un deload peut réduire la fatigue", ["Il faut doubler le volume", "On arrête pour toujours", "On ignore la récupération"], "Cycle effort → deload."],
+      blank: ["Distribuer l'effort sur plusieurs semaines évite de commencer directement à très haute ___.", "fatigue", ["motivation", "joie", "flexibilité"], "Fatigue gérée progressivement."],
+      tf1: ["On peut augmenter progressivement la proximité de l'échec sur un mésocycle.", true, "Vrai : progression d'effort planifiée."],
+      tf2: ["Il faut toujours commencer un bloc à 0 RIR.", false, "Faux : monter l'effort progressivement."],
+    },
+    "INTERMEDIATE",
+  ),
+];

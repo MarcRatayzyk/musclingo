@@ -1,0 +1,106 @@
+import { CP } from "./checkpoints";
+import { buildLesson } from "./build-lesson";
+
+export const THEME_2_LESSONS = [
+  buildLesson(
+    "Comprendre la fréquence",
+    "Distribuer le volume et la qualité.",
+    [
+      `La **fréquence** indique combien de fois un muscle ou un mouvement est entraîné sur une période.`,
+      `La fréquence sert principalement à **distribuer le volume** et gérer la **qualité des séries**. Si 16 séries hebdomadaires sont nécessaires, il peut être plus intéressant de faire 8 + 8 que 16 + 0.`,
+      `La fréquence n'est pas une fin en soi — c'est un outil de distribution.`,
+      `À retenir : fréquence = répartir le travail pour maintenir la qualité.`,
+    ],
+    ["frequence", "distribution"],
+    CP.frequence,
+    {
+      q1: ["La fréquence indique…", "Combien de fois un muscle est entraîné sur une période", ["La charge maximale", "Le tempo d'exécution", "La couleur du programme"], "Fois par semaine typiquement."],
+      q2: ["La fréquence sert surtout à…", "Distribuer le volume et maintenir la qualité des séries", ["Remplacer le volume", "Supprimer la récupération", "Éviter tout travail"], "Outil de répartition."],
+      q3: ["16 séries en 8+8 vs 16+0…", "La distribution change la qualité et la fatigue", ["Est strictement identique", "Supprime le besoin de volume", "N'a aucun intérêt"], "Répartir peut améliorer les séries."],
+      blank: ["Fréquence = combien de ___ un muscle est stimulé.", "fois", ["kg", "minutes", "calories"], "Répétition du stimulus dans le temps."],
+      tf1: ["Répartir le volume sur plusieurs séances peut améliorer la qualité des séries.", true, "Vrai : moins de fatigue par séance."],
+      tf2: ["La fréquence remplace complètement le volume hebdomadaire.", false, "Faux : elle distribue le volume."],
+    },
+  ),
+  buildLesson(
+    "Une ou plusieurs fois par semaine ?",
+    "Pas de fréquence magique.",
+    [
+      `Un muscle peut être entraîné **une fois** par semaine et progresser. Il peut également être entraîné **plusieurs fois**.`,
+      `La question pertinente n'est pas « quelle fréquence est magique ? » mais « quelle fréquence permet de distribuer efficacement le volume et de récupérer ? »`,
+      `La fréquence doit être adaptée au volume, à l'exercice et au niveau du pratiquant.`,
+      `À retenir : 1×/semaine ou 3×/semaine peuvent fonctionner — selon le contexte.`,
+    ],
+    ["frequence-hebdo", "recuperation"],
+    CP.frequence,
+    {
+      q1: ["Un muscle entraîné 1×/semaine…", "Peut progresser si le stimulus est suffisant", ["Ne peut jamais progresser", "Est toujours supérieur à 3×", "Remplace le volume"], "La fréquence n'est pas magique."],
+      q2: ["La bonne question sur la fréquence est…", "Quelle distribution permet volume + récupération ?", ["Quelle est la fréquence magique ?", "Combien de miroirs ?", "Quelle musique ?"], "Efficacité et récupération."],
+      q3: ["La fréquence optimale dépend de…", "Volume, exercice et niveau du pratiquant", ["Uniquement la mode", "La couleur des haltères", "Le jour de la semaine seul"], "Contexte individuel."],
+      blank: ["Il n'existe pas de fréquence ___ universelle.", "magique", ["nulle", "fixe", "impossible"], "Adapter au contexte."],
+      tf1: ["Entraîner un muscle plusieurs fois par semaine peut être pertinent à volume élevé.", true, "Vrai : distribution du travail."],
+      tf2: ["1×/semaine est toujours inférieur à 3×/semaine pour tout le monde.", false, "Faux : dépend du volume et de la récupération."],
+    },
+  ),
+  buildLesson(
+    "Distribuer le volume",
+    "14 séries : 1 jour vs 2 vs 3.",
+    [
+      `Prenons 14 séries pectoraux :\n\n- **Option A** : 14 séries le lundi.\n- **Option B** : 7 lundi + 7 jeudi.\n- **Option C** : 5 lundi + 5 mercredi + 4 vendredi.`,
+      `La quantité hebdomadaire est similaire, mais la **distribution** change. Plus le volume est élevé, plus sa répartition peut devenir intéressante pour maintenir la qualité des séries.`,
+      `Fatigue par séance, qualité technique et récupération locale guident le choix.`,
+      `À retenir : même volume hebdo ≠ même effet selon la distribution.`,
+    ],
+    ["distribution", "volume"],
+    CP.frequence,
+    {
+      q1: ["14 séries en une séance vs 7+7…", "Même volume hebdo, distribution différente", ["Volume total différent", "Aucun effet", "Supprime la fatigue"], "Répartition change l'expérience."],
+      q2: ["Plus le volume hebdomadaire est élevé…", "Plus la distribution peut devenir importante", ["Moins la fréquence compte", "Plus on doit tout faire en 1 jour", "Moins on récupère"], "Gros volumes = répartir utile."],
+      q3: ["Distribuer le volume peut aider à…", "Maintenir la qualité des séries", ["Supprimer le stimulus", "Éviter toute progression", "Remplacer l'effort"], "Moins de séries fatiguées par séance."],
+      blank: ["La ___ du volume change même si le total hebdomadaire est identique.", "distribution", ["couleur", "marque", "odeur"], "Comment on répartit les séries."],
+      tf1: ["7+7 séries peut permettre de meilleures séries que 14 d'un coup.", true, "Vrai : fatigue moindre par séance."],
+      tf2: ["Seul le total hebdomadaire compte, jamais la distribution.", false, "Faux : qualité des séries varie."],
+    },
+  ),
+  buildLesson(
+    "Fréquence des mouvements",
+    "Squat, développé, tirage, charnière.",
+    [
+      `Il ne faut pas uniquement raisonner en muscles. On peut aussi programmer la **fréquence des mouvements** : squat, développé, tirage, charnière de hanche, etc.`,
+      `Cela devient particulièrement important lorsqu'un objectif de **force** est présent. La technique et la pratique du mouvement bénéficient d'une exposition régulière.`,
+      `Fréquence musculaire et fréquence de mouvement se complètent.`,
+      `À retenir : pour la force, la fréquence du mouvement compte autant que celle du muscle.`,
+    ],
+    ["frequence-mouvement", "force"],
+    CP.frequence,
+    {
+      q1: ["On peut programmer la fréquence de…", "Mouvements spécifiques (squat, développé…)", ["Uniquement les mollets", "Seulement le cardio", "Rien du tout"], "Pas seulement par muscle."],
+      q2: ["La fréquence des mouvements est surtout importante pour…", "Les objectifs de force", ["Uniquement l'étirement", "La nutrition", "Le sommeil seul"], "Pratique régulière du pattern."],
+      q3: ["Squat 2×/semaine vs 1×/semaine pour la force…", "Plus de pratique peut aider la technique et l'adaptation", ["N'a aucun effet", "Empêche la progression", "Remplace le volume"], "Exposition au mouvement."],
+      blank: ["La fréquence du ___ compte pour développer la force au squat ou au développé.", "mouvement", ["miroir", "repas", "téléphone"], "Pattern moteur + charge."],
+      tf1: ["Programmer la fréquence des mouvements complète la fréquence musculaire.", true, "Vrai : deux niveaux d'analyse."],
+      tf2: ["Seuls les muscles comptent, jamais les mouvements.", false, "Faux : mouvements importants pour la force."],
+    },
+    "INTERMEDIATE",
+  ),
+  buildLesson(
+    "Choisir la fréquence selon la vie",
+    "La première contrainte : la vie réelle.",
+    [
+      `Le meilleur programme sur le papier ne sert à rien si le pratiquant ne peut pas le suivre. Il faut prendre en compte : nombre de jours disponibles, durée des séances, travail, études, sommeil, stress, préférences et contraintes personnelles.`,
+      `La première contrainte de programmation est souvent simplement : **la vie réelle**.`,
+      `Un programme 6 jours parfait qu'on abandonne après 2 semaines perd à un programme 3 jours suivi pendant des mois.`,
+      `À retenir : adhérence > optimisation théorique.`,
+    ],
+    ["vie-reelle", "adherence"],
+    CP.frequence,
+    {
+      q1: ["La première contrainte de programmation est souvent…", "La vie réelle du pratiquant", ["Le split le plus populaire", "Le nombre d'exercices sur TikTok", "La couleur des haltères"], "Adhérence avant tout."],
+      q2: ["Il faut prendre en compte notamment…", "Jours disponibles, sommeil et stress", ["Uniquement le 1RM", "La marque de la ceinture", "Le nombre de followers"], "Contraintes réelles."],
+      q3: ["Un programme théoriquement parfait mais non suivi…", "Est moins utile qu'un programme modeste suivi", ["Vaut toujours mieux", "Remplace la nutrition", "Garantit les gains"], "Adhérence = clé."],
+      blank: ["Le meilleur programme est celui que la personne peut ___ régulièrement.", "exécuter", ["afficher", "photographier", "oublier"], "Régularité > perfection papier."],
+      tf1: ["Le stress et le sommeil influencent le choix de fréquence.", true, "Vrai : récupération réelle."],
+      tf2: ["Seule l'optimisation théorique compte, pas l'adhérence.", false, "Faux : programme non suivi = inutile."],
+    },
+  ),
+];

@@ -7,8 +7,8 @@ import { Screen, XpBar } from "@/shared/ui/primitives";
 
 export default function CategoriesScreen() {
   const { mode } = useLocalSearchParams<{ mode?: string }>();
-  const isPicker = mode === "picker" || true;
-  const { data, isLoading } = useCategories();
+  const isPicker = mode !== "browse";
+  const { data, isLoading, isError, error, refetch } = useCategories();
   const updatePreferred = useUpdatePreferredCategory();
 
   return (
@@ -30,10 +30,29 @@ export default function CategoriesScreen() {
       </View>
 
       <Text className="mb-6 text-sm text-muted">
-        Sélectionne le parcours affiché sur l&apos;accueil.
+        {isPicker
+          ? "Sélectionne le parcours affiché sur l'accueil."
+          : "Explore les parcours disponibles et ta progression."}
       </Text>
 
       {isLoading && <Text className="text-muted">Chargement…</Text>}
+
+      {isError && (
+        <View className="mb-6 rounded-2xl border border-border bg-surface p-4">
+          <Text className="text-base text-white">
+            Impossible de charger les parcours
+          </Text>
+          <Text className="mt-2 text-sm text-muted">
+            {error instanceof Error ? error.message : "Erreur réseau"}
+          </Text>
+          <Pressable
+            onPress={() => refetch()}
+            className="mt-4 rounded-xl border border-accent py-3"
+          >
+            <Text className="text-center text-accent">Réessayer</Text>
+          </Pressable>
+        </View>
+      )}
 
       {updatePreferred.error && (
         <Text className="mb-3 text-sm text-danger">

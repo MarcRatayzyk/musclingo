@@ -1,0 +1,105 @@
+import { CP } from "./checkpoints";
+import { buildLesson } from "./build-lesson";
+
+export const THEME_0_LESSONS = [
+  buildLesson(
+    "Qu'est-ce que programmer un entraînement ?",
+    "Organiser les variables dans le temps.",
+    [
+      `Programmer ne signifie pas simplement choisir des exercices, des séries et des répétitions. La **programmation** consiste à organiser dans le temps un ensemble de variables afin de provoquer une adaptation précise.`,
+      `On doit déterminer : quoi entraîner, combien, à quelle fréquence, avec quelle intensité, avec quel niveau d'effort, dans quel ordre, pendant combien de temps, comment progresser et quand modifier le programme.`,
+      `Un programme est donc un **système dynamique**. Le programme de départ n'est qu'une hypothèse ; les résultats du pratiquant permettent ensuite de vérifier si cette hypothèse était correcte.`,
+      `À retenir : programmer = organiser le stimulus dans le temps, pas seulement lister des exercices.`,
+    ],
+    ["programmation", "introduction"],
+    CP.fondamentaux,
+    {
+      q1: ["Programmer un entraînement consiste surtout à…", "Organiser des variables dans le temps pour provoquer une adaptation", ["Choisir au hasard des exercices", "Copier un programme internet sans réfléchir", "Maximiser la fatigue chaque séance"], "La programmation est une organisation temporelle du stimulus."],
+      q2: ["Un programme est…", "Un système dynamique et une hypothèse à tester", ["Un document figé pour toujours", "Une liste d'exercices sans logique", "Uniquement un split musculaire"], "Le programme évolue selon les résultats."],
+      q3: ["Parmi ces variables, laquelle fait partie de la programmation ?", "La fréquence d'entraînement", ["La couleur des haltères", "Le nom de la salle", "La musique du club"], "Fréquence, volume, intensité, effort…"],
+      blank: ["Le programme de départ n'est qu'une ___ à vérifier avec les résultats.", "hypothèse", ["vérité absolue", "punition", "coïncidence"], "Programmer = tester et ajuster."],
+      tf1: ["Un bon programme doit pouvoir être modifié selon les progrès du pratiquant.", true, "Vrai : système dynamique."],
+      tf2: ["Programmer se limite à choisir exercices, séries et répétitions.", false, "Faux : bien plus de variables entrent en jeu."],
+    },
+  ),
+  buildLesson(
+    "Définir précisément l'objectif",
+    "Hypertrophie, force, priorité musculaire…",
+    [
+      `Avant de programmer, il faut définir ce que l'on cherche à **optimiser**. « Prendre du muscle » est déjà un objectif, mais il faut aller plus loin.`,
+      `Exemples : hypertrophie générale, hypertrophie maximale, priorité pectoraux ou deltoïdes, développement des jambes, force au squat ou au développé couché, maintien musculaire en sèche, recomposition, retour après arrêt.`,
+      `Chaque objectif **modifie** la programmation. Une erreur fondamentale consiste à créer le programme avant d'avoir défini la priorité.`,
+      `À retenir : objectif clair → variables adaptées. Sans objectif, pas de programmation intelligente.`,
+    ],
+    ["objectif", "priorite"],
+    CP.fondamentaux,
+    {
+      q1: ["Avant de programmer, il faut surtout…", "Définir précisément ce que l'on cherche à optimiser", ["Choisir le split le plus populaire", "Copier un influenceur", "Maximiser le nombre d'exercices"], "L'objectif guide toutes les décisions."],
+      q2: ["« Prendre du muscle » peut signifier notamment…", "Hypertrophie générale ou priorité sur un groupe musculaire", ["Uniquement courir plus vite", "Ne jamais s'entraîner les jambes", "Supprimer le volume"], "Préciser l'objectif hypertrophique."],
+      q3: ["Créer le programme avant de définir la priorité est…", "Une erreur fondamentale", ["La meilleure méthode", "Sans importance", "Obligatoire"], "Objectif d'abord, prescription ensuite."],
+      blank: ["Chaque objectif ___ la façon dont on programme volume, fréquence et intensité.", "modifie", ["annule", "ignore", "remplace"], "Pas de programme universel sans objectif."],
+      tf1: ["Force au squat et hypertrophie des pectoraux impliquent des programmations différentes.", true, "Vrai : objectifs différents = variables différentes."],
+      tf2: ["On peut programmer efficacement sans objectif précis.", false, "Faux : la priorité doit être définie."],
+    },
+  ),
+  buildLesson(
+    "Hiérarchiser les objectifs",
+    "Principal, secondaire, maintien.",
+    [
+      `Un pratiquant peut avoir plusieurs objectifs, mais tous ne peuvent pas être **prioritaires** simultanément.`,
+      `On peut classer : **objectif principal** (ce qui doit progresser le plus), **objectifs secondaires** (progression avec moins de ressources), **maintien** (simplement conserver).`,
+      `Exemple : principal = pectoraux ; secondaires = dos et épaules ; maintien = bras et jambes. Le programme ne doit pas donner les mêmes ressources à chaque groupe.`,
+      `À retenir : hiérarchiser = distribuer intelligemment volume et récupération.`,
+    ],
+    ["hierarchie", "priorites"],
+    CP.fondamentaux,
+    {
+      q1: ["L'objectif principal correspond à…", "Ce qui doit progresser le plus", ["Ce qu'on ignore", "Uniquement le cardio", "Les mollets seulement"], "Priorité maximale de ressources."],
+      q2: ["Le maintien signifie…", "Conserver un muscle sans le faire progresser fortement", ["Ne plus jamais l'entraîner", "Le supprimer du programme", "Doubler son volume"], "Stimulus minimal pour préserver."],
+      q3: ["Hiérarchiser les objectifs permet de…", "Distribuer volume et récupération intelligemment", ["Donner le même volume partout", "Éviter toute progression", "Supprimer les secondaires"], "Ressources limitées = priorités."],
+      blank: ["Tous les objectifs ne peuvent pas être ___ en même temps.", "prioritaires", ["secondaires", "ignorés", "identiques"], "Il faut choisir un ordre."],
+      tf1: ["Un muscle en maintien reçoit généralement moins de volume qu'un muscle prioritaire.", true, "Vrai : redistribution des ressources."],
+      tf2: ["Tous les groupes musculaires doivent recevoir exactement les mêmes ressources.", false, "Faux : la hiérarchie modifie la distribution."],
+    },
+  ),
+  buildLesson(
+    "Les variables de programmation",
+    "Volume, intensité, fréquence, exercices…",
+    [
+      `Les principales variables sont : **volume**, intensité de charge, intensité d'effort, **fréquence**, sélection et ordre des exercices, répétitions, séries, repos, tempo, amplitude, densité, vitesse d'exécution et **périodisation**.`,
+      `Le rôle du programmateur est de déterminer **quelles variables doivent réellement être manipulées**. Plus de variables ne signifie pas nécessairement meilleure programmation.`,
+      `Commencer par les leviers les plus importants (volume, effort, fréquence, progression) avant d'optimiser les détails.`,
+      `À retenir : maîtriser peu de variables bien choisies bat une liste interminable de paramètres.`,
+    ],
+    ["variables", "leviers"],
+    CP.fondamentaux,
+    {
+      q1: ["Parmi ces variables, lesquelles sont centrales en programmation ?", "Volume, intensité, fréquence et effort", ["Couleur des bandes", "Marque des chaussures", "Heure du déjeuner"], "Leviers principaux du stimulus."],
+      q2: ["Le programmateur doit déterminer…", "Quelles variables manipuler réellement", ["Toutes les variables à chaque séance", "Uniquement le tempo", "Rien du tout"], "Cibler les leviers pertinents."],
+      q3: ["Ajouter plus de variables au programme…", "Ne garantit pas une meilleure programmation", ["Améliore toujours les résultats", "Remplace la récupération", "Supprime la fatigue"], "Simplicité efficace > complexité inutile."],
+      blank: ["Volume, fréquence, intensité et ___ sont des variables fondamentales.", "effort", ["couleur", "odeur", "marque"], "Effort = proximité de l'échec (RIR/RPE)."],
+      tf1: ["La périodisation est une variable de programmation.", true, "Vrai : organisation des blocs dans le temps."],
+      tf2: ["Il faut toujours manipuler toutes les variables en même temps.", false, "Faux : prioriser les leviers pertinents."],
+    },
+  ),
+  buildLesson(
+    "La dose-réponse",
+    "Stimulus suffisant et récupérable.",
+    [
+      `La programmation peut être vue comme une relation : **dose d'entraînement → adaptation**.`,
+      `Si le stimulus est insuffisant, l'adaptation sera limitée. Si le stimulus est suffisant, on progresse. Si le stimulus devient excessif par rapport aux capacités de récupération, les bénéfices supplémentaires peuvent diminuer et la fatigue augmenter.`,
+      `L'objectif n'est pas de maximiser chaque variable. L'objectif est de trouver une **dose productive et récupérable**.`,
+      `À retenir : plus n'est pas toujours mieux — trouver la zone productive.`,
+    ],
+    ["dose-reponse", "stimulus"],
+    CP.fondamentaux,
+    {
+      q1: ["La relation dose-réponse relie…", "La dose d'entraînement à l'adaptation", ["Les calories au BPM", "Le split à la couleur des haltères", "Le repos à la digestion"], "Stimulus → adaptation."],
+      q2: ["Un stimulus excessif par rapport à la récupération…", "Peut augmenter la fatigue sans gains proportionnels", ["Améliore toujours les résultats", "N'a aucun effet", "Remplace le sommeil"], "Trop = fatigue qui dépasse les bénéfices."],
+      q3: ["L'objectif de la programmation est de trouver…", "Une dose productive et récupérable", ["Le volume maximal absolu", "Zéro fatigue", "Un programme identique pour tous"], "Zone productive, pas maximale."],
+      blank: ["Si le stimulus est ___, l'adaptation sera limitée.", "insuffisant", ["parfait", "excessif seulement", "aléatoire"], "Pas assez de travail = pas assez d'adaptation."],
+      tf1: ["Maximiser chaque variable n'est pas l'objectif de la programmation.", true, "Vrai : dose productive et récupérable."],
+      tf2: ["Plus de volume signifie toujours plus de progression.", false, "Faux : relation dose-réponse a une zone optimale."],
+    },
+  ),
+];

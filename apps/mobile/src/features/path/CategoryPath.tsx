@@ -6,6 +6,7 @@ import {
   View,
 } from "react-native";
 import type { CategoryPath, PathGateNode, PathLessonNode } from "./api";
+import { getAnatomyPathIllustrationAtLesson } from "../mascot/anatomy-path-images";
 import { getPathIcon } from "./icons";
 
 type Props = {
@@ -34,6 +35,7 @@ type PathRow =
 
 const NODE_SIZE = 72;
 const NODE_PAD = 18;
+const ANATOMY_ILL_SIZE = 155;
 
 function sideOffsetForIndex(index: number) {
   if (index % 2 === 0) return 0;
@@ -76,6 +78,21 @@ function PulseWaves({ color, active }: { color: string; active: boolean }) {
         }}
       />
     </View>
+  );
+}
+
+function AnatomyIllustration({
+  source,
+}: {
+  source: NonNullable<ReturnType<typeof getAnatomyPathIllustrationAtLesson>>;
+}) {
+  return (
+    <Image
+      source={source}
+      accessibilityLabel="Illustration du parcours anatomie"
+      resizeMode="contain"
+      style={{ width: ANATOMY_ILL_SIZE, height: ANATOMY_ILL_SIZE }}
+    />
   );
 }
 
@@ -287,7 +304,37 @@ function LessonNode({
               />
             </View>
 
-            {completed && (
+            {completed && lesson.hasQuiz && lesson.bestStars != null && (
+              <View
+                style={{
+                  position: "absolute",
+                  right: 4,
+                  bottom: 4,
+                  flexDirection: "row",
+                  gap: 1,
+                  paddingHorizontal: 4,
+                  paddingVertical: 2,
+                  borderRadius: 8,
+                  backgroundColor: "#0B0F14",
+                  borderWidth: 2,
+                  borderColor: color,
+                }}
+              >
+                {[1, 2, 3].map((n) => (
+                  <Text
+                    key={n}
+                    style={{
+                      color,
+                      fontSize: 9,
+                      opacity: n <= (lesson.bestStars ?? 0) ? 1 : 0.25,
+                    }}
+                  >
+                    ★
+                  </Text>
+                ))}
+              </View>
+            )}
+            {completed && (!lesson.hasQuiz || lesson.bestStars == null) && (
               <View
                 style={{
                   position: "absolute",
@@ -425,6 +472,13 @@ export function CategoryPathView({
         }
 
         const lesson = row.item as FlatLesson & { showUnitHeader?: boolean };
+        const anatomyIllustration =
+          path.slug === "anatomie"
+            ? getAnatomyPathIllustrationAtLesson(lesson.unitKey, lesson.order)
+            : null;
+        const lessonSideOffset = anatomyIllustration ? 0 : sideOffset;
+        const illOnLeft = anatomyIllustration != null && sideOffset > 0;
+
         return (
           <Fragment key={lesson.id}>
             {lesson.showUnitHeader && (
@@ -442,15 +496,30 @@ export function CategoryPathView({
                 onLessonLayout(lesson.id, y, height);
               }}
             >
-              <LessonNode
-                lesson={lesson}
-                color={path.color}
-                icon={icon}
-                index={lesson.index}
-                sideOffset={sideOffset}
-                isCurrent={lesson.id === currentLessonId}
-                onPress={() => onPressLesson(lesson)}
-              />
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "flex-start",
+                  justifyContent: "center",
+                  width: "100%",
+                }}
+              >
+                {anatomyIllustration && illOnLeft ? (
+                  <AnatomyIllustration source={anatomyIllustration} />
+                ) : null}
+                <LessonNode
+                  lesson={lesson}
+                  color={path.color}
+                  icon={icon}
+                  index={lesson.index}
+                  sideOffset={lessonSideOffset}
+                  isCurrent={lesson.id === currentLessonId}
+                  onPress={() => onPressLesson(lesson)}
+                />
+                {anatomyIllustration && !illOnLeft ? (
+                  <AnatomyIllustration source={anatomyIllustration} />
+                ) : null}
+              </View>
             </View>
           </Fragment>
         );

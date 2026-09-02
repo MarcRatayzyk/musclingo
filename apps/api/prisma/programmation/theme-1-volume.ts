@@ -1,0 +1,107 @@
+import { CP } from "./checkpoints";
+import { buildLesson } from "./build-lesson";
+
+export const THEME_1_LESSONS = [
+  buildLesson(
+    "Définir le volume correctement",
+    "Séries, reps, tonnage, séries effectives.",
+    [
+      `Le **volume** peut être mesuré de plusieurs manières : séries, répétitions, tonnage, répétitions effectives, séries par groupe musculaire.`,
+      `Pour l'hypertrophie, le nombre de **séries suffisamment stimulantes** est souvent une mesure pratique. Mais même cette mesure doit être interprétée : une série de squat et une série de leg extension ne représentent pas le même coût systémique.`,
+      `Le volume doit être considéré comme une **approximation utile**, pas comme une vérité absolue.`,
+      `À retenir : compter les séries utilement, sans oublier le contexte de chaque exercice.`,
+    ],
+    ["volume", "series"],
+    CP.volume,
+    {
+      q1: ["Le volume peut être mesuré notamment par…", "Séries, répétitions ou tonnage", ["Uniquement le BPM", "La couleur du programme", "Le nombre de miroirs"], "Plusieurs métriques possibles."],
+      q2: ["Pour l'hypertrophie, une mesure pratique est souvent…", "Le nombre de séries suffisamment stimulantes", ["Le nombre total de likes", "La durée de la playlist", "Le poids du sac de sport"], "Séries proches de l'échec comptent plus."],
+      q3: ["Une série de squat vs leg extension…", "N'a pas le même coût systémique", ["Est toujours équivalente", "Ne compte jamais dans le volume", "Remplace la récupération"], "Interpréter le volume selon l'exercice."],
+      blank: ["Le volume est une ___ utile, pas une vérité absolue.", "approximation", ["erreur", "punition", "coïncidence"], "Compter aide, mais contexte compte."],
+      tf1: ["Toutes les séries ne se valent pas dans le calcul du volume.", true, "Vrai : stimulus et coût varient."],
+      tf2: ["Le tonnage seul suffit toujours à décrire le volume hypertrophique.", false, "Faux : qualité et type d'exercice comptent."],
+    },
+  ),
+  buildLesson(
+    "Séries directes et indirectes",
+    "Volume direct + contribution indirecte.",
+    [
+      `Toutes les séries ne sollicitent pas un muscle de la même manière. Au **développé couché** : pectoraux en travail direct, triceps et deltoïde antérieur en travail indirect important.`,
+      `Si vous faites ensuite beaucoup d'exercices triceps, il faut intégrer le travail provenant des développés.`,
+      `Le programmateur doit raisonner en : **volume direct + contribution indirecte**.`,
+      `À retenir : ne pas surcharger un muscle en oubliant le volume indirect des polyarticulaires.`,
+    ],
+    ["direct", "indirect"],
+    CP.volume,
+    {
+      q1: ["Au développé couché, les pectoraux reçoivent…", "Du travail direct", ["Aucun stimulus", "Uniquement du travail indirect", "Seulement du cardio"], "Mouvement principal pour les pecs."],
+      q2: ["Les triceps au développé couché…", "Reçoivent un travail indirect important", ["Ne travaillent jamais", "Remplacent les pectoraux", "Sont au repos total"], "Polyarticulaire = contributions croisées."],
+      q3: ["Le programmateur doit considérer…", "Volume direct + contribution indirecte", ["Uniquement les isolations", "Seulement le nombre d'exercices", "Zéro chevauchement"], "Éviter le survolume involontaire."],
+      blank: ["Le volume ___ provient des exercices où le muscle est la cible principale.", "direct", ["indirect", "nul", "respiratoire"], "Direct vs indirect."],
+      tf1: ["Faire beaucoup de développés puis beaucoup de triceps peut cumuler la fatigue des triceps.", true, "Vrai : volume indirect à intégrer."],
+      tf2: ["Seules les séries d'isolation comptent pour le volume musculaire.", false, "Faux : le travail indirect compte."],
+    },
+  ),
+  buildLesson(
+    "Déterminer le volume de départ",
+    "Points de départ à tester, pas prescriptions universelles.",
+    [
+      `Il ne faut pas chercher immédiatement le volume maximal. Le volume de départ doit être suffisamment élevé pour stimuler le muscle mais suffisamment faible pour laisser une **marge d'augmentation**.`,
+      `Exemple indicatif : pectoraux 10 séries, dos 12, quadriceps 8, ischio-jambiers 8, épaules 8, biceps 6, triceps 6. Ce ne sont pas des prescriptions universelles — ce sont des **points de départ à tester**.`,
+      `Observer les progrès, la récupération et la qualité des séries avant d'augmenter.`,
+      `À retenir : commencer modérément, progresser si nécessaire.`,
+    ],
+    ["volume-depart", "debut"],
+    CP.volume,
+    {
+      q1: ["Le volume de départ doit…", "Stimuler sans être maximal d'emblée", ["Être le MRV immédiatement", "Être identique pour tous sans test", "Rester fixe 10 ans"], "Laisser une marge de progression."],
+      q2: ["Des exemples comme 10 séries pecs / 12 dos sont…", "Des points de départ à tester", ["Des lois universelles", "Trop faibles pour tout le monde", "Trop élevés pour tout le monde"], "À adapter au pratiquant."],
+      q3: ["Chercher le volume maximal dès le début est…", "Généralement une mauvaise stratégie", ["Toujours optimal", "Sans effet sur la fatigue", "Obligatoire"], "Marge de progression importante."],
+      blank: ["Le volume initial doit laisser une marge d'___.", "augmentation", ["diminution", "confusion", "ennui"], "On peut monter si besoin."],
+      tf1: ["Le volume de départ doit être testé et ajusté selon le pratiquant.", true, "Vrai : individualisation dès le départ."],
+      tf2: ["Tout le monde doit commencer avec exactement 20 séries par muscle.", false, "Faux : points de départ variables."],
+    },
+  ),
+  buildLesson(
+    "MEV, MAV et MRV",
+    "Minimum, zone adaptive, maximum récupérable.",
+    [
+      `Trois concepts pédagogiques utiles :\n\n- **MEV** (Minimum Effective Volume) : quantité minimale permettant de progresser.\n- **MAV** (Maximum Adaptive Volume) : zone où le volume produit généralement beaucoup d'adaptation.\n- **MRV** (Maximum Recoverable Volume) : quantité maximale récupérable avant fatigue excessive.`,
+      `Le but n'est pas d'être constamment au MRV. Une programmation intelligente cherche généralement à rester dans une **zone productive**.`,
+      `Ces concepts aident à raisonner, mais les valeurs exactes restent **individuelles**.`,
+      `À retenir : MEV < MAV < MRV — viser la zone productive, pas le maximum permanent.`,
+    ],
+    ["mev", "mav", "mrv"],
+    CP.volume,
+    {
+      q1: ["Le MEV correspond à…", "Le volume minimal permettant de progresser", ["Le volume maximal récupérable", "Zéro série", "Uniquement le cardio"], "Minimum effective volume."],
+      q2: ["Le MRV représente…", "Le volume maximal encore récupérable", ["Le volume minimal", "La fréquence hebdomadaire", "Le temps de repos"], "Maximum recoverable volume."],
+      q3: ["L'objectif n'est généralement pas de rester constamment au…", "MRV", ["MEV", "début de programme", "échauffement"], "MRV = limite haute, pas cible permanente."],
+      blank: ["La zone ___ est celle où le volume produit beaucoup d'adaptation.", "adaptive (MAV)", ["nulle", "dangereuse", "sans effet"], "Maximum adaptive volume."],
+      tf1: ["Rester en zone productive est souvent préférable qu'être constamment au MRV.", true, "Vrai : gérer la fatigue."],
+      tf2: ["MEV, MAV et MRV sont identiques pour toutes les personnes.", false, "Faux : valeurs individuelles."],
+    },
+    "INTERMEDIATE",
+  ),
+  buildLesson(
+    "Augmenter le volume",
+    "Pas la première variable à modifier.",
+    [
+      `Lorsque les progrès ralentissent, plusieurs solutions existent : améliorer la technique, augmenter l'effort, améliorer la récupération, changer un exercice, ou augmenter légèrement le volume.`,
+      `Le volume ne doit donc **pas** être la première variable augmentée automatiquement. Une stagnation ne signifie pas nécessairement « il faut faire plus de séries ».`,
+      `Diagnostiquer avant d'ajouter des séries : effort, sommeil, technique, récupération.`,
+      `À retenir : plus de séries = dernier levier, pas le premier réflexe.`,
+    ],
+    ["augmenter-volume", "stagnation"],
+    CP.volume,
+    {
+      q1: ["Face à une stagnation, on peut d'abord…", "Améliorer technique, effort ou récupération", ["Doubler le volume immédiatement", "Changer tout le programme", "Arrêter de dormir"], "Plusieurs leviers avant le volume."],
+      q2: ["Augmenter le volume automatiquement à chaque plateau est…", "Souvent une erreur", ["Toujours la solution", "Sans effet", "Obligatoire"], "Diagnostiquer d'abord."],
+      q3: ["Le volume doit être augmenté…", "Avec prudence et après diagnostic", ["Chaque semaine sans réfléchir", "Jamais", "Uniquement en deload"], "Levier progressif."],
+      blank: ["Une stagnation ne signifie pas automatiquement qu'il faut faire plus de ___.", "séries", ["repos", "eau", "marche"], "Volume ≠ seule réponse."],
+      tf1: ["Améliorer la récupération peut débloquer une progression sans ajouter de séries.", true, "Vrai : fatigue peut limiter les gains."],
+      tf2: ["Dès qu'on stagne, il faut toujours ajouter 5 séries par muscle.", false, "Faux : diagnostiquer avant d'augmenter."],
+    },
+    "INTERMEDIATE",
+  ),
+];

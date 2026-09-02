@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   Image,
   LayoutChangeEvent,
@@ -12,16 +12,34 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import Animated, {
+  Easing,
+  FadeIn,
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import {
   getIllustrationLegend,
   getLessonIllustrations,
+  normalizeTextAnswer,
   type IllustrationLegendItem,
 } from "@muscle-mind/types";
 import { useCompleteLesson, useLesson } from "@/features/home/api";
+import {
+  getInterjectionAfterChunk,
+  getLessonHooks,
+  GorillaAvatar,
+  nextMascotPose,
+  type MascotLine,
+  type MascotPose,
+} from "@/features/mascot";
 import { ApiError, resolveMediaUrl } from "@/shared/api/client";
 import { PrimaryButton, Screen, XpBar } from "@/shared/ui/primitives";
-
 const BG = "#0B0D10";
 const FOCUSED = "rgba(255,255,255,0.92)";
 const MUTED = "rgba(255,255,255,0.38)";
@@ -31,7 +49,6 @@ const FADE_H = 170;
 function parseLessonChunks(markdown: string): string[] {
   const normalized = markdown.replace(/\r\n/g, "\n").trim();
   if (!normalized) return [];
-
   const byRule = normalized
     .split(/\n---\n/)
     .map((s) =>
@@ -43,7 +60,6 @@ function parseLessonChunks(markdown: string): string[] {
     )
     .filter(Boolean);
   if (byRule.length > 1) return byRule;
-
   const one = normalized
     .replace(/^#+\s*/gm, "")
     .replace(/\n+/g, " ")
@@ -51,7 +67,6 @@ function parseLessonChunks(markdown: string): string[] {
     .trim();
   return one ? [one] : [];
 }
-
 function sanitizePartialMarkdown(text: string): string {
   const markers = text.match(/\*\*/g)?.length ?? 0;
   if (markers % 2 === 0) return text;
@@ -59,27 +74,53 @@ function sanitizePartialMarkdown(text: string): string {
   if (idx < 0) return text;
   return text.slice(0, idx) + text.slice(idx + 2);
 }
-
+function buildLegendColorMap(
+  legend: IllustrationLegendItem[],
+): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const item of legend) {
+    if (!item.color) continue;
+    map.set(normalizeTextAnswer(item.label), item.color);
+    for (const alias of item.aliases ?? []) {
+      map.set(normalizeTextAnswer(alias), item.color);
+    }
+  }
+  return map;
+}
+function chunkShowsIllustration(text: string): boolean {
+  return /illustration/i.test(text);
+}
 function MarkdownSpans({
   text,
   color,
+  legendColors,
+  dimmed = false,
 }: {
   text: string;
   color: string;
+  legendColors?: Map<string, string>;
+  dimmed?: boolean;
 }) {
   const cleaned = sanitizePartialMarkdown(text).replace(/[`_]/g, "");
   const parts = cleaned.split(/(\*\*[^*]+\*\*)/g).filter((p) => p.length > 0);
-
   return (
     <>
       {parts.map((part, i) => {
         const bold = /^\*\*[^*]+\*\*$/.test(part);
         const content = bold ? part.slice(2, -2) : part;
+        const termColor =
+          bold && legendColors
+            ? legendColors.get(normalizeTextAnswer(content))
+            : undefined;
+        const textColor = termColor ?? color;
         return (
           <Text
             key={`${i}-${content.slice(0, 16)}-${content.length}`}
             className={bold ? "font-semibold" : undefined}
-            style={{ color }}
+            style={{
+              color: textColor,
+              opacity: dimmed && termColor ? 0.55 : 1,
+            }}
           >
             {content}
           </Text>
@@ -88,7 +129,319 @@ function MarkdownSpans({
     </>
   );
 }
+function BlinkingCursor() {
+  const opacity = useSharedValue(1);
+  useEffect(() => {
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(0.15, { duration: 420, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: 420, easing: Easing.inOut(Easing.ease) }),
+      ),
+      -1,
+      false,
+    );
+  }, [opacity]);
+  const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  return (
+    <Animated.Text style={[{ color: FOCUSED, fontWeight: "600" }, style]}>
+      |
+    </Animated.Text>
+  );
+}
+function ContinueButton({
+  isTyping,
+  onPress,
+}: {
+  isTyping: boolean;
+  onPress: () => void;
+}) {
+  const scale = useSharedValue(1);
+  useEffect(() => {
+    if (isTyping) {
+      scale.value = withTiming(1, { duration: 200 });
+      return;
+    }
+    scale.value = withRepeat(
+      withSequence(
+        withTiming(1.07, { duration: 700, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: 700, easing: Easing.inOut(Easing.ease) }),
+      ),
+      -1,
+      false,
+    );
+  }, [isTyping, scale]);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+  return (
+    <Animated.View style={animatedStyle} className="mb-2 self-center">
+      <Pressable
+        onPress={onPress}
+        className="items-center justify-center rounded-full bg-accent px-8 py-4"
+        accessibilityRole="button"
+        accessibilityLabel={isTyping ? "Passer" : "Continuer"}
+      >
+        <Text className="text-2xl font-semibold text-background">→</Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
+function IllustrationLegendChips({
+  legend,
+  compact = false,
+}: {
+  legend: IllustrationLegendItem[];
+  compact?: boolean;
+}) {
+  if (!legend.length) return null;
+  return (
+    <View className={`flex-row flex-wrap ${compact ? "gap-2" : "gap-2.5"}`}>
+      {legend.map((item) => (
+        <View
+          key={`${item.color ?? "deep"}-${item.label}`}
+          className="flex-row items-center gap-1.5 rounded-full bg-white/5 px-2 py-1"
+        >
+          {item.color ? (
+            <View
+              style={{
+                width: compact ? 10 : 12,
+                height: compact ? 10 : 12,
+                borderRadius: 999,
+                backgroundColor: item.color,
+                borderWidth: item.color.toLowerCase() === "#f5f5f5" ? 1 : 0,
+                borderColor: "rgba(255,255,255,0.35)",
+              }}
+            />
+          ) : (
+            <View
+              style={{
+                width: compact ? 10 : 12,
+                height: compact ? 10 : 12,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: "rgba(255,255,255,0.35)",
+                borderStyle: "dashed",
+              }}
+            />
+          )}
+          <Text
+            className={`capitalize text-white/80 ${compact ? "text-xs" : "text-sm"}`}
+          >
+            {item.label}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+function IllustrationModal({
+  visible,
+  onClose,
+  uri,
+  title,
+  legend,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  uri: string;
+  title: string;
+  legend: IllustrationLegendItem[];
+}) {
+  const [aspectRatio, setAspectRatio] = useState(1.6);
+  const { width: screenW, height: screenH } = useWindowDimensions();
+  useEffect(() => {
+    if (!visible) return;
+    let cancelled = false;
+    Image.getSize(
+      uri,
+      (width, height) => {
+        if (!cancelled && width > 0 && height > 0) {
+          setAspectRatio(width / height);
+        }
+      },
+      () => {},
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [uri, visible]);
+  const imgW = screenW - 48;
+  const maxImgH = legend.length > 0 ? screenH * 0.55 : screenH * 0.75;
+  const imgH = Math.min(imgW / aspectRatio, maxImgH);
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <Pressable
+        className="flex-1 items-center justify-center bg-black/90 px-6"
+        onPress={onClose}
+      >
+        <Pressable onPress={(e) => e.stopPropagation()} className="w-full">
+          <Image
+            source={{ uri }}
+            accessibilityLabel={`Illustration : ${title}`}
+            style={{ width: imgW, height: imgH, alignSelf: "center" }}
+            resizeMode="contain"
+          />
+          {legend.length > 0 ? (
+            <View className="mt-4 gap-2.5 self-center" style={{ width: imgW }}>
+              <Text className="mb-1 text-xs uppercase tracking-widest text-white/50">
+                Légende
+              </Text>
+              <IllustrationLegendChips legend={legend} />
+            </View>
+          ) : null}
+        </Pressable>
+        <Pressable
+          onPress={onClose}
+          className="mt-5 rounded-full bg-white/10 px-5 py-2"
+        >
+          <Text className="text-sm text-white">Fermer</Text>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+function LessonInlineIllustration({
+  uri,
+  title,
+  legend,
+}: {
+  uri: string;
+  title: string;
+  legend: IllustrationLegendItem[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [aspectRatio, setAspectRatio] = useState(1.6);
+  const { width: screenW } = useWindowDimensions();
+  useEffect(() => {
+    let cancelled = false;
+    Image.getSize(
+      uri,
+      (width, height) => {
+        if (!cancelled && width > 0 && height > 0) {
+          setAspectRatio(width / height);
+        }
+      },
+      () => {},
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [uri]);
+  const imgW = screenW - 40;
+  const imgH = Math.min(imgW / aspectRatio, 180);
+  return (
+    <>
+      <Animated.View entering={FadeIn.duration(500)} className="mb-4">
+        <Pressable
+          onPress={() => setOpen(true)}
+          className="overflow-hidden rounded-2xl border border-border bg-surface/60"
+          accessibilityRole="button"
+          accessibilityLabel={`Agrandir l'illustration ${title}`}
+        >
+          <Image
+            source={{ uri }}
+            accessibilityLabel={`Illustration : ${title}`}
+            style={{ width: "100%", height: imgH }}
+            resizeMode="contain"
+          />
+          <View className="border-t border-border/60 px-3 py-2.5">
+            <IllustrationLegendChips legend={legend} compact />
+          </View>
+        </Pressable>
+        <Text className="mt-1.5 text-center text-xs text-white/30">
+          Toucher pour agrandir
+        </Text>
+      </Animated.View>
+      <IllustrationModal
+        visible={open}
+        onClose={() => setOpen(false)}
+        uri={uri}
+        title={title}
+        legend={legend}
+      />
+    </>
+  );
+}
+function LessonIllustrationButton({
+  uri,
+  title,
+  legend,
+  buttonLabel = "Illustration",
+}: {
+  uri: string;
+  title: string;
+  legend: IllustrationLegendItem[];
+  buttonLabel?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Pressable
+        onPress={() => setOpen(true)}
+        className="rounded-full border border-border bg-surface/90 px-3 py-1.5"
+        accessibilityRole="button"
+        accessibilityLabel={`Voir l'illustration ${title}`}
+      >
+        <Text className="text-xs font-medium text-accent">{buttonLabel}</Text>
+      </Pressable>
+      <IllustrationModal
+        visible={open}
+        onClose={() => setOpen(false)}
+        uri={uri}
+        title={title}
+        legend={legend}
+      />
+    </>
+  );
+}
+function MascotLineText({
+  line,
+  color,
+}: {
+  line: MascotLine;
+  color: string;
+}) {
+  return (
+    <Text className="text-base leading-7" style={{ color }}>
+      {line.text}
+    </Text>
+  );
+}
 
+function ChunkBlock({
+  index,
+  chunkIndex,
+  children,
+  onLayout,
+}: {
+  index: number;
+  chunkIndex: number;
+  children: React.ReactNode;
+  onLayout: (y: number, h: number) => void;
+}) {
+  const isActive = index === chunkIndex;
+  const Wrapper = isActive ? Animated.View : View;
+  const wrapperProps = isActive
+    ? { entering: FadeInDown.duration(380).springify().damping(18) }
+    : {};
+  return (
+    <Wrapper
+      {...wrapperProps}
+      className="mb-5"
+      onLayout={(e: LayoutChangeEvent) => {
+        const { y, height } = e.nativeEvent.layout;
+        onLayout(y, height);
+      }}
+    >
+      {children}
+    </Wrapper>
+  );
+}
 function TopFade({ width, height = FADE_H }: { width: number; height?: number }) {
   if (width <= 0) return null;
   return (
@@ -115,131 +468,6 @@ function TopFade({ width, height = FADE_H }: { width: number; height?: number })
     </View>
   );
 }
-
-function LessonIllustrationButton({
-  uri,
-  title,
-  legend,
-  buttonLabel = "Illustration",
-}: {
-  uri: string;
-  title: string;
-  legend: IllustrationLegendItem[];
-  buttonLabel?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const [aspectRatio, setAspectRatio] = useState(1.6);
-  const { width: screenW, height: screenH } = useWindowDimensions();
-
-  useEffect(() => {
-    let cancelled = false;
-    Image.getSize(
-      uri,
-      (width, height) => {
-        if (!cancelled && width > 0 && height > 0) {
-          setAspectRatio(width / height);
-        }
-      },
-      () => {},
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [uri]);
-
-  const imgW = screenW - 48;
-  const maxImgH = legend.length > 0 ? screenH * 0.55 : screenH * 0.75;
-  const imgH = Math.min(imgW / aspectRatio, maxImgH);
-
-  return (
-    <>
-      <Pressable
-        onPress={() => setOpen(true)}
-        className="rounded-full border border-border bg-surface/90 px-3 py-1.5"
-        accessibilityRole="button"
-        accessibilityLabel={`Voir l'illustration ${title}`}
-      >
-        <Text className="text-xs font-medium text-accent">{buttonLabel}</Text>
-      </Pressable>
-
-      <Modal
-        visible={open}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setOpen(false)}
-      >
-        <Pressable
-          className="flex-1 items-center justify-center bg-black/90 px-6"
-          onPress={() => setOpen(false)}
-        >
-          <Pressable onPress={(e) => e.stopPropagation()} className="w-full">
-            <Image
-              source={{ uri }}
-              accessibilityLabel={`Illustration : ${title}`}
-              style={{ width: imgW, height: imgH, alignSelf: "center" }}
-              resizeMode="contain"
-            />
-            {legend.length > 0 ? (
-              <View className="mt-4 gap-2.5 self-center" style={{ width: imgW }}>
-                <Text className="mb-1 text-xs uppercase tracking-widest text-white/50">
-                  Légende
-                </Text>
-                {legend.map((item) => (
-                  <View
-                    key={`${item.color ?? "deep"}-${item.label}`}
-                    className="flex-row items-center gap-3"
-                  >
-                    {item.color ? (
-                      <View
-                        style={{
-                          width: 18,
-                          height: 18,
-                          borderRadius: 4,
-                          backgroundColor: item.color,
-                          borderWidth:
-                            item.color.toLowerCase() === "#f5f5f5" ? 1 : 0,
-                          borderColor: "rgba(255,255,255,0.35)",
-                        }}
-                      />
-                    ) : (
-                      <View
-                        style={{
-                          width: 18,
-                          height: 18,
-                          borderRadius: 4,
-                          borderWidth: 1,
-                          borderColor: "rgba(255,255,255,0.35)",
-                          borderStyle: "dashed",
-                        }}
-                      />
-                    )}
-                    <View className="flex-1">
-                      <Text className="text-sm capitalize text-white">
-                        {item.label}
-                      </Text>
-                      {item.note ? (
-                        <Text className="text-xs text-white/50">
-                          {item.note}
-                        </Text>
-                      ) : null}
-                    </View>
-                  </View>
-                ))}
-              </View>
-            ) : null}
-          </Pressable>
-          <Pressable
-            onPress={() => setOpen(false)}
-            className="mt-5 rounded-full bg-white/10 px-5 py-2"
-          >
-            <Text className="text-sm text-white">Fermer</Text>
-          </Pressable>
-        </Pressable>
-      </Modal>
-    </>
-  );
-}
-
 export default function LessonScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: lesson, isLoading, isError, error } = useLesson(id);
@@ -255,18 +483,16 @@ export default function LessonScreen() {
   const centerTargetRef = useRef(0);
   const chunkIndexRef = useRef(0);
   const didInitialCenterRef = useRef(false);
-
   const [chunkIndex, setChunkIndex] = useState(0);
   const [typedLen, setTypedLen] = useState(0);
   const [viewportH, setViewportH] = useState(0);
   const [viewportW, setViewportW] = useState(0);
   const [focusedIndex, setFocusedIndex] = useState(0);
-
+  const [mascotPose, setMascotPose] = useState<MascotPose>("present");
   const chunks = useMemo(
     () => (lesson ? parseLessonChunks(lesson.markdown) : []),
     [lesson],
   );
-
   const illustrations = useMemo(() => {
     const items = getLessonIllustrations(lesson?.illustrationUrl);
     return items
@@ -289,12 +515,24 @@ export default function LessonScreen() {
         } => item != null,
       );
   }, [lesson?.illustrationUrl]);
-
+  const legendColorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const ill of illustrations) {
+      for (const [key, value] of buildLegendColorMap(ill.legend)) {
+        map.set(key, value);
+      }
+    }
+    return map;
+  }, [illustrations]);
+  const primaryIllustration = illustrations[0] ?? null;
+  const mascotEnabled = lesson?.category.slug === "anatomie";
+  const mascotHooks = useMemo(
+    () => getLessonHooks(lesson?.order ?? 0),
+    [lesson?.order],
+  );
   chunkIndexRef.current = chunkIndex;
-
   const currentChunk = chunks[chunkIndex] ?? "";
   const currentDisplayed = currentChunk.slice(0, typedLen);
-
   function updateFocusFromScroll() {
     const vh = viewportHRef.current;
     if (vh <= 0) return;
@@ -313,7 +551,6 @@ export default function LessonScreen() {
     }
     setFocusedIndex((prev) => (prev === best ? prev : best));
   }
-
   function centerChunk(index: number, animated = true) {
     const layout = chunkLayouts.current[index];
     const vh = viewportHRef.current;
@@ -324,7 +561,6 @@ export default function LessonScreen() {
     setFocusedIndex(index);
     return true;
   }
-
   function flushCenterIfNeeded(index: number) {
     if (!pendingCenterRef.current) return;
     if (index !== centerTargetRef.current) return;
@@ -334,32 +570,27 @@ export default function LessonScreen() {
       centerChunk(index, true);
     });
   }
-
   function requestCenterOn(index: number) {
     centerTargetRef.current = index;
     pendingCenterRef.current = true;
   }
-
   useEffect(() => {
     startedAt.current = Date.now();
     setChunkIndex(0);
     setTypedLen(0);
     setFocusedIndex(0);
+    setMascotPose("present");
     chunkLayouts.current = {};
     scrollYRef.current = 0;
     didInitialCenterRef.current = false;
     requestCenterOn(0);
   }, [id]);
-
   useEffect(() => {
     setTypedLen(0);
   }, [chunkIndex]);
-
-  // Recentre le paragraphe cible après chaque → (même si on a scrollé ailleurs)
   useEffect(() => {
     if (!pendingCenterRef.current) return;
     if (centerTargetRef.current !== chunkIndex) return;
-
     const tryCenter = () => {
       if (!pendingCenterRef.current) return true;
       if (centerTargetRef.current !== chunkIndex) return true;
@@ -369,9 +600,7 @@ export default function LessonScreen() {
       }
       return false;
     };
-
     if (tryCenter()) return;
-
     const t1 = setTimeout(tryCenter, 32);
     const t2 = setTimeout(tryCenter, 120);
     const t3 = setTimeout(tryCenter, 280);
@@ -381,7 +610,6 @@ export default function LessonScreen() {
       clearTimeout(t3);
     };
   }, [chunkIndex]);
-
   useEffect(() => {
     if (typedLen >= currentChunk.length) return;
     const timer = setTimeout(() => {
@@ -389,7 +617,6 @@ export default function LessonScreen() {
     }, TYPE_MS);
     return () => clearTimeout(timer);
   }, [typedLen, currentChunk]);
-
   if (isError) {
     const locked = error instanceof ApiError && error.status === 403;
     return (
@@ -409,7 +636,6 @@ export default function LessonScreen() {
       </Screen>
     );
   }
-
   if (isLoading || !lesson) {
     return (
       <Screen>
@@ -417,7 +643,6 @@ export default function LessonScreen() {
       </Screen>
     );
   }
-
   const totalChunks = Math.max(chunks.length, 1);
   const safeIndex = Math.min(chunkIndex, totalChunks - 1);
   const isTyping = typedLen < currentChunk.length;
@@ -426,13 +651,47 @@ export default function LessonScreen() {
   const progress = isTyping
     ? (safeIndex + typedLen / Math.max(currentChunk.length, 1)) / totalChunks
     : (safeIndex + 1) / totalChunks;
-
   const topSpacer = Math.max(viewportH * 0.38, 72);
   const bottomSpacer = Math.max(viewportH * 0.45, 96);
   const readingDone = lesson.progress?.status === "COMPLETED";
   const showQuizCta = canFinish && readingDone && !!lesson.quizId;
 
+  function renderChunkContent(
+    chunk: string,
+    text: string,
+    index: number,
+    isCurrent: boolean,
+  ) {
+    const focused = focusedIndex === index;
+    const color = focused ? FOCUSED : MUTED;
+    const showIllustration =
+      primaryIllustration && chunkShowsIllustration(chunk);
+    return (
+      <>
+        {showIllustration ? (
+          <LessonInlineIllustration
+            uri={primaryIllustration.uri}
+            title={primaryIllustration.title}
+            legend={primaryIllustration.legend}
+          />
+        ) : null}
+        <Text className="text-base leading-7">
+          <MarkdownSpans
+            text={text}
+            color={color}
+            legendColors={legendColorMap.size > 0 ? legendColorMap : undefined}
+            dimmed={!focused}
+          />
+          {isCurrent && isTyping ? <BlinkingCursor /> : null}
+        </Text>
+      </>
+    );
+  }
+
   function onContinue() {
+    if (mascotEnabled) {
+      setMascotPose((pose) => nextMascotPose(pose));
+    }
     if (isTyping) {
       setTypedLen(currentChunk.length);
       return;
@@ -444,13 +703,11 @@ export default function LessonScreen() {
       setChunkIndex(next);
     }
   }
-
   function goToQuiz(lessonId: string) {
     if (navigatingRef.current) return;
     navigatingRef.current = true;
     router.replace(`/(app)/quiz/${lessonId}`);
   }
-
   function finishLesson() {
     if (complete.isPending || navigatingRef.current) return;
     setFinishError(null);
@@ -481,7 +738,6 @@ export default function LessonScreen() {
       },
     );
   }
-
   function onViewportLayout(e: LayoutChangeEvent) {
     const { height, width } = e.nativeEvent.layout;
     if (height > 0 && height !== viewportH) {
@@ -494,18 +750,15 @@ export default function LessonScreen() {
     }
     if (width > 0 && width !== viewportW) setViewportW(width);
   }
-
   function onScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
     scrollYRef.current = e.nativeEvent.contentOffset.y;
     updateFocusFromScroll();
   }
-
   function onChunkLayout(index: number, y: number, h: number) {
     chunkLayouts.current[index] = { y, h };
     flushCenterIfNeeded(index);
     updateFocusFromScroll();
   }
-
   return (
     <Screen>
       <View className="mb-3">
@@ -543,7 +796,6 @@ export default function LessonScreen() {
           </View>
         ) : null}
       </View>
-
       <View className="mb-4 flex-1 overflow-hidden" onLayout={onViewportLayout}>
         <ScrollView
           ref={scrollRef}
@@ -555,46 +807,54 @@ export default function LessonScreen() {
         >
           <View>
             <View style={{ height: topSpacer }} />
-
-            {chunks.slice(0, chunkIndex).map((chunk, i) => {
-              const focused = focusedIndex === i;
-              const color = focused ? FOCUSED : MUTED;
-              return (
-                <View
-                  key={`chunk-${i}`}
-                  className="mb-5"
-                  onLayout={(e) => {
-                    const { y, height } = e.nativeEvent.layout;
-                    onChunkLayout(i, y, height);
-                  }}
+            {mascotEnabled && mascotHooks.intro ? (
+              <View className="mb-6">
+                <MascotLineText line={mascotHooks.intro} color={FOCUSED} />
+              </View>
+            ) : null}
+            {chunks.slice(0, chunkIndex).map((chunk, i) => (
+              <Fragment key={`chunk-${i}`}>
+                <ChunkBlock
+                  index={i}
+                  chunkIndex={chunkIndex}
+                  onLayout={(y, h) => onChunkLayout(i, y, h)}
                 >
-                  <Text className="text-base leading-7">
-                    <MarkdownSpans text={chunk} color={color} />
-                  </Text>
-                </View>
-              );
-            })}
-
-            <View
-              className="mb-5"
-              onLayout={(e) => {
-                const { y, height } = e.nativeEvent.layout;
-                onChunkLayout(chunkIndex, y, height);
-              }}
+                  {renderChunkContent(chunk, chunk, i, false)}
+                </ChunkBlock>
+                {mascotEnabled
+                  ? (() => {
+                      const aside = getInterjectionAfterChunk(mascotHooks, i);
+                      return aside ? (
+                        <View className="mb-5">
+                          <MascotLineText line={aside} color={MUTED} />
+                        </View>
+                      ) : null;
+                    })()
+                  : null}
+              </Fragment>
+            ))}
+            <ChunkBlock
+              index={chunkIndex}
+              chunkIndex={chunkIndex}
+              onLayout={(y, h) => onChunkLayout(chunkIndex, y, h)}
             >
-              <Text className="text-base leading-7">
-                <MarkdownSpans
-                  text={currentDisplayed}
-                  color={focusedIndex === chunkIndex ? FOCUSED : MUTED}
-                />
-                {isTyping ? (
-                  <Text style={{ color: FOCUSED, fontWeight: "600" }}>|</Text>
-                ) : null}
-              </Text>
-            </View>
-
+              {renderChunkContent(
+                currentChunk,
+                currentDisplayed,
+                chunkIndex,
+                true,
+              )}
+            </ChunkBlock>
+            {canFinish && mascotEnabled && mascotHooks.outro ? (
+              <Animated.View entering={FadeIn.duration(400)} className="mb-4">
+                <MascotLineText line={mascotHooks.outro} color={FOCUSED} />
+              </Animated.View>
+            ) : null}
             {canFinish && !!lesson.sources.length && (
-              <View className="mt-4 rounded-2xl border border-border bg-surface p-4">
+              <Animated.View
+                entering={FadeIn.duration(400)}
+                className="mt-4 rounded-2xl border border-border bg-surface p-4"
+              >
                 <Text className="mb-2 text-sm font-medium text-muted">
                   Sources
                 </Text>
@@ -603,44 +863,41 @@ export default function LessonScreen() {
                     • {s}
                   </Text>
                 ))}
-              </View>
+              </Animated.View>
             )}
-
             <View style={{ height: bottomSpacer }} />
           </View>
         </ScrollView>
-
         <TopFade width={viewportW} />
       </View>
-
-      {!canFinish ? (
-        <Pressable
-          onPress={onContinue}
-          className="mb-2 items-center justify-center self-center rounded-full bg-accent px-8 py-4"
-          accessibilityRole="button"
-          accessibilityLabel={isTyping ? "Passer" : "Continuer"}
-        >
-          <Text className="text-2xl font-semibold text-background">→</Text>
-        </Pressable>
-      ) : showQuizCta ? (
-        <View className="mb-2">
-          <PrimaryButton
-            label="Continuer vers le quiz"
-            onPress={() => goToQuiz(lesson.id)}
-          />
-        </View>
-      ) : (
-        <View className="mb-2 gap-2">
-          {finishError ? (
-            <Text className="text-center text-sm text-red-400">{finishError}</Text>
-          ) : null}
-          <PrimaryButton
-            label={complete.isPending ? "…" : "J'ai compris"}
-            disabled={complete.isPending}
-            onPress={finishLesson}
-          />
-        </View>
-      )}
+      <View className="shrink-0">
+        {mascotEnabled ? (
+          <View className="mb-1" pointerEvents="none">
+            <GorillaAvatar pose={mascotPose} size="lg" />
+          </View>
+        ) : null}
+        {!canFinish ? (
+          <ContinueButton isTyping={isTyping} onPress={onContinue} />
+        ) : showQuizCta ? (
+          <View className="mb-2">
+            <PrimaryButton
+              label="Continuer vers le quiz"
+              onPress={() => goToQuiz(lesson.id)}
+            />
+          </View>
+        ) : (
+          <View className="mb-2 gap-2">
+            {finishError ? (
+              <Text className="text-center text-sm text-red-400">{finishError}</Text>
+            ) : null}
+            <PrimaryButton
+              label={complete.isPending ? "…" : "J'ai compris"}
+              disabled={complete.isPending}
+              onPress={finishLesson}
+            />
+          </View>
+        )}
+      </View>
     </Screen>
   );
 }

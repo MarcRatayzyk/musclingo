@@ -49,6 +49,7 @@ export class LessonsService {
       sources: lesson.sources,
       recommendedLevel: lesson.recommendedLevel,
       xpReward: lesson.xpReward,
+      order: lesson.order,
       category: {
         id: lesson.category.id,
         name: lesson.category.name,

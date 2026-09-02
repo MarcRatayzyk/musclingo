@@ -43,6 +43,7 @@ export type LessonDetail = {
   tags: string[];
   sources: string[];
   xpReward: number;
+  order: number;
   category: RecommendedLesson["category"];
   quizId: string | null;
   progress: { status: string; completedAt: string | null } | null;
@@ -52,20 +53,30 @@ export type QuizPayload = {
   id: string;
   lessonId: string;
   lessonTitle: string;
+  sessionId: string;
   xpReward: number;
   perfectBonusXp: number;
+  questionCount: number;
+  quizTimeSec: number;
+  wrongPenaltySec: number;
   questions: Array<{
     id: string;
-    type: string;
     prompt: string;
-    order: number;
-    payload?: {
-      imageUrl?: string;
-      color?: string;
-    } | null;
-    answers: Array<{ id: string; label: string; order: number }>;
+    choices: Array<{ id: string; label: string }>;
   }>;
+  answerKeys: Record<string, string>;
 };
+
+/** Compat API ancienne (`questionTimeSec`) et offline. */
+export function normalizeQuizPayload(
+  raw: QuizPayload & { questionTimeSec?: number },
+): QuizPayload {
+  return {
+    ...raw,
+    quizTimeSec: raw.quizTimeSec ?? raw.questionTimeSec ?? 60,
+    wrongPenaltySec: raw.wrongPenaltySec ?? 1,
+  };
+}
 
 export type OngoingPath = {
   category: {
@@ -156,9 +167,12 @@ export function useCompleteLesson() {
 export function useQuizByLesson(lessonId: string) {
   return useQuery({
     queryKey: ["quiz", lessonId],
-    queryFn: () => {
+    queryFn: async () => {
       analytics.capture(analytics.events.QUIZ_STARTED, { lessonId });
-      return apiFetch<QuizPayload>(`/quizzes/by-lesson/${lessonId}`);
+      const raw = await apiFetch<QuizPayload & { questionTimeSec?: number }>(
+        `/quizzes/by-lesson/${lessonId}`,
+      );
+      return normalizeQuizPayload(raw);
     },
     enabled: !!lessonId,
   });
@@ -169,23 +183,28 @@ export function useSubmitQuiz() {
   return useMutation({
     mutationFn: ({
       quizId,
+      sessionId,
       answers,
+      totalTimeSpentSec,
     }: {
       quizId: string;
+      sessionId: string;
       answers: Array<{
         questionId: string;
         selectedAnswerIds: string[];
-        textAnswer?: string;
+        timeSpentSec: number;
       }>;
+      totalTimeSpentSec: number;
     }) =>
       apiFetch(`/quizzes/${quizId}/submit`, {
         method: "POST",
-        body: JSON.stringify({ answers }),
+        body: JSON.stringify({ sessionId, answers, totalTimeSpentSec }),
       }) as Promise<{
         score: number;
         perfect: boolean;
         passed: boolean;
-        passThreshold: number;
+        stars: 0 | 1 | 2 | 3;
+        timeSpentSec: number;
         nextLessonId: string | null;
         categoryId: string;
         xpEarned: number;
@@ -196,6 +215,7 @@ export function useSubmitQuiz() {
           isCorrect: boolean;
           explanation: string;
           correctAnswerIds: string[];
+          timeSpentSec: number;
         }>;
         badges: Array<{ code: string; name: string }>;
         streak: { current: number; longest: number };
@@ -204,6 +224,7 @@ export function useSubmitQuiz() {
       analytics.capture(analytics.events.QUIZ_COMPLETED, {
         quizId: vars.quizId,
         score: data.score,
+        stars: data.stars,
       });
       analytics.capture(
         data.passed

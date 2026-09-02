@@ -1,5 +1,40 @@
+/** Quiz de fin de leçon chronométré */
+export const LESSON_QUIZ_QUESTION_COUNT = 10;
+/** Durée totale du quiz (10 questions). */
+export const LESSON_QUIZ_TOTAL_TIME_SEC = 60;
+/** @deprecated Alias historique — préférer LESSON_QUIZ_TOTAL_TIME_SEC */
+export const LESSON_QUIZ_QUESTION_TIME_SEC = LESSON_QUIZ_TOTAL_TIME_SEC;
+export const LESSON_QUIZ_WRONG_PENALTY_SEC = 1;
+export const LESSON_QUIZ_STAR_THRESHOLDS_SEC = {
+  three: 45,
+  two: 52.5,
+  one: 60,
+} as const;
+export const LESSON_QUIZ_SESSION_TTL_MIN = 30;
+
 /** Minimum quiz score (0–1) required to unlock the next lesson on a category path. */
 export const QUIZ_PASS_THRESHOLD = 0.7;
+
+/** Étoiles globales selon le temps total du quiz (en secondes). */
+export function computeLessonQuizStars(totalTimeSec: number): 0 | 1 | 2 | 3 {
+  if (totalTimeSec <= 0) return 0;
+  if (totalTimeSec <= LESSON_QUIZ_STAR_THRESHOLDS_SEC.three) return 3;
+  if (totalTimeSec <= LESSON_QUIZ_STAR_THRESHOLDS_SEC.two) return 2;
+  if (totalTimeSec <= LESSON_QUIZ_STAR_THRESHOLDS_SEC.one) return 1;
+  return 0;
+}
+
+export function isLessonQuizPassed(stars: number): boolean {
+  return stars >= 1;
+}
+
+/** XP proportionnel aux étoiles (1★=60 %, 2★=80 %, 3★=100 %). */
+export function getLessonQuizXpMultiplier(stars: number): number {
+  if (stars >= 3) return 1;
+  if (stars === 2) return 0.8;
+  if (stars === 1) return 0.6;
+  return 0;
+}
 
 /**
  * Score de passage en tenant compte du nombre de questions.

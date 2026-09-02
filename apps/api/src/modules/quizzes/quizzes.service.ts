@@ -4,29 +4,20 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import {
-  QUIZ_PASS_THRESHOLD,
+  LESSON_QUIZ_QUESTION_COUNT,
+  LESSON_QUIZ_TOTAL_TIME_SEC,
+  LESSON_QUIZ_WRONG_PENALTY_SEC,
   SubmitQuizInput,
   UpsertQuizInput,
-  isQuizScorePassing,
-  isTextAnswerCorrect,
+  computeLessonQuizStars,
+  getLessonQuizXpMultiplier,
+  isLessonQuizPassed,
 } from "@muscle-mind/types";
 import { Prisma, ProgressStatus } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { PathService } from "../categories/path.service";
 import { GamificationService } from "../gamification/gamification.service";
-
-function textPayloadAliases(payload: unknown): string[] {
-  if (!payload || typeof payload !== "object") return [];
-  const aliases = (payload as { aliases?: unknown }).aliases;
-  if (!Array.isArray(aliases)) return [];
-  return aliases.filter((a): a is string => typeof a === "string");
-}
-
-function clientSafePayload(payload: unknown): unknown {
-  if (!payload || typeof payload !== "object") return payload ?? null;
-  const { aliases: _aliases, ...rest } = payload as Record<string, unknown>;
-  return rest;
-}
+import { QuestionPoolService } from "../questions/question-pool.service";
 
 @Injectable()
 export class QuizzesService {
@@ -34,6 +25,7 @@ export class QuizzesService {
     private readonly prisma: PrismaService,
     private readonly gamification: GamificationService,
     private readonly path: PathService,
+    private readonly questionPool: QuestionPoolService,
   ) {}
 
   async getByLessonId(lessonId: string, userId: string) {
@@ -42,19 +34,14 @@ export class QuizzesService {
     const quiz = await this.prisma.quiz.findUnique({
       where: { lessonId },
       include: {
-        lesson: { select: { id: true, title: true, status: true } },
-        questions: {
-          orderBy: { order: "asc" },
-          include: {
-            answers: {
-              orderBy: { order: "asc" },
-              select: {
-                id: true,
-                label: true,
-                order: true,
-                matchKey: true,
-              },
-            },
+        lesson: {
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            categoryId: true,
+            checkpointKey: true,
+            tags: true,
           },
         },
       },
@@ -64,40 +51,59 @@ export class QuizzesService {
       throw new NotFoundException("Quiz not found");
     }
 
+    const draw = await this.questionPool.drawForQuiz(
+      quiz.id,
+      quiz.lesson.categoryId,
+      userId,
+      {
+        checkpointKey: quiz.lesson.checkpointKey,
+        themeTags: quiz.lesson.tags,
+      },
+    );
+
     return {
       id: quiz.id,
       lessonId: quiz.lessonId,
       lessonTitle: quiz.lesson.title,
+      sessionId: draw.sessionId,
       xpReward: quiz.xpReward,
       perfectBonusXp: quiz.perfectBonusXp,
-      passThreshold: QUIZ_PASS_THRESHOLD,
-      questions: quiz.questions.map((q) => ({
-        id: q.id,
-        type: q.type,
-        prompt: q.prompt,
-        order: q.order,
-        payload: clientSafePayload(q.payload),
-        // TEXT : ne pas exposer les bonnes réponses au client
-        answers:
-          q.type === "TEXT"
-            ? []
-            : q.answers.map((a) => ({
-                id: a.id,
-                label: a.label,
-                order: a.order,
-                matchKey: a.matchKey,
-              })),
-      })),
+      questionCount: LESSON_QUIZ_QUESTION_COUNT,
+      quizTimeSec: LESSON_QUIZ_TOTAL_TIME_SEC,
+      wrongPenaltySec: LESSON_QUIZ_WRONG_PENALTY_SEC,
+      questions: draw.questions,
+      answerKeys: draw.answerKeys,
     };
+  }
+
+  async checkAnswer(
+    quizId: string,
+    userId: string,
+    input: {
+      sessionId: string;
+      questionId: string;
+      selectedAnswerIds: string[];
+    },
+  ) {
+    const sessionQuestions = await this.questionPool.resolveSessionQuestions(
+      input.sessionId,
+      userId,
+      quizId,
+    );
+    const question = sessionQuestions.find((q) => q.id === input.questionId);
+    if (!question) {
+      throw new BadRequestException("Invalid or expired quiz session");
+    }
+    const isCorrect =
+      input.selectedAnswerIds.length === 1 &&
+      input.selectedAnswerIds[0] === question.correctChoiceId;
+    return { correct: isCorrect };
   }
 
   async submit(quizId: string, userId: string, input: SubmitQuizInput) {
     const quiz = await this.prisma.quiz.findUnique({
       where: { id: quizId },
-      include: {
-        lesson: true,
-        questions: { include: { answers: true }, orderBy: { order: "asc" } },
-      },
+      include: { lesson: true },
     });
 
     if (!quiz || quiz.lesson.status !== "PUBLISHED") {
@@ -106,72 +112,44 @@ export class QuizzesService {
 
     await this.path.assertLessonUnlocked(quiz.lessonId, userId);
 
-    if (input.answers.length !== quiz.questions.length) {
-      throw new BadRequestException("All questions must be answered");
-    }
-
-    const answerMap = new Map(
-      input.answers.map((a) => [a.questionId, a]),
+    const sessionQuestions = await this.questionPool.resolveSessionQuestions(
+      input.sessionId,
+      userId,
+      quizId,
     );
 
+    if (sessionQuestions.length !== LESSON_QUIZ_QUESTION_COUNT) {
+      throw new BadRequestException("Invalid or expired quiz session");
+    }
+
+    const expectedIds = sessionQuestions.map((q) => q.id);
+    const submittedIds = input.answers.map((a) => a.questionId);
+    if (
+      submittedIds.length !== expectedIds.length ||
+      !expectedIds.every((id, i) => submittedIds[i] === id)
+    ) {
+      throw new BadRequestException("Answer set does not match session");
+    }
+
+    const answerMap = new Map(input.answers.map((a) => [a.questionId, a]));
+    const sumTime = input.answers.reduce((s, a) => s + a.timeSpentSec, 0);
+    if (Math.abs(sumTime - input.totalTimeSpentSec) > 2) {
+      throw new BadRequestException("Inconsistent timing data");
+    }
+
     let correctCount = 0;
-    const feedback = quiz.questions.map((question) => {
+    const feedback = sessionQuestions.map((question) => {
       const submission = answerMap.get(question.id);
       if (!submission) {
         throw new BadRequestException(`Missing answer for ${question.id}`);
       }
-
-      const correctIds = question.answers
-        .filter((a) => a.isCorrect)
-        .map((a) => a.id)
-        .sort();
-
-      let isCorrect = false;
-
-      if (question.type === "SINGLE" || question.type === "TRUE_FALSE") {
-        isCorrect =
-          submission.selectedAnswerIds.length === 1 &&
-          correctIds.length === 1 &&
-          submission.selectedAnswerIds[0] === correctIds[0];
-      } else if (question.type === "MULTI") {
-        const selected = [...submission.selectedAnswerIds].sort();
-        isCorrect =
-          selected.length === correctIds.length &&
-          selected.every((id, i) => id === correctIds[i]);
-      } else if (question.type === "ORDER") {
-        const ordered = submission.orderedAnswerIds ?? [];
-        const expected = [...question.answers]
-          .sort((a, b) => a.order - b.order)
-          .map((a) => a.id);
-        isCorrect =
-          ordered.length === expected.length &&
-          ordered.every((id, i) => id === expected[i]);
-      } else if (question.type === "MATCH") {
-        const matches = submission.matches ?? [];
-        const expectedPairs = question.answers
-          .filter((a) => a.matchKey)
-          .map((a) => ({ leftId: a.id, key: a.matchKey! }));
-        isCorrect =
-          expectedPairs.length > 0 &&
-          expectedPairs.every((pair) =>
-            matches.some(
-              (m) =>
-                m.leftId === pair.leftId &&
-                question.answers.some(
-                  (a) => a.id === m.rightId && a.matchKey === pair.key,
-                ),
-            ),
-          );
-      } else if (question.type === "TEXT") {
-        const correctLabel =
-          question.answers.find((a) => a.isCorrect)?.label ?? "";
-        const aliases = textPayloadAliases(question.payload);
-        isCorrect = isTextAnswerCorrect(
-          submission.textAnswer ?? "",
-          correctLabel,
-          aliases,
-        );
+      if (submission.timeSpentSec > LESSON_QUIZ_TOTAL_TIME_SEC) {
+        throw new BadRequestException("Question time exceeded limit");
       }
+
+      const isCorrect =
+        submission.selectedAnswerIds.length === 1 &&
+        submission.selectedAnswerIds[0] === question.correctChoiceId;
 
       if (isCorrect) correctCount += 1;
 
@@ -179,16 +157,23 @@ export class QuizzesService {
         questionId: question.id,
         isCorrect,
         explanation: question.explanation,
-        correctAnswerIds: correctIds,
+        correctAnswerIds: [question.correctChoiceId],
+        timeSpentSec: submission.timeSpentSec,
       };
     });
 
-    const score = correctCount / quiz.questions.length;
-    const perfect = score === 1;
-    const passed = isQuizScorePassing(score, quiz.questions.length);
-    const baseXp = Math.round(quiz.xpReward * score);
+    const allCorrect = correctCount === sessionQuestions.length;
+    const stars = allCorrect
+      ? computeLessonQuizStars(input.totalTimeSpentSec)
+      : 0;
+    const passed = allCorrect && isLessonQuizPassed(stars);
+    const score = correctCount / sessionQuestions.length;
+    const perfect = stars === 3;
+
+    const xpMultiplier = getLessonQuizXpMultiplier(stars);
+    const baseXp = Math.round(quiz.xpReward * xpMultiplier);
     const bonus = perfect ? quiz.perfectBonusXp : 0;
-    const xpEarned = baseXp + bonus;
+    const xpEarned = passed ? baseXp + bonus : 0;
 
     await this.prisma.quizResult.create({
       data: {
@@ -197,11 +182,18 @@ export class QuizzesService {
         score,
         perfect,
         xpEarned,
+        stars,
+        timeSpentSec: input.totalTimeSpentSec,
+        passed,
+        questionIds: expectedIds,
         answers: input.answers,
       },
     });
 
-    // Garantit la cohérence lecture/quiz : un quiz soumis marque la leçon lue.
+    await this.prisma.quizSession.deleteMany({
+      where: { id: input.sessionId, userId },
+    });
+
     const existingProgress = await this.prisma.lessonProgress.findUnique({
       where: {
         userId_lessonId: { userId, lessonId: quiz.lessonId },
@@ -223,13 +215,26 @@ export class QuizzesService {
       },
     });
 
-    const xp = await this.gamification.awardXp({
-      userId,
-      amount: xpEarned,
-      reason: perfect ? "quiz_perfect" : "quiz_complete",
-      refType: "quiz",
-      refId: quizId,
-    });
+    let xpTotal = 0;
+    let level = 1;
+    if (xpEarned > 0) {
+      const xp = await this.gamification.awardXp({
+        userId,
+        amount: xpEarned,
+        reason: perfect ? "quiz_perfect" : "quiz_complete",
+        refType: "quiz",
+        refId: quizId,
+      });
+      xpTotal = xp.xpTotal;
+      level = xp.level;
+    } else {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { xpTotal: true, level: true },
+      });
+      xpTotal = user?.xpTotal ?? 0;
+      level = user?.level ?? 1;
+    }
 
     const streak = await this.gamification.touchStreak(userId);
     const badges = [];
@@ -252,14 +257,15 @@ export class QuizzesService {
       score,
       perfect,
       passed,
-      passThreshold: QUIZ_PASS_THRESHOLD,
+      stars,
+      timeSpentSec: input.totalTimeSpentSec,
       nextLessonId,
       categoryId: quiz.lesson.categoryId,
       correctCount,
-      totalQuestions: quiz.questions.length,
+      totalQuestions: sessionQuestions.length,
       xpEarned,
-      xpTotal: xp.xpTotal,
-      level: xp.level,
+      xpTotal,
+      level,
       feedback,
       streak: { current: streak.current, longest: streak.longest },
       badges,

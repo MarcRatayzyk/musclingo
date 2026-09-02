@@ -8,10 +8,24 @@ import { LessonForm } from "../new/page";
 
 type Category = { id: string; name: string };
 
-type AnswerDraft = { label: string; isCorrect: boolean };
+type AnswerDraft = {
+  label: string;
+  isCorrect: boolean;
+  order?: number;
+  matchKey?: string;
+};
+
+type QuestionTypeDraft =
+  | "SINGLE"
+  | "TRUE_FALSE"
+  | "MULTI"
+  | "ORDER"
+  | "MATCH"
+  | "TEXT"
+  | "HOTSPOT";
 
 type QuestionDraft = {
-  type: "SINGLE" | "TRUE_FALSE";
+  type: QuestionTypeDraft;
   prompt: string;
   explanation: string;
   answers: AnswerDraft[];
@@ -82,7 +96,12 @@ function toDraft(q: {
   type: string;
   prompt: string;
   explanation: string;
-  answers: Array<{ label: string; isCorrect: boolean; order: number }>;
+  answers: Array<{
+    label: string;
+    isCorrect: boolean;
+    order: number;
+    matchKey?: string | null;
+  }>;
 }): QuestionDraft {
   if (q.type === "TRUE_FALSE") {
     const isTrue = q.answers.some((a) => a.label === "Vrai" && a.isCorrect);
@@ -99,7 +118,30 @@ function toDraft(q: {
 
   const answers = [...q.answers]
     .sort((a, b) => a.order - b.order)
-    .map((a) => ({ label: a.label, isCorrect: a.isCorrect }));
+    .map((a) => ({
+      label: a.label,
+      isCorrect: a.isCorrect,
+      order: a.order,
+      matchKey: a.matchKey ?? undefined,
+    }));
+
+  if (q.type === "MULTI" || q.type === "ORDER" || q.type === "MATCH") {
+    return {
+      type: q.type,
+      prompt: q.prompt,
+      explanation: q.explanation,
+      answers,
+    };
+  }
+
+  if (q.type === "TEXT" || q.type === "HOTSPOT") {
+    return {
+      type: q.type,
+      prompt: q.prompt,
+      explanation: q.explanation,
+      answers: answers.length ? answers : [{ label: "", isCorrect: true }],
+    };
+  }
 
   while (answers.length < 2) {
     answers.push({ label: "", isCorrect: false });
@@ -224,7 +266,7 @@ export default function EditLessonPage() {
     setQuestions((prev) => prev.map((q, i) => (i === index ? next : q)));
   }
 
-  function setQuestionType(index: number, type: "SINGLE" | "TRUE_FALSE") {
+  function setQuestionType(index: number, type: QuestionTypeDraft) {
     const current = questions[index];
     if (!current || current.type === type) return;
     if (type === "TRUE_FALSE") {
@@ -235,10 +277,51 @@ export default function EditLessonPage() {
       });
       return;
     }
+    if (type === "MULTI") {
+      updateQuestion(index, {
+        type: "MULTI",
+        prompt: current.prompt,
+        explanation: current.explanation,
+        answers: [
+          { label: "", isCorrect: true },
+          { label: "", isCorrect: true },
+          { label: "", isCorrect: false },
+        ],
+      });
+      return;
+    }
+    if (type === "ORDER") {
+      updateQuestion(index, {
+        type: "ORDER",
+        prompt: current.prompt,
+        explanation: current.explanation,
+        answers: [
+          { label: "Étape 1", isCorrect: false, order: 0 },
+          { label: "Étape 2", isCorrect: false, order: 1 },
+          { label: "Étape 3", isCorrect: false, order: 2 },
+        ],
+      });
+      return;
+    }
+    if (type === "MATCH") {
+      updateQuestion(index, {
+        type: "MATCH",
+        prompt: current.prompt,
+        explanation: current.explanation,
+        answers: [
+          { label: "Terme A", isCorrect: false, matchKey: "pair-0" },
+          { label: "Définition A", isCorrect: false, matchKey: "pair-0" },
+          { label: "Terme B", isCorrect: false, matchKey: "pair-1" },
+          { label: "Définition B", isCorrect: false, matchKey: "pair-1" },
+        ],
+      });
+      return;
+    }
     updateQuestion(index, {
       ...emptySingle(),
       prompt: current.prompt,
       explanation: current.explanation,
+      type,
     });
   }
 
@@ -261,7 +344,8 @@ export default function EditLessonPage() {
             answers: q.answers.map((a, i) => ({
               label: a.label,
               isCorrect: a.isCorrect,
-              order: i,
+              order: a.order ?? i,
+              matchKey: a.matchKey ?? null,
             })),
           })),
         }),
@@ -370,12 +454,17 @@ export default function EditLessonPage() {
                     onChange={(e) =>
                       setQuestionType(
                         qi,
-                        e.target.value as "SINGLE" | "TRUE_FALSE",
+                        e.target.value as QuestionTypeDraft,
                       )
                     }
                   >
                     <option value="SINGLE">QCM</option>
                     <option value="TRUE_FALSE">Vrai / Faux</option>
+                    <option value="MULTI">Multi-sélection</option>
+                    <option value="ORDER">Ordre</option>
+                    <option value="MATCH">Association</option>
+                    <option value="TEXT">Texte libre</option>
+                    <option value="HOTSPOT">Hotspot</option>
                   </select>
                   <button
                     type="button"
@@ -426,6 +515,84 @@ export default function EditLessonPage() {
                   />
                   La bonne réponse est « Vrai »
                 </label>
+              ) : q.type === "MULTI" ? (
+                <div className="space-y-2">
+                  {q.answers.map((a, ai) => (
+                    <div key={ai} className="flex items-center gap-2">
+                      <input
+                        className="flex-1 rounded-xl border border-border bg-elevated px-4 py-2"
+                        value={a.label}
+                        onChange={(e) => {
+                          const next = [...q.answers];
+                          next[ai] = { ...a, label: e.target.value };
+                          updateQuestion(qi, { ...q, answers: next });
+                        }}
+                      />
+                      <label className="flex shrink-0 items-center gap-1 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={a.isCorrect}
+                          onChange={(e) => {
+                            const next = [...q.answers];
+                            next[ai] = { ...a, isCorrect: e.target.checked };
+                            updateQuestion(qi, { ...q, answers: next });
+                          }}
+                        />
+                        Correct
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              ) : q.type === "ORDER" ? (
+                <div className="space-y-2">
+                  {q.answers.map((a, ai) => (
+                    <div key={ai} className="flex items-center gap-2">
+                      <span className="w-8 text-sm text-muted">#{ai + 1}</span>
+                      <input
+                        className="flex-1 rounded-xl border border-border bg-elevated px-4 py-2"
+                        value={a.label}
+                        onChange={(e) => {
+                          const next = [...q.answers];
+                          next[ai] = {
+                            ...a,
+                            label: e.target.value,
+                            order: ai,
+                          };
+                          updateQuestion(qi, { ...q, answers: next });
+                        }}
+                      />
+                    </div>
+                  ))}
+                  <p className="text-xs text-muted">
+                    L&apos;ordre affiché ici est l&apos;ordre correct.
+                  </p>
+                </div>
+              ) : q.type === "MATCH" ? (
+                <div className="space-y-2">
+                  {q.answers.map((a, ai) => (
+                    <div key={ai} className="flex items-center gap-2">
+                      <input
+                        className="flex-1 rounded-xl border border-border bg-elevated px-4 py-2"
+                        value={a.label}
+                        onChange={(e) => {
+                          const next = [...q.answers];
+                          next[ai] = { ...a, label: e.target.value };
+                          updateQuestion(qi, { ...q, answers: next });
+                        }}
+                      />
+                      <input
+                        className="w-24 rounded-xl border border-border bg-elevated px-2 py-2 text-sm"
+                        value={a.matchKey ?? ""}
+                        placeholder="pair-0"
+                        onChange={(e) => {
+                          const next = [...q.answers];
+                          next[ai] = { ...a, matchKey: e.target.value };
+                          updateQuestion(qi, { ...q, answers: next });
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
               ) : (
                 <div className="space-y-2">
                   {q.answers.map((a, ai) => (

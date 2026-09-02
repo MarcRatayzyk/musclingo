@@ -1,5 +1,95 @@
 import { qcm, tf } from "../anatomie-quiz-helpers";
-import { tagged, type MiniGameQuestionSeed } from "./types";
+import { tagged, themed, type MiniGameQuestionSeed } from "./types";
+
+/** Quiz fin de leçon — thème os du membre supérieur (bras / avant-bras). */
+const OS_BRAS = themed("os", ["humerus", "avant-bras", "radius", "ulna", "coude"], [
+  qcm(
+    "Quels os forment l'avant-bras ?",
+    "Radius et ulna",
+    ["Humérus et fémur", "Radius et fémur", "Clavicule et sternum"],
+    "Le couple radius/ulna compose l'avant-bras.",
+  ),
+  qcm(
+    "L'humérus est l'os unique du…",
+    "Bras (entre épaule et coude)",
+    ["Avant-bras", "Main", "Bassin"],
+    "L'humérus va de l'épaule au coude.",
+  ),
+  qcm(
+    "Le radius se situate côté…",
+    "Pouce (latéral)",
+    ["Petit doigt uniquement", "Genou", "Sternum"],
+    "Le radius est latéral, côté pouce.",
+  ),
+  qcm(
+    "L'ulna (cubitus) porte surtout l'articulation du…",
+    "Coude",
+    ["Genou", "Cheville", "Hanche"],
+    "L'ulna forme la charnière du coude avec l'humérus.",
+  ),
+  tf(
+    "La supination oriente la paume vers le haut.",
+    true,
+    "C'est la rotation de l'avant-bras qui retourne la paume.",
+  ),
+  tf(
+    "L'humérus s'articule avec l'omoplate au niveau de l'épaule.",
+    true,
+    "Articulation glénohumérale.",
+  ),
+  qcm(
+    "La pronation oriente la paume…",
+    "Vers le bas",
+    ["Vers le haut", "Vers l'arrière", "Vers l'extérieur de la hanche"],
+    "Pronation = paume vers le sol.",
+  ),
+  qcm(
+    "Les épicondyles de l'humérus se trouvent…",
+    "Près du coude",
+    ["À l'épaule", "Au poignet", "Sur le bassin"],
+    "Point d'ancrage de muscles du coude et de l'avant-bras.",
+  ),
+  qcm(
+    "En curl biceps, l'articulation principale mobilisée est le…",
+    "Coude (flexion)",
+    ["Genou", "Cheville", "Hanche seule"],
+    "Le biceps fléchit surtout le coude.",
+  ),
+  tf(
+    "Le radius tourne autour de l'ulna lors de la prono-supination.",
+    true,
+    "Mécanisme du pivot radio-ulnaire.",
+  ),
+  qcm(
+    "L'humérus s'articule en bas avec…",
+    "Radius et ulna (coude)",
+    ["Le fémur", "Le tibia", "Le sternum"],
+    "Trois os au niveau du coude.",
+  ),
+  qcm(
+    "Tenir une barre en prise supination signifie paume…",
+    "Vers le haut / vers toi",
+    ["Vers le bas", "Vers l'extérieur latéralement", "Vers le plafond dos au mur"],
+    "Supination = paume vers le haut.",
+  ),
+  tf(
+    "L'avant-bras comprend deux os : radius et ulna.",
+    true,
+    "Contrairement au bras (humérus seul).",
+  ),
+  qcm(
+    "Une douleur au coude après curls peut venir d'une surcharge…",
+    "Des tendons du coude / avant-bras",
+    ["Du fémur", "Du sacrum", "De la rotule uniquement"],
+    "Épicondylite fréquente sur flexions répétées.",
+  ),
+  qcm(
+    "Le segment osseux entre l'épaule et le coude s'appelle le…",
+    "Bras (humérus)",
+    ["Avant-bras", "Tronc", "Crâne"],
+    "Bras = humérus ; avant-bras = radius + ulna.",
+  ),
+]);
 
 /** Insertions et origines musculaires. */
 const INSERTIONS = tagged("muscles-bas", [
@@ -259,6 +349,7 @@ const VRAI_FAUX = tagged("tissus", [
 ]);
 
 export const ANATOMIE_MINI_GAME_QUESTIONS: MiniGameQuestionSeed[] = [
+  ...OS_BRAS,
   ...INSERTIONS,
   ...INSERTIONS_HAUT,
   ...ACTIONS,

@@ -5,6 +5,11 @@ import {
   fillBlank,
   tf,
   quiz6,
+  quiz10,
+  multi,
+  order,
+  match,
+  hotspotFromIllustration,
   legendTextQuestions,
 } from "./anatomie-quiz-helpers";
 
@@ -95,7 +100,7 @@ Connaître **humérus / radius / ulna** aide à comprendre pourquoi la douleur a
     tags: ["humerus", "avant-bras"],
     illustrationUrl: "/uploads/bras-osseux.png",
     ...CP.os,
-    questions: quiz6(
+    questions: quiz10(
       qcm(
         "Quels os forment l'avant-bras ?",
         "Radius et ulna",
@@ -130,6 +135,27 @@ Connaître **humérus / radius / ulna** aide à comprendre pourquoi la douleur a
         true,
         "Vrai : c'est le mécanisme du pivot radio-ulnaire.",
       ),
+      multi(
+        "Quels os ou paires osseuses appartiennent au membre supérieur ? (plusieurs réponses)",
+        ["Humérus", "Radius", "Ulna"],
+        ["Fémur", "Tibia", "Patella"],
+        "Humérus, radius et ulna forment la base osseuse du bras et avant-bras.",
+      ),
+      order(
+        "Remets dans l'ordre la chaîne osseuse de l'épaule au poignet :",
+        ["Humérus (bras)", "Radius (avant-bras latéral)", "Ulna (avant-bras médial)"],
+        "De l'épaule au poignet : humérus puis radius et ulna.",
+      ),
+      match(
+        "Associe chaque os à sa description :",
+        [
+          ["Humérus", "Os unique du bras"],
+          ["Radius", "Os latéral de l'avant-bras, côté pouce"],
+          ["Ulna", "Os médial, pivot du coude"],
+        ],
+        "Trois structures clés pour lire curls et prono-supination.",
+      ),
+      hotspotFromIllustration("/uploads/bras-osseux.png"),
     ),
   },
   {
@@ -377,21 +403,67 @@ Plus à l'intérieur, le **pronateur** aide à tourner la paume vers le bas. Uti
     tags: ["bras", "biceps", "triceps", "avant-bras"],
     illustrationUrl: "/uploads/bras-muscles.png",
     ...CP.musclesHaut,
-    questions: [
-      ...legendTextQuestions("/uploads/bras-triceps.png"),
-      ...legendTextQuestions("/uploads/bras-muscles.png"),
+    questions: quiz10(
+      qcm(
+        "Quel muscle forme surtout le galbe avant du bras ?",
+        "Le biceps",
+        ["Le triceps seul", "Le deltoïde", "Le grand dorsal"],
+        "Le biceps est le muscle visible en flexion avant.",
+      ),
       qcm(
         "Quel muscle apporte surtout le volume derrière le bras ?",
         "Le triceps",
         ["Le biceps seul", "Le deltoïde moyen", "Le transverse"],
         "Le triceps forme souvent la majeure partie du volume du bras.",
       ),
+      qcm(
+        "La prise marteau sollicite surtout…",
+        "Le brachial et le brachio-radial",
+        ["Le triceps seul", "Le grand pectoral", "Le quadriceps"],
+        "Le marteau met l'avant-bras et le brachial en avant.",
+      ),
+      fillBlank(
+        "Les ___ tendent le coude et remplissent l'arrière du bras.",
+        "triceps",
+        ["biceps", "deltoïdes", "pectoraux"],
+        "Extensions et dips ciblent surtout le triceps.",
+      ),
       tf(
         "Les dips sollicitent fortement le triceps.",
         true,
         "Vrai : extension du coude sous charge = travail majeur du triceps.",
       ),
-    ],
+      tf(
+        "Le biceps est le seul muscle utile pour le volume du bras.",
+        false,
+        "Faux : triceps et avant-bras contribuent aussi au volume.",
+      ),
+      multi(
+        "Quels muscles participent au volume du bras ? (plusieurs réponses)",
+        ["Biceps", "Triceps", "Brachio-radial"],
+        ["Grand droit", "Quadriceps", "Soleus"],
+        "Un bras complet = avant, arrière et avant-bras.",
+      ),
+      order(
+        "Remets dans l'ordre la chaîne d'analyse d'un curl :",
+        [
+          "Activation du biceps",
+          "Flexion du coude",
+          "Supination de l'avant-bras (curl classique)",
+        ],
+        "Le curl combine flexion et parfois supination.",
+      ),
+      match(
+        "Associe chaque exercice à sa cible principale :",
+        [
+          ["Curl paume haut", "Biceps"],
+          ["Curl marteau", "Brachial / brachio-radial"],
+          ["Dips", "Triceps"],
+        ],
+        "Chaque variante de curl ou d'extension change le recrutement.",
+      ),
+      hotspotFromIllustration("/uploads/bras-muscles.png"),
+    ),
   },
   {
     title: "Pectoraux et épaules",
@@ -428,8 +500,7 @@ Le **dentelé antérieur** couvre le côté du thorax : faisceaux depuis les pre
     tags: ["pectoraux", "epaules", "deltoide"],
     illustrationUrl: "/uploads/pectoraux-epaules.png",
     ...CP.musclesHaut,
-    questions: [
-      ...legendTextQuestions("/uploads/pectoraux-epaules.png"),
+    questions: quiz10(
       qcm(
         "Le deltoïde possède combien de chefs ?",
         "Trois",
@@ -442,12 +513,54 @@ Le **dentelé antérieur** couvre le côté du thorax : faisceaux depuis les pre
         ["Le fémur", "Le tibia", "Le radius seul"],
         "Le grand pec tire l'humérus vers le torse.",
       ),
+      qcm(
+        "Le dentelé antérieur stabilise surtout…",
+        "L'omoplate",
+        ["Le fémur", "Le radius", "Le sternum seul"],
+        "Il avance et stabilise l'omoplate en poussée overhead.",
+      ),
+      fillBlank(
+        "Le ___ est le principal muscle de poussée horizontale du torse.",
+        "grand pectoral",
+        ["deltoïde postérieur", "biceps", "triceps seul"],
+        "Développé couché et écartés ciblent surtout le grand pec.",
+      ),
       tf(
         "Le dentelé antérieur aide à stabiliser l'omoplate.",
         true,
         "Vrai : il tire le bord interne de l'omoplate et stabilise l'épaule.",
       ),
-    ],
+      tf(
+        "Le deltoïde ne possède qu'un seul faisceau.",
+        false,
+        "Faux : antérieur, moyen et postérieur.",
+      ),
+      multi(
+        "Quels muscles participent à une poussée overhead ? (plusieurs réponses)",
+        ["Deltoïde", "Grand pectoral", "Dentelé antérieur"],
+        ["Quadriceps", "Gastrocnémien", "Soleus"],
+        "Épaule, pec et stabilité scapulaire travaillent ensemble.",
+      ),
+      order(
+        "Remets dans l'ordre la logique d'un développé couché :",
+        [
+          "Omoplates stabilisées",
+          "Barre descend contrôlée",
+          "Grand pectoral et deltoïde poussent",
+        ],
+        "Stabilité scapulaire puis mouvement de poussée.",
+      ),
+      match(
+        "Associe chaque muscle à son rôle principal :",
+        [
+          ["Grand pectoral", "Poussée horizontale du bras"],
+          ["Deltoïde", "Élévation et orientation du bras"],
+          ["Dentelé antérieur", "Stabilisation de l'omoplate"],
+        ],
+        "Pecs, épaules et scapula forment la poussée du haut du corps.",
+      ),
+      hotspotFromIllustration("/uploads/pectoraux-epaules.png"),
+    ),
   },
   {
     title: "Tronc et abdominaux",

@@ -17,6 +17,7 @@ export type PathLessonNode = {
   state: PathNodeState;
   hasQuiz: boolean;
   bestScore: number | null;
+  bestStars: 0 | 1 | 2 | 3 | null;
   passed: boolean;
   readingCompleted: boolean;
 };

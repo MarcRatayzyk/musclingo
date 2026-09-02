@@ -1,9 +1,12 @@
 import { Redirect, Tabs } from "expo-router";
 import { Text } from "react-native";
 import { tokenStorage } from "@/shared/storage/mmkv";
+import { useSessionStore } from "@/shared/store/session";
 
 export default function AppLayout() {
-  if (!tokenStorage.getAccess()) {
+  const isAuthenticated = useSessionStore((s) => s.isAuthenticated);
+
+  if (!isAuthenticated || !tokenStorage.getAccess()) {
     return <Redirect href="/(auth)/login" />;
   }
 

@@ -20,6 +20,10 @@ export type TextQuestionPayload = {
   aliases?: string[];
 };
 
+export type MatchQuestionPayload = {
+  imageUrl: string;
+};
+
 export type HotspotRegionPayload = {
   order: number;
   x: number;
@@ -45,7 +49,7 @@ export type SeedQuestion = {
   prompt: string;
   explanation: string;
   answers: SeedQuestionAnswer[];
-  payload?: TextQuestionPayload | HotspotQuestionPayload;
+  payload?: TextQuestionPayload | HotspotQuestionPayload | MatchQuestionPayload;
 };
 
 const V = "Vrai";
@@ -56,16 +60,11 @@ export function qcm(
   correct: string,
   wrong: string[],
   explanation: string,
+  correctIndex: 0 | 1 | 2 | 3 = 0,
 ): SeedQuestion {
-  return {
-    type: "SINGLE",
-    prompt,
-    explanation,
-    answers: [
-      { label: correct, isCorrect: true },
-      ...wrong.map((label) => ({ label, isCorrect: false })),
-    ],
-  };
+  const answers = wrong.map((label) => ({ label, isCorrect: false }));
+  answers.splice(correctIndex, 0, { label: correct, isCorrect: true });
+  return { type: "SINGLE", prompt, explanation, answers };
 }
 
 export function fillBlank(
@@ -135,6 +134,7 @@ export function match(
   prompt: string,
   pairs: [string, string][],
   explanation: string,
+  imageUrl?: string,
 ): SeedQuestion {
   const answers: SeedQuestionAnswer[] = [];
   pairs.forEach(([left, right], i) => {
@@ -147,6 +147,7 @@ export function match(
     prompt,
     explanation,
     answers,
+    payload: imageUrl ? { imageUrl } : undefined,
   };
 }
 
@@ -261,6 +262,14 @@ export function quiz6(
   e: SeedQuestion,
 ): SeedQuestion[] {
   return [a, b, c, blank, d, e];
+}
+
+/** Banque de 25 QCM pour un quiz de leçon (10 tirées au hasard). */
+export function quiz25(...questions: SeedQuestion[]): SeedQuestion[] {
+  if (questions.length !== 25) {
+    throw new Error(`quiz25 attend 25 questions, reçu ${questions.length}`);
+  }
+  return questions;
 }
 
 /** 3 QCM + blank + 2 TF + MULTI + ORDER + MATCH + slot #10 */

@@ -92,6 +92,222 @@ function emptyTrueFalse(): QuestionDraft {
   };
 }
 
+const QUESTION_TYPES: QuestionTypeDraft[] = [
+  "SINGLE",
+  "TRUE_FALSE",
+  "MULTI",
+  "ORDER",
+  "MATCH",
+  "TEXT",
+  "HOTSPOT",
+];
+
+const JSON_IMPORT_EXAMPLE = `[
+  {
+    "type": "SINGLE",
+    "prompt": "Quels os forment l'avant-bras ?",
+    "explanation": "Le couple radius/ulna gère coude et prono-supination.",
+    "answers": [
+      { "label": "Radius et ulna", "isCorrect": true },
+      { "label": "Fémur et tibia", "isCorrect": false },
+      { "label": "Radius et fémur", "isCorrect": false },
+      { "label": "Clavicule et sternum", "isCorrect": false }
+    ]
+  },
+  {
+    "type": "TRUE_FALSE",
+    "prompt": "L'humérus s'articule en haut avec l'omoplate.",
+    "explanation": "La tête humérale s'insère dans la glène de l'omoplate.",
+    "answers": [
+      { "label": "Vrai", "isCorrect": true },
+      { "label": "Faux", "isCorrect": false }
+    ]
+  },
+  {
+    "type": "MULTI",
+    "prompt": "Quels muscles font partie de la coiffe des rotateurs ?",
+    "explanation": "Supra-épineux, infra-épineux, petit rond et subscapulaire.",
+    "answers": [
+      { "label": "Supra-épineux", "isCorrect": true },
+      { "label": "Infra-épineux", "isCorrect": true },
+      { "label": "Biceps", "isCorrect": false },
+      { "label": "Subscapulaire", "isCorrect": true }
+    ]
+  },
+  {
+    "type": "ORDER",
+    "prompt": "Ordre des phases d'un mouvement concentrique type.",
+    "explanation": "De la préparation à la contraction.",
+    "answers": [
+      { "label": "Position de départ", "order": 0 },
+      { "label": "Activation", "order": 1 },
+      { "label": "Contraction", "order": 2 }
+    ]
+  },
+  {
+    "type": "MATCH",
+    "prompt": "Associe chaque os à sa localisation.",
+    "explanation": "Repères anatomiques de base.",
+    "answers": [
+      { "label": "Radius", "matchKey": "pair-0" },
+      { "label": "Avant-bras", "matchKey": "pair-0" },
+      { "label": "Fémur", "matchKey": "pair-1" },
+      { "label": "Cuisse", "matchKey": "pair-1" }
+    ]
+  }
+]`;
+
+function isQuestionType(value: unknown): value is QuestionTypeDraft {
+  return (
+    typeof value === "string" &&
+    (QUESTION_TYPES as string[]).includes(value)
+  );
+}
+
+function parseImportedQuestions(raw: string): QuestionDraft[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error("JSON invalide — vérifie les virgules et les guillemets.");
+  }
+
+  const list = Array.isArray(parsed)
+    ? parsed
+    : parsed &&
+        typeof parsed === "object" &&
+        Array.isArray((parsed as { questions?: unknown }).questions)
+      ? (parsed as { questions: unknown[] }).questions
+      : null;
+
+  if (!list || list.length === 0) {
+    throw new Error(
+      "Attendu : un tableau de questions, ou { \"questions\": [...] }.",
+    );
+  }
+
+  return list.map((item, index) => {
+    if (!item || typeof item !== "object") {
+      throw new Error(`Question ${index + 1} : objet invalide.`);
+    }
+    const q = item as Record<string, unknown>;
+    const type = isQuestionType(q.type) ? q.type : "SINGLE";
+    const prompt = typeof q.prompt === "string" ? q.prompt.trim() : "";
+    const explanation =
+      typeof q.explanation === "string" ? q.explanation.trim() : "";
+
+    if (!prompt) {
+      throw new Error(`Question ${index + 1} : "prompt" manquant.`);
+    }
+    if (!explanation) {
+      throw new Error(`Question ${index + 1} : "explanation" manquante.`);
+    }
+
+    const rawAnswers = Array.isArray(q.answers) ? q.answers : [];
+    const answers: AnswerDraft[] = rawAnswers.map((a, ai) => {
+      if (!a || typeof a !== "object") {
+        throw new Error(
+          `Question ${index + 1}, réponse ${ai + 1} : objet invalide.`,
+        );
+      }
+      const ans = a as Record<string, unknown>;
+      return {
+        label: typeof ans.label === "string" ? ans.label : "",
+        isCorrect: Boolean(ans.isCorrect),
+        order: typeof ans.order === "number" ? ans.order : ai,
+        matchKey:
+          typeof ans.matchKey === "string" ? ans.matchKey : undefined,
+      };
+    });
+
+    if (type === "TRUE_FALSE") {
+      const isTrue = answers.some((a) => a.label === "Vrai" && a.isCorrect);
+      return {
+        type: "TRUE_FALSE" as const,
+        prompt,
+        explanation,
+        answers: [
+          { label: "Vrai", isCorrect: isTrue },
+          { label: "Faux", isCorrect: !isTrue },
+        ],
+      };
+    }
+
+    if (type === "ORDER") {
+      const ordered = [...answers].sort(
+        (a, b) => (a.order ?? 0) - (b.order ?? 0),
+      );
+      if (ordered.length < 2) {
+        throw new Error(
+          `Question ${index + 1} (ORDER) : au moins 2 réponses.`,
+        );
+      }
+      return {
+        type: "ORDER" as const,
+        prompt,
+        explanation,
+        answers: ordered.map((a, i) => ({
+          ...a,
+          isCorrect: false,
+          order: i,
+        })),
+      };
+    }
+
+    if (type === "MATCH") {
+      if (answers.length < 2) {
+        throw new Error(
+          `Question ${index + 1} (MATCH) : au moins 2 éléments.`,
+        );
+      }
+      return {
+        type: "MATCH" as const,
+        prompt,
+        explanation,
+        answers: answers.map((a) => ({
+          ...a,
+          isCorrect: false,
+          matchKey: a.matchKey || "pair-0",
+        })),
+      };
+    }
+
+    if (type === "MULTI") {
+      if (answers.length < 2) {
+        throw new Error(
+          `Question ${index + 1} (MULTI) : au moins 2 réponses.`,
+        );
+      }
+      if (!answers.some((a) => a.isCorrect)) {
+        throw new Error(
+          `Question ${index + 1} (MULTI) : marque au moins une réponse correcte.`,
+        );
+      }
+      return { type: "MULTI" as const, prompt, explanation, answers };
+    }
+
+    if (type === "TEXT" || type === "HOTSPOT") {
+      return {
+        type,
+        prompt,
+        explanation,
+        answers: answers.length
+          ? answers
+          : [{ label: "", isCorrect: true }],
+      };
+    }
+
+    // SINGLE (QCM)
+    while (answers.length < 2) {
+      answers.push({ label: "", isCorrect: false });
+    }
+    if (!answers.some((a) => a.isCorrect)) {
+      answers[0] = { ...answers[0]!, isCorrect: true };
+    }
+    return { type: "SINGLE" as const, prompt, explanation, answers };
+  });
+}
+
 function toDraft(q: {
   type: string;
   prompt: string;
@@ -116,7 +332,7 @@ function toDraft(q: {
     };
   }
 
-  const answers = [...q.answers]
+  const answers: AnswerDraft[] = [...q.answers]
     .sort((a, b) => a.order - b.order)
     .map((a) => ({
       label: a.label,
@@ -189,6 +405,13 @@ export default function EditLessonPage() {
     emptySingle(),
     emptyTrueFalse(),
   ]);
+  const [jsonImportOpen, setJsonImportOpen] = useState(false);
+  const [jsonImportText, setJsonImportText] = useState(JSON_IMPORT_EXAMPLE);
+  const [jsonImportMode, setJsonImportMode] = useState<"append" | "replace">(
+    "append",
+  );
+  const [jsonImportError, setJsonImportError] = useState<string | null>(null);
+  const [jsonImportOk, setJsonImportOk] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -264,6 +487,26 @@ export default function EditLessonPage() {
 
   function updateQuestion(index: number, next: QuestionDraft) {
     setQuestions((prev) => prev.map((q, i) => (i === index ? next : q)));
+  }
+
+  function importQuestionsFromJson() {
+    setJsonImportError(null);
+    setJsonImportOk(null);
+    try {
+      const imported = parseImportedQuestions(jsonImportText);
+      setQuestions((prev) =>
+        jsonImportMode === "replace" ? imported : [...prev, ...imported],
+      );
+      setJsonImportOk(
+        `${imported.length} question${imported.length > 1 ? "s" : ""} ${
+          jsonImportMode === "replace" ? "remplacée(s)" : "ajoutée(s)"
+        }. Pense à enregistrer le quiz.`,
+      );
+    } catch (err) {
+      setJsonImportError(
+        err instanceof Error ? err.message : "Import JSON impossible",
+      );
+    }
   }
 
   function setQuestionType(index: number, type: QuestionTypeDraft) {
@@ -436,6 +679,100 @@ export default function EditLessonPage() {
                 onChange={(e) => setPerfectBonus(Number(e.target.value))}
               />
             </label>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-surface/60 p-5">
+            <button
+              type="button"
+              className="flex w-full items-center justify-between gap-3 text-left"
+              onClick={() => setJsonImportOpen((o) => !o)}
+            >
+              <div>
+                <p className="font-medium text-accent">Import JSON</p>
+                <p className="mt-1 text-sm text-muted">
+                  Colle un tableau de questions pour les ajouter rapidement.
+                </p>
+              </div>
+              <span className="shrink-0 text-sm text-muted">
+                {jsonImportOpen ? "Masquer" : "Afficher"}
+              </span>
+            </button>
+
+            {jsonImportOpen && (
+              <div className="mt-4 space-y-3">
+                <p className="text-xs text-muted">
+                  Types :{" "}
+                  <code className="text-white/80">SINGLE</code>,{" "}
+                  <code className="text-white/80">TRUE_FALSE</code>,{" "}
+                  <code className="text-white/80">MULTI</code>,{" "}
+                  <code className="text-white/80">ORDER</code>,{" "}
+                  <code className="text-white/80">MATCH</code>,{" "}
+                  <code className="text-white/80">TEXT</code>,{" "}
+                  <code className="text-white/80">HOTSPOT</code>. Chaque
+                  question :{" "}
+                  <code className="text-white/80">type</code>,{" "}
+                  <code className="text-white/80">prompt</code>,{" "}
+                  <code className="text-white/80">explanation</code>,{" "}
+                  <code className="text-white/80">answers</code>.
+                </p>
+                <textarea
+                  className="h-64 w-full rounded-xl border border-border bg-elevated px-4 py-3 font-mono text-sm"
+                  value={jsonImportText}
+                  onChange={(e) => {
+                    setJsonImportText(e.target.value);
+                    setJsonImportError(null);
+                    setJsonImportOk(null);
+                  }}
+                  spellCheck={false}
+                />
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="flex items-center gap-2 text-sm text-muted">
+                    <input
+                      type="radio"
+                      name="json-import-mode"
+                      checked={jsonImportMode === "append"}
+                      onChange={() => setJsonImportMode("append")}
+                    />
+                    Ajouter à la suite
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-muted">
+                    <input
+                      type="radio"
+                      name="json-import-mode"
+                      checked={jsonImportMode === "replace"}
+                      onChange={() => setJsonImportMode("replace")}
+                    />
+                    Remplacer tout
+                  </label>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    className="rounded-xl border border-border px-4 py-2 text-sm"
+                    onClick={() => {
+                      setJsonImportText(JSON_IMPORT_EXAMPLE);
+                      setJsonImportError(null);
+                      setJsonImportOk(null);
+                    }}
+                  >
+                    Charger l&apos;exemple
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-background"
+                    onClick={importQuestionsFromJson}
+                  >
+                    Importer les questions
+                  </button>
+                </div>
+                {jsonImportError && (
+                  <p className="text-sm text-red-400">{jsonImportError}</p>
+                )}
+                {jsonImportOk && (
+                  <p className="text-sm text-accent">{jsonImportOk}</p>
+                )}
+              </div>
+            )}
           </div>
 
           {questions.map((q, qi) => (

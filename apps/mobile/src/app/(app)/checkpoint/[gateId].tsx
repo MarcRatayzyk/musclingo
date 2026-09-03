@@ -1,11 +1,19 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { ConfettiBurst } from "@/features/gamification/confetti";
 import {
   useCheckpointGate,
   useSubmitCheckpointGate,
 } from "@/features/path/api";
+import {
+  MatchQuestion,
+  addBidirectionalMatch,
+  removeMatchForLeft,
+  rightIdsInLeftOrder,
+  splitMatchColumns,
+} from "@/features/quiz/components/MatchQuestion";
+import type { QuizQuestion } from "@/features/quiz/types";
 import { ApiError } from "@/shared/api/client";
 import { PrimaryButton, Screen } from "@/shared/ui/primitives";
 
@@ -21,7 +29,23 @@ type SubmitResult = {
   level: number;
   nextLessonId: string | null;
   categoryId: string;
+  timedOut?: boolean;
 };
+
+function formatLimit(sec: number) {
+  if (sec >= 60 && sec % 60 === 0) {
+    const minutes = sec / 60;
+    return minutes === 1 ? "1 minute" : `${minutes} minutes`;
+  }
+  return `${sec} secondes`;
+}
+
+function formatTimer(sec: number) {
+  const safe = Math.max(0, Math.floor(sec));
+  const m = Math.floor(safe / 60);
+  const s = safe % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
 
 export default function CheckpointGateScreen() {
   const { gateId } = useLocalSearchParams<{ gateId: string }>();
@@ -35,11 +59,29 @@ export default function CheckpointGateScreen() {
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [timeLeft, setTimeLeft] = useState(60);
   const [started, setStarted] = useState(false);
+  const [matches, setMatches] = useState<
+    Array<{ leftId: string; rightId: string }>
+  >([]);
   const startRef = useRef<number>(0);
   const submittedRef = useRef(false);
 
   const question = gate?.questions[index];
   const isLast = !!gate && index >= gate.questions.length - 1;
+  const matchQuestion = useMemo((): QuizQuestion | null => {
+    if (!question || question.type !== "MATCH") return null;
+    return {
+      id: question.id,
+      type: "MATCH",
+      prompt: question.prompt,
+      order: question.order,
+      payload: question.payload ?? null,
+      answers: question.answers,
+    };
+  }, [question]);
+
+  useEffect(() => {
+    setMatches([]);
+  }, [question?.id]);
 
   const finish = async (
     finalAnswers: Record<
@@ -137,7 +179,11 @@ export default function CheckpointGateScreen() {
         <ConfettiBurst active={result.passed} />
         <View className="flex-1 justify-center">
           <Text className="text-xs uppercase tracking-[3px] text-accent">
-            {result.passed ? "Checkpoint validé" : "Pas encore"}
+            {result.passed
+              ? "Checkpoint validé"
+              : result.timedOut
+                ? "Temps écoulé — checkpoint invalidé"
+                : "Pas encore"}
           </Text>
           <Text className="mt-3 text-4xl font-semibold text-white">
             {result.correctCount}/{result.totalQuestions}
@@ -145,7 +191,9 @@ export default function CheckpointGateScreen() {
           <Text className="mt-2 text-muted">
             {result.passed
               ? `+${result.xpEarned} neurolift · ${result.timeSpentSec}s`
-              : `Il faut ${needed}/${gate.questions.length} (${thresholdPct} %)`}
+              : result.timedOut
+                ? `Temps dépassé (${formatLimit(gate.timeLimitSec)}) — checkpoint invalidé.`
+                : `Il faut ${needed}/${gate.questions.length} (${thresholdPct} %)`}
           </Text>
           <View className="mt-10 gap-3">
             {result.passed && result.nextLessonId ? (
@@ -166,6 +214,7 @@ export default function CheckpointGateScreen() {
                   setResult(null);
                   setIndex(0);
                   setAnswers({});
+                  setMatches([]);
                   setStarted(false);
                   setTimeLeft(gate.timeLimitSec);
                 }
@@ -188,8 +237,9 @@ export default function CheckpointGateScreen() {
             {gate.title}
           </Text>
           <Text className="mt-4 text-base text-muted">
-            {gate.questionCount} questions en {gate.timeLimitSec} secondes.
-            Objectif : {thresholdPct} % minimum.
+            {gate.questionCount} questions en {formatLimit(gate.timeLimitSec)}.
+            Objectif : {thresholdPct} % minimum. Si le temps est dépassé, le
+            checkpoint est invalidé.
           </Text>
           <View className="mt-10">
             <PrimaryButton label="C'est parti" onPress={begin} />
@@ -208,25 +258,74 @@ export default function CheckpointGateScreen() {
         <Text
           className={`text-lg font-semibold ${timeLeft <= 10 ? "text-red-400" : "text-accent"}`}
         >
-          {timeLeft}s
+          {formatTimer(timeLeft)}
         </Text>
       </View>
 
-      <Text className="text-xl font-medium leading-8 text-white">
-        {question?.prompt}
-      </Text>
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        <Text className="text-xl font-medium leading-8 text-white">
+          {question?.prompt}
+        </Text>
 
-      <View className="mt-8 gap-3">
-        {(question?.answers ?? []).map((a) => (
-          <Pressable
-            key={a.id}
-            onPress={() => pickAnswer(a.id)}
-            className="rounded-2xl border border-border bg-surface px-4 py-4 active:opacity-80"
-          >
-            <Text className="text-base text-white">{a.label}</Text>
-          </Pressable>
-        ))}
-      </View>
+        {matchQuestion ? (
+          <View className="pb-8">
+            <MatchQuestion
+              question={matchQuestion}
+              matches={matches}
+              onAssign={(leftId, rightId) => {
+                setMatches((current) =>
+                  addBidirectionalMatch(current, leftId, rightId),
+                );
+              }}
+              onUnassign={(leftId) => {
+                setMatches((current) => removeMatchForLeft(current, leftId));
+              }}
+            />
+            <View className="mt-6">
+              <PrimaryButton
+                label={isLast ? "Terminer" : "Continuer"}
+                disabled={
+                  rightIdsInLeftOrder(
+                    splitMatchColumns(matchQuestion.answers).lefts,
+                    matches,
+                  ).length !==
+                  splitMatchColumns(matchQuestion.answers).lefts.length
+                }
+                onPress={() => {
+                  if (!question) return;
+                  const { lefts } = splitMatchColumns(matchQuestion.answers);
+                  const selected = rightIdsInLeftOrder(lefts, matches);
+                  const nextAnswers = {
+                    ...answers,
+                    [question.id]: {
+                      questionId: question.id,
+                      selectedAnswerIds: selected,
+                    },
+                  };
+                  setAnswers(nextAnswers);
+                  if (isLast) {
+                    void finish(nextAnswers);
+                    return;
+                  }
+                  setIndex((i) => i + 1);
+                }}
+              />
+            </View>
+          </View>
+        ) : (
+          <View className="mt-8 gap-3 pb-8">
+            {(question?.answers ?? []).map((a) => (
+              <Pressable
+                key={a.id}
+                onPress={() => pickAnswer(a.id)}
+                className="rounded-2xl border border-border bg-surface px-4 py-4 active:opacity-80"
+              >
+                <Text className="text-base text-white">{a.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
+      </ScrollView>
     </Screen>
   );
 }

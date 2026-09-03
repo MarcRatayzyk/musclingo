@@ -41,10 +41,10 @@ import {
 import { ApiError, resolveMediaUrl } from "@/shared/api/client";
 import { PrimaryButton, Screen, XpBar } from "@/shared/ui/primitives";
 const BG = "#0B0D10";
-const FOCUSED = "rgba(255,255,255,0.92)";
-const MUTED = "rgba(255,255,255,0.38)";
+const FOCUSED = "#FFFFFF";
+const MUTED = "rgba(255,255,255,0.55)";
 const TYPE_MS = 22;
-const FADE_H = 170;
+const FADE_H = 120;
 
 function parseLessonChunks(markdown: string): string[] {
   const normalized = markdown.replace(/\r\n/g, "\n").trim();
@@ -86,9 +86,6 @@ function buildLegendColorMap(
     }
   }
   return map;
-}
-function chunkShowsIllustration(text: string): boolean {
-  return /illustration/i.test(text);
 }
 function MarkdownSpans({
   text,
@@ -189,17 +186,21 @@ function ContinueButton({
 function IllustrationLegendChips({
   legend,
   compact = false,
+  vertical = false,
 }: {
   legend: IllustrationLegendItem[];
   compact?: boolean;
+  vertical?: boolean;
 }) {
   if (!legend.length) return null;
   return (
-    <View className={`flex-row flex-wrap ${compact ? "gap-2" : "gap-2.5"}`}>
+    <View
+      className={`${vertical ? "flex-col" : "flex-row flex-wrap"} ${compact ? "gap-1.5" : "gap-2.5"}`}
+    >
       {legend.map((item) => (
         <View
           key={`${item.color ?? "deep"}-${item.label}`}
-          className="flex-row items-center gap-1.5 rounded-full bg-white/5 px-2 py-1"
+          className="flex-row items-center gap-1.5"
         >
           {item.color ? (
             <View
@@ -332,63 +333,37 @@ function LessonInlineIllustration({
       cancelled = true;
     };
   }, [uri]);
-  const imgW = screenW - 40;
-  const imgH = Math.min(imgW / aspectRatio, 180);
+  const hasLegend = legend.length > 0;
+  const imgMaxW = hasLegend ? Math.min(screenW * 0.58, 240) : screenW - 40;
+  const imgH = Math.min(imgMaxW / aspectRatio, 260);
+  const imgW = imgH * aspectRatio;
   return (
     <>
-      <Animated.View entering={FadeIn.duration(500)} className="mb-4">
+      <Animated.View entering={FadeIn.duration(500)} className="mt-3">
         <Pressable
           onPress={() => setOpen(true)}
-          className="overflow-hidden rounded-2xl border border-border bg-surface/60"
+          className="flex-row items-center gap-3"
           accessibilityRole="button"
           accessibilityLabel={`Agrandir l'illustration ${title}`}
         >
-          <Image
-            source={{ uri }}
-            accessibilityLabel={`Illustration : ${title}`}
-            style={{ width: "100%", height: imgH }}
-            resizeMode="contain"
-          />
-          <View className="border-t border-border/60 px-3 py-2.5">
-            <IllustrationLegendChips legend={legend} compact />
+          <View className="overflow-hidden rounded-xl border border-border bg-surface/60">
+            <Image
+              source={{ uri }}
+              accessibilityLabel={`Illustration : ${title}`}
+              style={{ width: imgW, height: imgH }}
+              resizeMode="contain"
+            />
           </View>
+          {hasLegend ? (
+            <View className="min-w-0 flex-1 gap-1.5">
+              <Text className="text-[10px] uppercase tracking-widest text-white/40">
+                Légende
+              </Text>
+              <IllustrationLegendChips legend={legend} compact vertical />
+            </View>
+          ) : null}
         </Pressable>
-        <Text className="mt-1.5 text-center text-xs text-white/30">
-          Toucher pour agrandir
-        </Text>
       </Animated.View>
-      <IllustrationModal
-        visible={open}
-        onClose={() => setOpen(false)}
-        uri={uri}
-        title={title}
-        legend={legend}
-      />
-    </>
-  );
-}
-function LessonIllustrationButton({
-  uri,
-  title,
-  legend,
-  buttonLabel = "Illustration",
-}: {
-  uri: string;
-  title: string;
-  legend: IllustrationLegendItem[];
-  buttonLabel?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <Pressable
-        onPress={() => setOpen(true)}
-        className="rounded-full border border-border bg-surface/90 px-3 py-1.5"
-        accessibilityRole="button"
-        accessibilityLabel={`Voir l'illustration ${title}`}
-      >
-        <Text className="text-xs font-medium text-accent">{buttonLabel}</Text>
-      </Pressable>
       <IllustrationModal
         visible={open}
         onClose={() => setOpen(false)}
@@ -407,7 +382,7 @@ function MascotLineText({
   color: string;
 }) {
   return (
-    <Text className="text-base leading-7" style={{ color }}>
+    <Text className="text-lg leading-8" style={{ color }}>
       {line.text}
     </Text>
   );
@@ -485,6 +460,7 @@ export default function LessonScreen() {
   const didInitialCenterRef = useRef(false);
   const [chunkIndex, setChunkIndex] = useState(0);
   const [typedLen, setTypedLen] = useState(0);
+  const [introDone, setIntroDone] = useState(false);
   const [viewportH, setViewportH] = useState(0);
   const [viewportW, setViewportW] = useState(0);
   const [focusedIndex, setFocusedIndex] = useState(0);
@@ -524,14 +500,15 @@ export default function LessonScreen() {
     }
     return map;
   }, [illustrations]);
-  const primaryIllustration = illustrations[0] ?? null;
   const mascotEnabled = lesson?.category.slug === "anatomie";
   const mascotHooks = useMemo(
     () => getLessonHooks(lesson?.order ?? 0),
     [lesson?.order],
   );
+  const hasIntro = mascotEnabled && !!mascotHooks.intro;
+  const showingIntro = hasIntro && !introDone;
   chunkIndexRef.current = chunkIndex;
-  const currentChunk = chunks[chunkIndex] ?? "";
+  const currentChunk = showingIntro ? "" : (chunks[chunkIndex] ?? "");
   const currentDisplayed = currentChunk.slice(0, typedLen);
   function updateFocusFromScroll() {
     const vh = viewportHRef.current;
@@ -578,17 +555,22 @@ export default function LessonScreen() {
     startedAt.current = Date.now();
     setChunkIndex(0);
     setTypedLen(0);
+    setIntroDone(false);
     setFocusedIndex(0);
     setMascotPose("present");
     chunkLayouts.current = {};
     scrollYRef.current = 0;
     didInitialCenterRef.current = false;
-    requestCenterOn(0);
+    pendingCenterRef.current = false;
   }, [id]);
+  useEffect(() => {
+    setIntroDone(!hasIntro);
+  }, [hasIntro, id]);
   useEffect(() => {
     setTypedLen(0);
   }, [chunkIndex]);
   useEffect(() => {
+    if (showingIntro) return;
     if (!pendingCenterRef.current) return;
     if (centerTargetRef.current !== chunkIndex) return;
     const tryCenter = () => {
@@ -609,14 +591,15 @@ export default function LessonScreen() {
       clearTimeout(t2);
       clearTimeout(t3);
     };
-  }, [chunkIndex]);
+  }, [chunkIndex, showingIntro]);
   useEffect(() => {
+    if (showingIntro) return;
     if (typedLen >= currentChunk.length) return;
     const timer = setTimeout(() => {
       setTypedLen((n) => Math.min(n + 1, currentChunk.length));
     }, TYPE_MS);
     return () => clearTimeout(timer);
-  }, [typedLen, currentChunk]);
+  }, [typedLen, currentChunk, showingIntro]);
   if (isError) {
     const locked = error instanceof ApiError && error.status === 403;
     return (
@@ -644,53 +627,54 @@ export default function LessonScreen() {
     );
   }
   const totalChunks = Math.max(chunks.length, 1);
+  const hasIntroStep = hasIntro;
+  const totalSteps = totalChunks + (hasIntroStep ? 1 : 0);
+  const stepIndex = showingIntro ? 0 : chunkIndex + (hasIntroStep ? 1 : 0);
   const safeIndex = Math.min(chunkIndex, totalChunks - 1);
-  const isTyping = typedLen < currentChunk.length;
-  const isLastChunk = safeIndex >= totalChunks - 1;
+  const isTyping = !showingIntro && typedLen < currentChunk.length;
+  const isLastChunk = !showingIntro && safeIndex >= totalChunks - 1;
   const canFinish = isLastChunk && !isTyping;
-  const progress = isTyping
-    ? (safeIndex + typedLen / Math.max(currentChunk.length, 1)) / totalChunks
-    : (safeIndex + 1) / totalChunks;
+  const progress = showingIntro
+    ? 0
+    : isTyping
+      ? (safeIndex + typedLen / Math.max(currentChunk.length, 1)) / totalChunks
+      : (safeIndex + 1) / totalChunks;
   const topSpacer = Math.max(viewportH * 0.38, 72);
   const bottomSpacer = Math.max(viewportH * 0.45, 96);
   const readingDone = lesson.progress?.status === "COMPLETED";
   const showQuizCta = canFinish && readingDone && !!lesson.quizId;
 
   function renderChunkContent(
-    chunk: string,
     text: string,
     index: number,
     isCurrent: boolean,
   ) {
-    const focused = focusedIndex === index;
+    // Le chunk en cours de lecture reste toujours clair, même si le
+    // focus scroll pointe ailleurs (ex. sous le dégradé du haut).
+    const focused = isCurrent || focusedIndex === index;
     const color = focused ? FOCUSED : MUTED;
-    const showIllustration =
-      primaryIllustration && chunkShowsIllustration(chunk);
     return (
-      <>
-        {showIllustration ? (
-          <LessonInlineIllustration
-            uri={primaryIllustration.uri}
-            title={primaryIllustration.title}
-            legend={primaryIllustration.legend}
-          />
-        ) : null}
-        <Text className="text-base leading-7">
-          <MarkdownSpans
-            text={text}
-            color={color}
-            legendColors={legendColorMap.size > 0 ? legendColorMap : undefined}
-            dimmed={!focused}
-          />
-          {isCurrent && isTyping ? <BlinkingCursor /> : null}
-        </Text>
-      </>
+      <Text className="text-lg leading-8">
+        <MarkdownSpans
+          text={text}
+          color={color}
+          legendColors={legendColorMap.size > 0 ? legendColorMap : undefined}
+          dimmed={!focused}
+        />
+        {isCurrent && isTyping ? <BlinkingCursor /> : null}
+      </Text>
     );
   }
 
   function onContinue() {
     if (mascotEnabled) {
       setMascotPose((pose) => nextMascotPose(pose));
+    }
+    if (showingIntro) {
+      setIntroDone(true);
+      setFocusedIndex(0);
+      requestCenterOn(0);
+      return;
     }
     if (isTyping) {
       setTypedLen(currentChunk.length);
@@ -707,6 +691,10 @@ export default function LessonScreen() {
     if (navigatingRef.current) return;
     navigatingRef.current = true;
     router.replace(`/(app)/quiz/${lessonId}`);
+    // Si la navigation échoue (API / route), on débloque le CTA.
+    setTimeout(() => {
+      navigatingRef.current = false;
+    }, 2000);
   }
   function finishLesson() {
     if (complete.isPending || navigatingRef.current) return;
@@ -745,7 +733,7 @@ export default function LessonScreen() {
       viewportHRef.current = height;
       if (!didInitialCenterRef.current) {
         didInitialCenterRef.current = true;
-        requestCenterOn(0);
+        if (!showingIntro) requestCenterOn(0);
       }
     }
     if (width > 0 && width !== viewportW) setViewportW(width);
@@ -760,37 +748,28 @@ export default function LessonScreen() {
     updateFocusFromScroll();
   }
   return (
-    <Screen>
-      <View className="mb-3">
-        <View className="mb-2 flex-row items-center justify-between">
+    <Screen className="pt-11">
+      <View className="mb-2">
+        <View className="mb-1.5 flex-row items-center justify-between">
           <Text className="text-xs text-muted">
-            {safeIndex + 1} / {totalChunks}
+            {stepIndex + 1} / {totalSteps}
           </Text>
           <Text className="text-xs text-accent">
             +{lesson.xpReward} neurolift
           </Text>
         </View>
         <XpBar progress={progress} color={lesson.category.color} />
-        <Text
-          className="mt-3 text-xs uppercase tracking-widest"
-          style={{ color: lesson.category.color }}
-        >
-          {lesson.category.name}
-        </Text>
-        <Text className="mt-1 text-2xl font-semibold text-white">
+        <Text className="mt-3 text-base font-semibold leading-5 text-white">
           {lesson.title}
         </Text>
         {illustrations.length > 0 ? (
-          <View className="mt-2 flex-row flex-wrap justify-end gap-2">
+          <View className="gap-2">
             {illustrations.map((item) => (
-              <LessonIllustrationButton
+              <LessonInlineIllustration
                 key={item.uri}
                 uri={item.uri}
                 title={item.title}
                 legend={item.legend}
-                buttonLabel={
-                  illustrations.length > 1 ? item.title : "Illustration"
-                }
               />
             ))}
           </View>
@@ -807,64 +786,75 @@ export default function LessonScreen() {
         >
           <View>
             <View style={{ height: topSpacer }} />
-            {mascotEnabled && mascotHooks.intro ? (
+            {hasIntro && mascotHooks.intro ? (
               <View className="mb-6">
-                <MascotLineText line={mascotHooks.intro} color={FOCUSED} />
+                <MascotLineText
+                  line={mascotHooks.intro}
+                  color={showingIntro ? FOCUSED : MUTED}
+                />
               </View>
             ) : null}
-            {chunks.slice(0, chunkIndex).map((chunk, i) => (
-              <Fragment key={`chunk-${i}`}>
-                <ChunkBlock
-                  index={i}
-                  chunkIndex={chunkIndex}
-                  onLayout={(y, h) => onChunkLayout(i, y, h)}
-                >
-                  {renderChunkContent(chunk, chunk, i, false)}
-                </ChunkBlock>
-                {mascotEnabled
-                  ? (() => {
-                      const aside = getInterjectionAfterChunk(mascotHooks, i);
-                      return aside ? (
-                        <View className="mb-5">
-                          <MascotLineText line={aside} color={MUTED} />
-                        </View>
-                      ) : null;
-                    })()
-                  : null}
-              </Fragment>
-            ))}
-            <ChunkBlock
-              index={chunkIndex}
-              chunkIndex={chunkIndex}
-              onLayout={(y, h) => onChunkLayout(chunkIndex, y, h)}
-            >
-              {renderChunkContent(
-                currentChunk,
-                currentDisplayed,
-                chunkIndex,
-                true,
-              )}
-            </ChunkBlock>
-            {canFinish && mascotEnabled && mascotHooks.outro ? (
-              <Animated.View entering={FadeIn.duration(400)} className="mb-4">
-                <MascotLineText line={mascotHooks.outro} color={FOCUSED} />
-              </Animated.View>
-            ) : null}
-            {canFinish && !!lesson.sources.length && (
-              <Animated.View
-                entering={FadeIn.duration(400)}
-                className="mt-4 rounded-2xl border border-border bg-surface p-4"
-              >
-                <Text className="mb-2 text-sm font-medium text-muted">
-                  Sources
-                </Text>
-                {lesson.sources.map((s) => (
-                  <Text key={s} className="mb-1 text-xs leading-5 text-muted">
-                    • {s}
-                  </Text>
+            {!showingIntro ? (
+              <>
+                {chunks.slice(0, chunkIndex).map((chunk, i) => (
+                  <Fragment key={`chunk-${i}`}>
+                    <ChunkBlock
+                      index={i}
+                      chunkIndex={chunkIndex}
+                      onLayout={(y, h) => onChunkLayout(i, y, h)}
+                    >
+                      {renderChunkContent(chunk, i, false)}
+                    </ChunkBlock>
+                    {mascotEnabled
+                      ? (() => {
+                          const aside = getInterjectionAfterChunk(
+                            mascotHooks,
+                            i,
+                          );
+                          return aside ? (
+                            <View className="mb-5">
+                              <MascotLineText line={aside} color={MUTED} />
+                            </View>
+                          ) : null;
+                        })()
+                      : null}
+                  </Fragment>
                 ))}
-              </Animated.View>
-            )}
+                <ChunkBlock
+                  index={chunkIndex}
+                  chunkIndex={chunkIndex}
+                  onLayout={(y, h) => onChunkLayout(chunkIndex, y, h)}
+                >
+                  {renderChunkContent(currentDisplayed, chunkIndex, true)}
+                </ChunkBlock>
+                {canFinish && mascotEnabled && mascotHooks.outro ? (
+                  <Animated.View
+                    entering={FadeIn.duration(400)}
+                    className="mb-4"
+                  >
+                    <MascotLineText line={mascotHooks.outro} color={FOCUSED} />
+                  </Animated.View>
+                ) : null}
+                {canFinish && !!lesson.sources.length && (
+                  <Animated.View
+                    entering={FadeIn.duration(400)}
+                    className="mt-4 rounded-2xl border border-border bg-surface p-4"
+                  >
+                    <Text className="mb-2 text-sm font-medium text-muted">
+                      Sources
+                    </Text>
+                    {lesson.sources.map((s) => (
+                      <Text
+                        key={s}
+                        className="mb-1 text-xs leading-5 text-muted"
+                      >
+                        • {s}
+                      </Text>
+                    ))}
+                  </Animated.View>
+                )}
+              </>
+            ) : null}
             <View style={{ height: bottomSpacer }} />
           </View>
         </ScrollView>

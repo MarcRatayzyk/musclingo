@@ -8,6 +8,14 @@ import {
 } from "react-native";
 import { ConfettiBurst } from "@/features/gamification/confetti";
 import { useQuizByLesson, useSubmitQuiz } from "@/features/home/api";
+import {
+  MatchQuestion,
+  addBidirectionalMatch,
+  removeMatchForLeft,
+  rightIdsInLeftOrder,
+  splitMatchColumns,
+} from "@/features/quiz/components/MatchQuestion";
+import type { QuizQuestion } from "@/features/quiz/types";
 import { ApiError } from "@/shared/api/client";
 import { PrimaryButton, Screen } from "@/shared/ui/primitives";
 
@@ -101,6 +109,11 @@ export default function QuizScreen() {
   const [wrongFlash, setWrongFlash] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [lockedChoice, setLockedChoice] = useState<string | null>(null);
+  const [matches, setMatches] = useState<
+    Array<{ leftId: string; rightId: string }>
+  >([]);
+  const [matchWrong, setMatchWrong] = useState(false);
+  const matchTriedKeyRef = useRef("");
 
   const deadlineRef = useRef(Date.now() + 60_000);
   const accountedTimeRef = useRef(0);
@@ -138,6 +151,9 @@ export default function QuizScreen() {
     setWrongFlash(null);
     setSubmitError(null);
     setLockedChoice(null);
+    setMatches([]);
+    setMatchWrong(false);
+    matchTriedKeyRef.current = "";
     resetTimer(quizTimeSec);
     void refetch();
   }, [quizTimeSec, refetch, resetTimer]);
@@ -149,6 +165,32 @@ export default function QuizScreen() {
 
   const question = quiz?.questions[index];
   const isLast = !!quiz && index >= quiz.questions.length - 1;
+  const matchQuestion = useMemo((): QuizQuestion | null => {
+    if (!question) return null;
+    const isMatch =
+      question.type === "MATCH" ||
+      question.choices.some((c) => !!c.matchKey);
+    if (!isMatch) return null;
+    return {
+      id: question.id,
+      type: "MATCH",
+      prompt: question.prompt,
+      order: index,
+      payload: question.imageUrl ? { imageUrl: question.imageUrl } : null,
+      answers: question.choices.map((c, i) => ({
+        id: c.id,
+        label: c.label,
+        order: c.order ?? i,
+        matchKey: c.matchKey,
+      })),
+    };
+  }, [question, index]);
+
+  useEffect(() => {
+    setMatches([]);
+    setMatchWrong(false);
+    matchTriedKeyRef.current = "";
+  }, [question?.id]);
 
   useEffect(() => {
     if (!quiz || result || failed) return;
@@ -170,27 +212,8 @@ export default function QuizScreen() {
     return Math.max(0, Math.min(quizTimeSec, quizTimeSec - left));
   };
 
-  const pickAnswer = async (choiceId: string) => {
-    if (!quiz || !question || result || failed || lockedChoice) return;
-
-    const correctId = answerKeys[question.id];
-    if (!correctId) return;
-
-    setSubmitError(null);
-    setLockedChoice(choiceId);
-
-    const isCorrect = choiceId === correctId;
-
-    if (!isCorrect) {
-      setWrongFlash(choiceId);
-      deadlineRef.current -= wrongPenaltySec * 1000;
-      syncTimerFromDeadline();
-      setTimeout(() => {
-        setWrongFlash(null);
-        setLockedChoice(null);
-      }, 350);
-      return;
-    }
+  const commitQuestion = async (selectedAnswerIds: string[]) => {
+    if (!quiz || !question || result || failed) return;
 
     const totalSoFar = elapsedTotalSec();
     const questionSpent = Math.max(1, totalSoFar - accountedTimeRef.current);
@@ -198,7 +221,7 @@ export default function QuizScreen() {
 
     const record: AnswerRecord = {
       questionId: question.id,
-      selectedAnswerIds: [choiceId],
+      selectedAnswerIds,
       timeSpentSec: questionSpent,
     };
     const nextAnswers = [...answers, record];
@@ -228,6 +251,78 @@ export default function QuizScreen() {
       setLockedChoice(null);
     }
   };
+
+  const pickAnswer = async (choiceId: string) => {
+    if (!quiz || !question || result || failed || lockedChoice) return;
+    if (question.type === "MATCH" || question.choices.some((c) => !!c.matchKey)) {
+      return;
+    }
+
+    const correctId = answerKeys[question.id];
+    if (!correctId) return;
+
+    setSubmitError(null);
+    setLockedChoice(choiceId);
+
+    const isCorrect = choiceId === correctId;
+
+    if (!isCorrect) {
+      setWrongFlash(choiceId);
+      deadlineRef.current -= wrongPenaltySec * 1000;
+      syncTimerFromDeadline();
+      setTimeout(() => {
+        setWrongFlash(null);
+        setLockedChoice(null);
+      }, 350);
+      return;
+    }
+
+    await commitQuestion([choiceId]);
+  };
+
+  const confirmMatch = async () => {
+    if (!quiz || !question || !matchQuestion || result || failed || lockedChoice) {
+      return;
+    }
+    const { lefts } = splitMatchColumns(matchQuestion.answers);
+    const selected = rightIdsInLeftOrder(lefts, matches);
+    if (selected.length !== lefts.length) return;
+
+    const expected = answerKeys[question.id];
+    if (!expected) return;
+
+    setSubmitError(null);
+    setLockedChoice("match");
+
+    if (selected.join("|") !== expected) {
+      setMatchWrong(true);
+      deadlineRef.current -= wrongPenaltySec * 1000;
+      syncTimerFromDeadline();
+      setTimeout(() => {
+        setMatchWrong(false);
+        setLockedChoice(null);
+      }, 450);
+      return;
+    }
+
+    await commitQuestion(selected);
+  };
+
+  useEffect(() => {
+    if (!quiz || !question || !matchQuestion || result || failed || lockedChoice) {
+      return;
+    }
+    const { lefts } = splitMatchColumns(matchQuestion.answers);
+    const selected = rightIdsInLeftOrder(lefts, matches);
+    if (selected.length !== lefts.length) {
+      matchTriedKeyRef.current = "";
+      return;
+    }
+    const key = selected.join("|");
+    if (key === matchTriedKeyRef.current) return;
+    matchTriedKeyRef.current = key;
+    void confirmMatch();
+  }, [matches, matchQuestion, question, quiz, result, failed, lockedChoice]);
 
   if (isError) {
     const locked = error instanceof ApiError && error.status === 403;
@@ -341,28 +436,49 @@ export default function QuizScreen() {
           {question?.prompt}
         </Text>
 
-        <View className="mt-6 gap-3">
-          {question?.choices.map((choice) => {
-            const isWrong = wrongFlash === choice.id;
-            const isLocked = lockedChoice === choice.id;
-            return (
-              <Pressable
-                key={choice.id}
-                disabled={!!lockedChoice}
-                onPress={() => void pickAnswer(choice.id)}
-                className={`rounded-2xl border px-4 py-4 ${
-                  isWrong
-                    ? "border-red-500 bg-red-500/10"
-                    : isLocked
-                      ? "border-accent bg-accent/10"
-                      : "border-border bg-surface"
-                }`}
-              >
-                <Text className="text-base text-white">{choice.label}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        {matchQuestion ? (
+          <View className="mt-2 pb-8">
+            <MatchQuestion
+              question={matchQuestion}
+              matches={matches}
+              wrong={matchWrong}
+              disabled={!!lockedChoice}
+              onAssign={(leftId, rightId) => {
+                if (lockedChoice) return;
+                setMatches((current) =>
+                  addBidirectionalMatch(current, leftId, rightId),
+                );
+              }}
+              onUnassign={(leftId) => {
+                if (lockedChoice) return;
+                setMatches((current) => removeMatchForLeft(current, leftId));
+              }}
+            />
+          </View>
+        ) : (
+          <View className="mt-6 gap-3">
+            {question?.choices.map((choice) => {
+              const isWrong = wrongFlash === choice.id;
+              const isLocked = lockedChoice === choice.id;
+              return (
+                <Pressable
+                  key={choice.id}
+                  disabled={!!lockedChoice}
+                  onPress={() => void pickAnswer(choice.id)}
+                  className={`rounded-2xl border px-4 py-4 ${
+                    isWrong
+                      ? "border-red-500 bg-red-500/10"
+                      : isLocked
+                        ? "border-accent bg-accent/10"
+                        : "border-border bg-surface"
+                  }`}
+                >
+                  <Text className="text-base text-white">{choice.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
 
         {submitError ? (
           <Text className="mt-4 text-center text-sm text-red-400">

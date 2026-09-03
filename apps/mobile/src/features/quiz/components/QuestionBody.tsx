@@ -10,29 +10,27 @@ import type { QuizAnswerState, QuizQuestion } from "../types";
 type Props = {
   question: QuizQuestion;
   state: QuizAnswerState;
-  selectedLeftId: string | null;
   answersById: Map<string, QuizQuestion["answers"][number]>;
   onSelectSingle: (id: string) => void;
   onToggleMulti: (id: string) => void;
   onMoveUp: (index: number) => void;
   onMoveDown: (index: number) => void;
   onTextChange: (value: string) => void;
-  onSelectLeft: (id: string) => void;
-  onSelectRight: (id: string) => void;
+  onMatchAssign: (leftId: string, rightId: string) => void;
+  onMatchUnassign: (leftId: string) => void;
 };
 
 export function QuestionBody({
   question,
   state,
-  selectedLeftId,
   answersById,
   onSelectSingle,
   onToggleMulti,
   onMoveUp,
   onMoveDown,
   onTextChange,
-  onSelectLeft,
-  onSelectRight,
+  onMatchAssign,
+  onMatchUnassign,
 }: Props) {
   const type = question.type as QuestionType;
 
@@ -67,9 +65,8 @@ export function QuestionBody({
         <MatchQuestion
           question={question}
           matches={state.matches}
-          selectedLeftId={selectedLeftId}
-          onSelectLeft={onSelectLeft}
-          onSelectRight={onSelectRight}
+          onAssign={onMatchAssign}
+          onUnassign={onMatchUnassign}
         />
       );
     case "HOTSPOT":

@@ -68,7 +68,13 @@ export type CheckpointGatePayload = {
     type: string;
     prompt: string;
     order: number;
-    answers: Array<{ id: string; label: string; order: number }>;
+    payload?: { imageUrl?: string } | null;
+    answers: Array<{
+      id: string;
+      label: string;
+      order: number;
+      matchKey?: string | null;
+    }>;
   }>;
 };
 
@@ -102,6 +108,7 @@ export function useSubmitCheckpointGate() {
         nextGateId: string | null;
         nextLessonId: string | null;
         categoryId: string;
+        timedOut: boolean;
         feedback: Array<{
           questionId: string;
           isCorrect: boolean;

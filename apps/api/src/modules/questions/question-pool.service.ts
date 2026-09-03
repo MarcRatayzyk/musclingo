@@ -5,15 +5,20 @@ import {
 } from "@muscle-mind/types";
 import { Prisma, QuestionType } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
+import { matchRightIdsInLeftOrder, withPairedMatchKeys } from "./match-score";
 
 export type PoolChoice = {
   id: string;
   label: string;
+  matchKey?: string | null;
+  order?: number;
 };
 
 export type PoolQuestion = {
   id: string;
+  type: "SINGLE" | "TRUE_FALSE" | "MATCH";
   prompt: string;
+  imageUrl: string | null;
   choices: PoolChoice[];
 };
 
@@ -52,9 +57,40 @@ function poolQuestionId(miniGameQuestionId: string) {
   return `mini:${miniGameQuestionId}`;
 }
 
+function lessonPoolQuestionId(questionId: string) {
+  return `lesson:${questionId}`;
+}
+
 function parsePoolQuestionId(id: string): string | null {
   if (!id.startsWith("mini:")) return null;
   return id.slice(5);
+}
+
+function parseLessonPoolQuestionId(id: string): string | null {
+  if (!id.startsWith("lesson:")) return null;
+  return id.slice(7);
+}
+
+type AnswerRow = {
+  id: string;
+  label: string;
+  isCorrect: boolean;
+  matchKey?: string | null;
+  order?: number;
+};
+
+function isLessonBankQuestion(answers: AnswerRow[]) {
+  return (
+    answers.length === 4 && answers.filter((a) => a.isCorrect).length === 1
+  );
+}
+
+function readImageUrl(payload: Prisma.JsonValue | null): string | null {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return null;
+  }
+  const imageUrl = (payload as { imageUrl?: unknown }).imageUrl;
+  return typeof imageUrl === "string" ? imageUrl : null;
 }
 
 function readThemeTags(payload: Prisma.JsonValue | null): string[] {
@@ -111,7 +147,15 @@ export class QuestionPoolService {
       userId,
       categoryId,
     );
-    const internal = await this.buildPool(categoryId, theme, excludeIds, count);
+    const fromLesson = await this.buildLessonBank(
+      quizId,
+      excludeIds,
+      count,
+    );
+    const internal =
+      fromLesson.length >= count
+        ? fromLesson
+        : await this.buildPool(categoryId, theme, excludeIds, count);
     if (internal.length < count) {
       throw new NotFoundException(
         `Not enough themed quiz questions (need ${count}, got ${internal.length})`,
@@ -137,10 +181,12 @@ export class QuestionPoolService {
 
     return {
       sessionId: session.id,
-      questions: internal.map(({ id, prompt, choices }) => ({
+      questions: internal.map(({ id, prompt, choices, type, imageUrl }) => ({
         id,
         prompt,
         choices,
+        type,
+        imageUrl,
       })),
       answerKeys,
     };
@@ -162,16 +208,38 @@ export class QuestionPoolService {
     const miniIds = ids
       .map(parsePoolQuestionId)
       .filter((id): id is string => !!id);
+    const lessonIds = ids
+      .map(parseLessonPoolQuestionId)
+      .filter((id): id is string => !!id);
 
-    const rows = await this.prisma.miniGameQuestion.findMany({
-      where: { id: { in: miniIds } },
-      include: { answers: { orderBy: { order: "asc" } } },
-    });
+    const [miniRows, lessonRows] = await Promise.all([
+      miniIds.length
+        ? this.prisma.miniGameQuestion.findMany({
+            where: { id: { in: miniIds } },
+            include: { answers: { orderBy: { order: "asc" } } },
+          })
+        : Promise.resolve([]),
+      lessonIds.length
+        ? this.prisma.question.findMany({
+            where: { id: { in: lessonIds } },
+            include: { answers: { orderBy: { order: "asc" } } },
+          })
+        : Promise.resolve([]),
+    ]);
 
-    const byMiniId = new Map(rows.map((r) => [r.id, r]));
+    const byMiniId = new Map(miniRows.map((r) => [r.id, r]));
+    const byLessonId = new Map(lessonRows.map((r) => [r.id, r]));
 
     return ids
-      .map((poolId) => this.toInternalQuestion(poolId, byMiniId.get(parsePoolQuestionId(poolId)!)))
+      .map((poolId) => {
+        const miniId = parsePoolQuestionId(poolId);
+        if (miniId) return this.toInternalQuestion(poolId, byMiniId.get(miniId));
+        const lessonId = parseLessonPoolQuestionId(poolId);
+        if (lessonId) {
+          return this.toInternalQuestion(poolId, byLessonId.get(lessonId));
+        }
+        return null;
+      })
       .filter((q): q is PoolQuestionInternal => q !== null);
   }
 
@@ -183,23 +251,101 @@ export class QuestionPoolService {
     poolId: string,
     row?: {
       id: string;
+      type?: QuestionType;
       prompt: string;
       explanation: string;
-      answers: Array<{ id: string; label: string; isCorrect: boolean }>;
+      payload?: Prisma.JsonValue | null;
+      answers: Array<{
+        id: string;
+        label: string;
+        isCorrect: boolean;
+        matchKey?: string | null;
+        order: number;
+      }>;
     },
   ): PoolQuestionInternal | null {
     if (!row) return null;
+    const imageUrl = readImageUrl(row.payload ?? null);
+
+    if (row.type === QuestionType.MATCH) {
+      const answers = withPairedMatchKeys(row.answers);
+      const rightIds = matchRightIdsInLeftOrder(answers);
+      if (rightIds.length < 2) return null;
+      return {
+        id: poolId,
+        type: "MATCH",
+        prompt: row.prompt,
+        imageUrl,
+        explanation: row.explanation,
+        correctChoiceId: rightIds.join("|"),
+        choices: answers.map((a) => ({
+          id: a.id,
+          label: a.label,
+          matchKey: a.matchKey,
+          order: a.order,
+        })),
+      };
+    }
+
     const correct = row.answers.find((a) => a.isCorrect);
     if (!correct || row.answers.length < 2) return null;
     return {
       id: poolId,
+      type: row.type === QuestionType.TRUE_FALSE ? "TRUE_FALSE" : "SINGLE",
       prompt: row.prompt,
+      imageUrl,
       explanation: row.explanation,
       correctChoiceId: correct.id,
-      choices: shuffle(
-        row.answers.map((a) => ({ id: a.id, label: a.label })),
-      ),
+      choices: shuffle(row.answers.map((a) => ({ id: a.id, label: a.label }))),
     };
+  }
+
+  private async buildLessonBank(
+    quizId: string,
+    excludeIds: Set<string>,
+    count: number,
+  ): Promise<PoolQuestionInternal[]> {
+    const rows = await this.prisma.question.findMany({
+      where: {
+        quizId,
+        type: { in: [QuestionType.SINGLE, QuestionType.MATCH] },
+      },
+      include: { answers: { orderBy: { order: "asc" } } },
+      orderBy: { order: "asc" },
+    });
+
+    const singles: PoolQuestionInternal[] = [];
+    const matches: PoolQuestionInternal[] = [];
+    for (const row of rows) {
+      if (row.type === QuestionType.MATCH) {
+        const built = this.toInternalQuestion(lessonPoolQuestionId(row.id), row);
+        if (built) matches.push(built);
+        continue;
+      }
+      if (!isLessonBankQuestion(row.answers)) continue;
+      const built = this.toInternalQuestion(lessonPoolQuestionId(row.id), row);
+      if (built) singles.push(built);
+    }
+
+    const matchSlot = matches.length > 0 ? 1 : 0;
+    const singleCount = count - matchSlot;
+    if (singles.length < singleCount) return [];
+
+    const pickShuffled = (
+      pool: PoolQuestionInternal[],
+      take: number,
+    ): PoolQuestionInternal[] => {
+      const fresh = shuffle(pool.filter((q) => !excludeIds.has(q.id)));
+      const used = shuffle(pool.filter((q) => excludeIds.has(q.id)));
+      return [...fresh, ...used].slice(0, take);
+    };
+
+    const pickedMatch = matchSlot ? pickShuffled(matches, 1) : [];
+    const pickedSingles = pickShuffled(singles, count - pickedMatch.length);
+    if (pickedSingles.length + pickedMatch.length < count) return [];
+
+    const rest = shuffle(pickedSingles);
+    return [...pickedMatch, ...rest];
   }
 
   private async getRecentlyUsedQuestionIds(

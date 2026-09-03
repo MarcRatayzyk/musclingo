@@ -24,6 +24,30 @@ type LessonFormState = {
   illustrationUrl: string;
 };
 
+const LESSON_JSON_EXAMPLE = `{
+  "markdown": "# Les muscles de l'avant-bras\\n\\nL'avant-bras contient des muscles qui permettent les mouvements du poignet et des doigts.\\n\\n## Les fléchisseurs\\n\\nIls se situent principalement sur la face antérieure de l'avant-bras.\\n\\n- Fléchisseur radial du carpe\\n- Fléchisseur ulnaire du carpe\\n- Long palmaire\\n\\n---\\n\\n## Les extenseurs\\n\\nIls se trouvent principalement sur la face postérieure.\\n\\n> À retenir : les fléchisseurs ferment le poignet et les extenseurs l'ouvrent."
+}`;
+
+function parseLessonMarkdownJson(raw: string): string {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error("JSON invalide — vérifie les virgules et les guillemets.");
+  }
+
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("Attendu : un objet JSON décrivant une leçon.");
+  }
+
+  const markdown = (parsed as Record<string, unknown>).markdown;
+  if (typeof markdown !== "string" || !markdown.trim()) {
+    throw new Error('Le champ "markdown" est obligatoire.');
+  }
+
+  return markdown;
+}
+
 export default function NewLessonPage() {
   const router = useRouter();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -120,7 +144,24 @@ export function LessonForm({
 }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [jsonImportOpen, setJsonImportOpen] = useState(false);
+  const [jsonImportText, setJsonImportText] = useState(LESSON_JSON_EXAMPLE);
+  const [jsonImportError, setJsonImportError] = useState<string | null>(null);
+  const [jsonImportOk, setJsonImportOk] = useState(false);
   const preview = mediaUrl(form.illustrationUrl);
+
+  function importLessonFromJson() {
+    setJsonImportError(null);
+    setJsonImportOk(false);
+    try {
+      setForm({ ...form, markdown: parseLessonMarkdownJson(jsonImportText) });
+      setJsonImportOk(true);
+    } catch (err) {
+      setJsonImportError(
+        err instanceof Error ? err.message : "Import JSON impossible",
+      );
+    }
+  }
 
   async function onImageSelected(file: File | undefined) {
     if (!file) return;
@@ -138,6 +179,76 @@ export function LessonForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
+      <div className="rounded-2xl border border-border bg-surface/60 p-5">
+        <button
+          type="button"
+          className="flex w-full items-center justify-between gap-3 text-left"
+          onClick={() => setJsonImportOpen((open) => !open)}
+        >
+          <div>
+            <p className="font-medium text-accent">
+              Import JSON du texte de la leçon
+            </p>
+            <p className="mt-1 text-sm text-muted">
+              Colle le contenu Markdown sans modifier les autres champs.
+            </p>
+          </div>
+          <span className="shrink-0 text-sm text-muted">
+            {jsonImportOpen ? "Masquer" : "Afficher"}
+          </span>
+        </button>
+
+        {jsonImportOpen && (
+          <div className="mt-4 space-y-3">
+            <p className="text-xs text-muted">
+              Format attendu :
+              <code className="ml-1 text-white/80">
+                {`{ "markdown": "# Titre\\n\\nContenu..." }`}
+              </code>
+            </p>
+            <textarea
+              rows={20}
+              className="field font-mono text-sm"
+              value={jsonImportText}
+              onChange={(e) => {
+                setJsonImportText(e.target.value);
+                setJsonImportError(null);
+                setJsonImportOk(false);
+              }}
+              spellCheck={false}
+            />
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                className="rounded-xl border border-border px-4 py-2 text-sm"
+                onClick={() => {
+                  setJsonImportText(LESSON_JSON_EXAMPLE);
+                  setJsonImportError(null);
+                  setJsonImportOk(false);
+                }}
+              >
+                Charger l&apos;exemple
+              </button>
+              <button
+                type="button"
+                className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-background"
+                onClick={importLessonFromJson}
+              >
+                Importer le texte
+              </button>
+            </div>
+            {jsonImportError && (
+              <p className="text-sm text-red-400">{jsonImportError}</p>
+            )}
+            {jsonImportOk && (
+              <p className="text-sm text-accent">
+                Le texte Markdown a été importé. Vérifie-le puis enregistre.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Titre">
           <input

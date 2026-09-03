@@ -95,8 +95,10 @@ export class QuizzesService {
       throw new BadRequestException("Invalid or expired quiz session");
     }
     const isCorrect =
-      input.selectedAnswerIds.length === 1 &&
-      input.selectedAnswerIds[0] === question.correctChoiceId;
+      question.type === "MATCH"
+        ? input.selectedAnswerIds.join("|") === question.correctChoiceId
+        : input.selectedAnswerIds.length === 1 &&
+          input.selectedAnswerIds[0] === question.correctChoiceId;
     return { correct: isCorrect };
   }
 
@@ -148,8 +150,10 @@ export class QuizzesService {
       }
 
       const isCorrect =
-        submission.selectedAnswerIds.length === 1 &&
-        submission.selectedAnswerIds[0] === question.correctChoiceId;
+        question.type === "MATCH"
+          ? submission.selectedAnswerIds.join("|") === question.correctChoiceId
+          : submission.selectedAnswerIds.length === 1 &&
+            submission.selectedAnswerIds[0] === question.correctChoiceId;
 
       if (isCorrect) correctCount += 1;
 

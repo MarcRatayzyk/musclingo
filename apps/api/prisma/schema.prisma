@@ -290,6 +290,7 @@ model CheckpointQuestion {
   prompt      String
   explanation String
   order       Int                 @default(0)
+  payload     Json?
   answers     CheckpointAnswer[]
 
   @@index([gateId, order])
@@ -302,6 +303,7 @@ model CheckpointAnswer {
   label      String
   isCorrect  Boolean            @default(false)
   order      Int                @default(0)
+  matchKey   String?
 
   @@index([questionId, order])
 }

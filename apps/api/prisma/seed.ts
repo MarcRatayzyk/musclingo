@@ -12,6 +12,7 @@ import {
   NUTRITION_GATES,
   type NutritionGateSeed,
 } from "./nutrition-gates";
+import { ANATOMIE_GATES, type AnatomieGateSeed } from "./anatomie-gates";
 import { ANATOMIE_MINI_GAME_QUESTIONS } from "./mini-games/anatomie-questions";
 import { BIOMECANIQUE_MINI_GAME_QUESTIONS } from "./mini-games/biomecanique-questions";
 import { NUTRITION_MINI_GAME_QUESTIONS } from "./mini-games/nutrition-questions";
@@ -90,10 +91,19 @@ type SeedLesson = {
   tfExplanation?: string;
 };
 
+function payloadImageUrl(payload: Prisma.InputJsonValue | undefined): string | undefined {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return undefined;
+  }
+  const imageUrl = (payload as { imageUrl?: unknown }).imageUrl;
+  return typeof imageUrl === "string" ? imageUrl : undefined;
+}
+
 function buildQuizQuestionCreates(lesson: SeedLesson) {
   if (lesson.questions?.length) {
     return lesson.questions.map((q, order) => {
-      if (q.payload?.imageUrl) ensureUploadFile(q.payload.imageUrl);
+      const imageUrl = payloadImageUrl(q.payload);
+      if (imageUrl) ensureUploadFile(imageUrl);
       return {
         type: q.type,
         prompt: q.prompt,
@@ -255,25 +265,33 @@ async function upsertLessonWithQuiz(categoryId: string, lesson: SeedLesson) {
   return saved.id;
 }
 
-function buildGateQuestionCreates(gate: NutritionGateSeed) {
-  return gate.questions.map((q, order) => ({
-    type: q.type,
-    prompt: q.prompt,
-    explanation: q.explanation,
-    order,
-    answers: {
-      create: q.answers.map((a, i) => ({
-        label: a.label,
-        isCorrect: a.isCorrect,
-        order: i,
-      })),
-    },
-  }));
+function buildGateQuestionCreates(gate: NutritionGateSeed | AnatomieGateSeed) {
+  return gate.questions.map((q, order) => {
+    const imageUrl = payloadImageUrl(q.payload as Prisma.InputJsonValue | undefined);
+    if (imageUrl) ensureUploadFile(imageUrl);
+    return {
+      type: q.type,
+      prompt: q.prompt,
+      explanation: q.explanation,
+      order,
+      payload: q.payload
+        ? (q.payload as Prisma.InputJsonValue)
+        : undefined,
+      answers: {
+        create: q.answers.map((a, i) => ({
+          label: a.label,
+          isCorrect: a.isCorrect,
+          order: i,
+          matchKey: a.matchKey ?? undefined,
+        })),
+      },
+    };
+  });
 }
 
 async function upsertCheckpointGate(
   categoryId: string,
-  gate: NutritionGateSeed,
+  gate: NutritionGateSeed | AnatomieGateSeed,
 ) {
   const existing = await prisma.checkpointGate.findUnique({
     where: {
@@ -526,6 +544,16 @@ async function main() {
   const anatomieCategory = await prisma.category.findUniqueOrThrow({
     where: { slug: "anatomie" },
   });
+  for (const gate of ANATOMIE_GATES) {
+    await upsertCheckpointGate(anatomieCategory.id, gate);
+  }
+  const keepAnatomieGateKeys = ANATOMIE_GATES.map((g) => g.checkpointKey);
+  await prisma.checkpointGate.deleteMany({
+    where: {
+      categoryId: anatomieCategory.id,
+      checkpointKey: { notIn: keepAnatomieGateKeys },
+    },
+  });
   await replaceMiniGameQuestions(
     anatomieCategory.id,
     ANATOMIE_MINI_GAME_QUESTIONS,
@@ -569,6 +597,7 @@ async function main() {
   console.log(`Demo user (mobile): ${demoEmail} / ${demoPassword}`);
   console.log(`Lessons seeded: ${total}`);
   console.log(`Nutrition gates seeded: ${NUTRITION_GATES.length}`);
+  console.log(`Anatomie gates seeded: ${ANATOMIE_GATES.length}`);
   console.log(`Mini-game questions seeded: ${miniGameTotal}`);
 }
 

@@ -100,14 +100,18 @@ export function XpBar({
 
 
 
-export function Screen({ children }: { children: React.ReactNode }) {
-
+export function Screen({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-
-    <View className="flex-1 bg-background px-5 pt-14">{children}</View>
-
+    <View className={`flex-1 bg-background px-5 ${className ?? "pt-14"}`}>
+      {children}
+    </View>
   );
-
 }
 
 

@@ -62,7 +62,14 @@ export type QuizPayload = {
   questions: Array<{
     id: string;
     prompt: string;
-    choices: Array<{ id: string; label: string }>;
+    type?: "SINGLE" | "TRUE_FALSE" | "MATCH";
+    imageUrl?: string | null;
+    choices: Array<{
+      id: string;
+      label: string;
+      matchKey?: string | null;
+      order?: number;
+    }>;
   }>;
   answerKeys: Record<string, string>;
 };

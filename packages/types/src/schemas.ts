@@ -64,7 +64,7 @@ export type UpdatePreferredCategoryInput = z.infer<
 
 export const SubmitQuizAnswerSchema = z.object({
   questionId: z.string().min(1),
-  selectedAnswerIds: z.array(z.string().min(1)).min(1).max(1),
+  selectedAnswerIds: z.array(z.string().min(1)).min(1).max(12),
   timeSpentSec: z
     .number()
     .int()
@@ -86,7 +86,7 @@ export type SubmitQuizInput = z.infer<typeof SubmitQuizSchema>;
 export const CheckQuizAnswerSchema = z.object({
   sessionId: z.string().cuid(),
   questionId: z.string().min(1),
-  selectedAnswerIds: z.array(z.string().min(1)).min(1).max(1),
+  selectedAnswerIds: z.array(z.string().min(1)).min(1).max(12),
 });
 export type CheckQuizAnswerInput = z.infer<typeof CheckQuizAnswerSchema>;
 

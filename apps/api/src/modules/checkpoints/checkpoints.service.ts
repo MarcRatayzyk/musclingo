@@ -10,8 +10,9 @@ import {
   isGateScorePassing,
 } from "@muscle-mind/types";
 import { PrismaService } from "../../prisma/prisma.service";
-import { GamificationService } from "../gamification/gamification.service";
 import { PathService } from "../categories/path.service";
+import { GamificationService } from "../gamification/gamification.service";
+import { isMatchSelectionCorrect } from "../questions/match-score";
 
 @Injectable()
 export class CheckpointsService {
@@ -33,7 +34,7 @@ export class CheckpointsService {
           include: {
             answers: {
               orderBy: { order: "asc" },
-              select: { id: true, label: true, order: true },
+              select: { id: true, label: true, order: true, matchKey: true },
             },
           },
         },
@@ -56,10 +57,12 @@ export class CheckpointsService {
         type: q.type,
         prompt: q.prompt,
         order: q.order,
+        payload: q.payload,
         answers: q.answers.map((a) => ({
           id: a.id,
           label: a.label,
           order: a.order,
+          matchKey: a.matchKey,
         })),
       })),
     };
@@ -77,8 +80,15 @@ export class CheckpointsService {
 
     await this.path.assertGateUnlocked(gateId, userId);
 
-    if (input.answers.length !== gate.questions.length) {
-      throw new BadRequestException("All questions must be answered");
+    if (input.answers.length > gate.questions.length) {
+      throw new BadRequestException("Too many answers");
+    }
+
+    const knownIds = new Set(gate.questions.map((q) => q.id));
+    for (const answer of input.answers) {
+      if (!knownIds.has(answer.questionId)) {
+        throw new BadRequestException("Unknown question in submission");
+      }
     }
 
     const answerMap = new Map(
@@ -88,19 +98,21 @@ export class CheckpointsService {
     let correctCount = 0;
     const feedback = gate.questions.map((question) => {
       const submission = answerMap.get(question.id);
-      if (!submission) {
-        throw new BadRequestException(`Missing answer for ${question.id}`);
-      }
-
       const correctIds = question.answers
         .filter((a) => a.isCorrect)
         .map((a) => a.id)
         .sort();
 
       const isCorrect =
-        submission.selectedAnswerIds.length === 1 &&
-        correctIds.length === 1 &&
-        submission.selectedAnswerIds[0] === correctIds[0];
+        question.type === "MATCH"
+          ? isMatchSelectionCorrect(
+              question.answers,
+              submission?.selectedAnswerIds ?? [],
+            )
+          : !!submission &&
+            submission.selectedAnswerIds.length === 1 &&
+            correctIds.length === 1 &&
+            submission.selectedAnswerIds[0] === correctIds[0];
 
       if (isCorrect) correctCount += 1;
 
@@ -113,11 +125,14 @@ export class CheckpointsService {
     });
 
     const score = correctCount / gate.questions.length;
-    const passed = isGateScorePassing(
-      score,
-      gate.questions.length,
-      gate.passThreshold,
-    );
+    const timedOut = input.timeSpentSec >= gate.timeLimitSec;
+    const passed =
+      !timedOut &&
+      isGateScorePassing(
+        score,
+        gate.questions.length,
+        gate.passThreshold,
+      );
     const xpEarned = passed ? gate.xpReward : Math.round(gate.xpReward * score);
 
     await this.prisma.checkpointGateResult.create({
@@ -184,6 +199,7 @@ export class CheckpointsService {
       nextGateId: nextGate?.id ?? null,
       nextLessonId: firstLessonNextUnit,
       categoryId: gate.categoryId,
+      timedOut,
     };
   }
 }

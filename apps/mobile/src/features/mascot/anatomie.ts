@@ -83,49 +83,49 @@ export const LESSON_HOOKS: Record<number, LessonMascotHooks> = {
       },
     },
   },
-  4: {
+  6: {
     intro: {
       text: "Nouvelle section : les muscles du haut du corps. Les bras d'abord.",
       pose: "default",
     },
   },
-  5: {
+  7: {
     intro: {
       text: "Pectoraux et épaules : tout ce qui pousse devant toi.",
       pose: "present",
     },
   },
-  6: {
+  8: {
     intro: {
       text: "Tronc et abdos : la ceinture qui stabilise tes mouvements.",
       pose: "present",
     },
   },
-  7: {
+  9: {
     intro: {
       text: "Le dos — énorme zone de travail en tirage et en posture.",
       pose: "present",
     },
   },
-  9: {
+  13: {
     intro: {
-      text: "On descend : quadriceps et avant de cuisse.",
-      pose: "present",
+      text: "On descend : muscles du bas du corps. Quadriceps et avant de cuisse.",
+      pose: "default",
     },
   },
-  10: {
+  14: {
     intro: {
       text: "Ischio-jambiers : la chaîne postérieure de la cuisse.",
       pose: "present",
     },
   },
-  11: {
+  15: {
     intro: {
       text: "Les fessiers — plus qu'un muscle « esthétique », un vrai moteur de hanche.",
       pose: "present",
     },
   },
-  13: {
+  19: {
     intro: {
       text: "Section articulations : l'épaule est la plus mobile du corps.",
       pose: "default",
@@ -137,25 +137,37 @@ export const LESSON_HOOKS: Record<number, LessonMascotHooks> = {
       },
     },
   },
-  14: {
+  20: {
     intro: {
       text: "Coude et poignet : là où se jouent curls et prises.",
       pose: "present",
     },
   },
-  15: {
+  21: {
     intro: {
       text: "La hanche : profonde, stable, et centrale pour squat et deadlift.",
       pose: "present",
     },
   },
-  16: {
+  22: {
     intro: {
       text: "Le genou : ligaments et ménisques — à comprendre avant de charger lourd.",
       pose: "doubt",
     },
   },
-  18: {
+  26: {
+    intro: {
+      text: "On passe en profondeur sur le haut du corps : origines, insertions, actions.",
+      pose: "default",
+    },
+  },
+  34: {
+    intro: {
+      text: "Même logique pour le bas : on détaille chefs et insertions.",
+      pose: "default",
+    },
+  },
+  41: {
     intro: {
       text: "On passe au fonctionnement : fibres, sarcomères, contraction.",
       pose: "default",
@@ -167,22 +179,22 @@ export const LESSON_HOOKS: Record<number, LessonMascotHooks> = {
       },
     },
   },
-  19: {
+  42: {
     intro: {
       text: "Tendons vs ligaments : l'un tire, l'autre stabilise.",
       pose: "present",
     },
   },
-  20: {
+  46: {
     intro: {
-      text: "Agoniste, antagoniste, stabilisateur — le trio pour lire un exercice.",
-      pose: "present",
+      text: "Dernière ligne : organisation du mouvement — agonistes, plans, leviers.",
+      pose: "default",
     },
   },
-  22: {
+  49: {
     intro: {
-      text: "Dernière ligne droite : anatomie appliquée à la salle.",
-      pose: "default",
+      text: "Dernière leçon : longueur-tension et angles d'insertion.",
+      pose: "present",
     },
     outro: {
       text: "Tu as parcouru tout le parcours anatomie. Respect — valide ce quiz !",

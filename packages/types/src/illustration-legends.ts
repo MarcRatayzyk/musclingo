@@ -16,12 +16,8 @@ export type LessonIllustration = {
  * Galeries multi-images : clé = illustrationUrl principale de la leçon.
  * Si absente, l'UI n'affiche que l'URL principale.
  */
-export const ILLUSTRATION_GALLERIES: Record<string, LessonIllustration[]> = {
-  "/uploads/bras-muscles.png": [
-    { url: "/uploads/bras-triceps.png", title: "Triceps" },
-    { url: "/uploads/bras-muscles.png", title: "Bras" },
-  ],
-};
+export const ILLUSTRATION_GALLERIES: Record<string, LessonIllustration[]> = {};
+
 
 export function getLessonIllustrations(
   illustrationUrl: string | null | undefined,
@@ -36,6 +32,33 @@ export function getLessonIllustrations(
 
 /** Légendes des illustrations (pastille → structure). */
 export const ILLUSTRATION_LEGENDS: Record<string, IllustrationLegendItem[]> = {
+  "/uploads/bras-osseux.png": [
+    {
+      color: "#9E1560",
+      label: "omoplate",
+      aliases: ["scapula", "l'omoplate", "les omoplates"],
+    },
+    {
+      color: "#2769C1",
+      label: "humérus",
+      aliases: ["humerus", "l'humérus", "l'humerus"],
+    },
+    {
+      color: "#1D8554",
+      label: "radius",
+      aliases: ["le radius"],
+    },
+    {
+      color: "#D0AB2F",
+      label: "ulna",
+      aliases: ["cubitus", "l'ulna", "le cubitus"],
+    },
+    {
+      color: "#F5F5F5",
+      label: "main",
+      aliases: ["carpe", "métacarpes", "metacarpés", "phalanges", "la main"],
+    },
+  ],
   "/uploads/cage-thoracique.png": [
     {
       color: "#7B2D8E",
@@ -104,19 +127,17 @@ export const ILLUSTRATION_LEGENDS: Record<string, IllustrationLegendItem[]> = {
   ],
   "/uploads/bras-triceps.png": [
     {
-      color: "#2B7DE9",
+      color: "#1E4FD6",
       label: "triceps",
       aliases: ["le triceps", "triceps brachial", "triceps brachii"],
     },
-  ],
-  "/uploads/bras-muscles.png": [
     {
       color: "#E74C5C",
       label: "biceps",
       aliases: ["le biceps", "biceps brachial", "biceps brachii"],
     },
     {
-      color: "#6EC6E6",
+      color: "#3EC6D8",
       label: "brachio-radial",
       aliases: [
         "brachio radial",
@@ -127,7 +148,7 @@ export const ILLUSTRATION_LEGENDS: Record<string, IllustrationLegendItem[]> = {
       ],
     },
     {
-      color: "#5DAA68",
+      color: "#4CAF50",
       label: "fléchisseurs",
       aliases: [
         "flechisseurs",
@@ -139,7 +160,52 @@ export const ILLUSTRATION_LEGENDS: Record<string, IllustrationLegendItem[]> = {
       ],
     },
     {
-      color: "#8E44AD",
+      color: "#9B59B6",
+      label: "fléchisseur ulnaire",
+      aliases: [
+        "flechisseur ulnaire",
+        "fléchisseurs ulnaires",
+        "flexor carpi ulnaris",
+        "fléchisseur cubital",
+      ],
+    },
+  ],
+  "/uploads/bras-muscles.png": [
+    {
+      color: "#1E4FD6",
+      label: "triceps",
+      aliases: ["le triceps", "triceps brachial", "triceps brachii"],
+    },
+    {
+      color: "#E74C5C",
+      label: "biceps",
+      aliases: ["le biceps", "biceps brachial", "biceps brachii"],
+    },
+    {
+      color: "#3EC6D8",
+      label: "brachio-radial",
+      aliases: [
+        "brachio radial",
+        "brachioradial",
+        "brachioradialis",
+        "le brachio-radial",
+        "brachio-radialis",
+      ],
+    },
+    {
+      color: "#4CAF50",
+      label: "fléchisseurs",
+      aliases: [
+        "flechisseurs",
+        "fléchisseur",
+        "flechisseur",
+        "les fléchisseurs",
+        "flexor carpi radialis",
+        "fléchisseur radial",
+      ],
+    },
+    {
+      color: "#9B59B6",
       label: "fléchisseur ulnaire",
       aliases: [
         "flechisseur ulnaire",

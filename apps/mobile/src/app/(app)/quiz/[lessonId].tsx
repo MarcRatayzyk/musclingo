@@ -10,14 +10,14 @@ import { ConfettiBurst } from "@/features/gamification/confetti";
 import { useQuizByLesson, useSubmitQuiz } from "@/features/home/api";
 import {
   MatchQuestion,
-  addBidirectionalMatch,
-  removeMatchForLeft,
+  initialOrderedRightIds,
   rightIdsInLeftOrder,
   splitMatchColumns,
 } from "@/features/quiz/components/MatchQuestion";
 import type { QuizQuestion } from "@/features/quiz/types";
 import { ApiError } from "@/shared/api/client";
 import { PrimaryButton, Screen } from "@/shared/ui/primitives";
+import { NeuroliftAmount } from "@/shared/ui/Neurolift";
 
 type SubmitResult = {
   score: number;
@@ -109,11 +109,9 @@ export default function QuizScreen() {
   const [wrongFlash, setWrongFlash] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [lockedChoice, setLockedChoice] = useState<string | null>(null);
-  const [matches, setMatches] = useState<
-    Array<{ leftId: string; rightId: string }>
-  >([]);
+  const [orderedRightIds, setOrderedRightIds] = useState<string[]>([]);
   const [matchWrong, setMatchWrong] = useState(false);
-  const matchTriedKeyRef = useRef("");
+  const [matchDragging, setMatchDragging] = useState(false);
 
   const deadlineRef = useRef(Date.now() + 60_000);
   const accountedTimeRef = useRef(0);
@@ -151,9 +149,9 @@ export default function QuizScreen() {
     setWrongFlash(null);
     setSubmitError(null);
     setLockedChoice(null);
-    setMatches([]);
+    setOrderedRightIds([]);
     setMatchWrong(false);
-    matchTriedKeyRef.current = "";
+    setMatchDragging(false);
     resetTimer(quizTimeSec);
     void refetch();
   }, [quizTimeSec, refetch, resetTimer]);
@@ -187,10 +185,14 @@ export default function QuizScreen() {
   }, [question, index]);
 
   useEffect(() => {
-    setMatches([]);
+    if (!matchQuestion) {
+      setOrderedRightIds([]);
+      return;
+    }
+    setOrderedRightIds(initialOrderedRightIds(matchQuestion.answers));
     setMatchWrong(false);
-    matchTriedKeyRef.current = "";
-  }, [question?.id]);
+    setMatchDragging(false);
+  }, [question?.id, matchQuestion]);
 
   useEffect(() => {
     if (!quiz || result || failed) return;
@@ -285,7 +287,7 @@ export default function QuizScreen() {
       return;
     }
     const { lefts } = splitMatchColumns(matchQuestion.answers);
-    const selected = rightIdsInLeftOrder(lefts, matches);
+    const selected = rightIdsInLeftOrder(lefts, orderedRightIds);
     if (selected.length !== lefts.length) return;
 
     const expected = answerKeys[question.id];
@@ -307,22 +309,6 @@ export default function QuizScreen() {
 
     await commitQuestion(selected);
   };
-
-  useEffect(() => {
-    if (!quiz || !question || !matchQuestion || result || failed || lockedChoice) {
-      return;
-    }
-    const { lefts } = splitMatchColumns(matchQuestion.answers);
-    const selected = rightIdsInLeftOrder(lefts, matches);
-    if (selected.length !== lefts.length) {
-      matchTriedKeyRef.current = "";
-      return;
-    }
-    const key = selected.join("|");
-    if (key === matchTriedKeyRef.current) return;
-    matchTriedKeyRef.current = key;
-    void confirmMatch();
-  }, [matches, matchQuestion, question, quiz, result, failed, lockedChoice]);
 
   if (isError) {
     const locked = error instanceof ApiError && error.status === 403;
@@ -386,9 +372,14 @@ export default function QuizScreen() {
               Temps total {formatTimer(result.timeSpentSec)} /{" "}
               {formatTimer(quizTimeSec)}
             </Text>
-            <Text className="mt-6 text-5xl font-semibold text-accent">
-              +{result.xpEarned} neurolift
-            </Text>
+            <View className="mt-6 items-center">
+              <NeuroliftAmount
+                amount={result.xpEarned}
+                size="xl"
+                signed
+                color="#7CFFB2"
+              />
+            </View>
 
             <View className="mt-10 w-full gap-4">
               {!result.passed ? (
@@ -431,6 +422,7 @@ export default function QuizScreen() {
       <ScrollView
         className="mt-4 flex-1"
         showsVerticalScrollIndicator={false}
+        scrollEnabled={!matchDragging}
       >
         <Text className="text-2xl font-semibold text-white">
           {question?.prompt}
@@ -440,20 +432,19 @@ export default function QuizScreen() {
           <View className="mt-2 pb-8">
             <MatchQuestion
               question={matchQuestion}
-              matches={matches}
+              orderedRightIds={orderedRightIds}
               wrong={matchWrong}
               disabled={!!lockedChoice}
-              onAssign={(leftId, rightId) => {
-                if (lockedChoice) return;
-                setMatches((current) =>
-                  addBidirectionalMatch(current, leftId, rightId),
-                );
-              }}
-              onUnassign={(leftId) => {
-                if (lockedChoice) return;
-                setMatches((current) => removeMatchForLeft(current, leftId));
-              }}
+              onDraggingChange={setMatchDragging}
+              onReorder={setOrderedRightIds}
             />
+            <View className="mt-6">
+              <PrimaryButton
+                label="Valider"
+                disabled={!!lockedChoice || orderedRightIds.length === 0}
+                onPress={() => void confirmMatch()}
+              />
+            </View>
           </View>
         ) : (
           <View className="mt-6 gap-3">

@@ -57,7 +57,7 @@ export function isQuestionAnswered(
       const pairCount = new Set(
         question.answers.map((a) => a.matchKey).filter(Boolean),
       ).size;
-      return state.matches.length >= pairCount * 2;
+      return state.orderedAnswerIds.length === pairCount;
     }
     case "SINGLE":
     case "TRUE_FALSE":
@@ -89,8 +89,7 @@ export function buildSubmitPayload(
   if (question.type === "MATCH") {
     return {
       questionId: question.id,
-      selectedAnswerIds: [] as string[],
-      matches: state.matches,
+      selectedAnswerIds: state.orderedAnswerIds,
     };
   }
   return {

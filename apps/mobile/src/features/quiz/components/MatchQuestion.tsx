@@ -1,8 +1,7 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   Image,
   Platform,
-  Pressable,
   Text,
   View,
   useWindowDimensions,
@@ -19,11 +18,11 @@ import type { QuizQuestion, QuizQuestionAnswer } from "../types";
 
 type Props = {
   question: QuizQuestion;
-  matches: Array<{ leftId: string; rightId: string }>;
-  onAssign: (leftId: string, rightId: string) => void;
-  onUnassign: (leftId: string) => void;
+  orderedRightIds: string[];
+  onReorder: (ids: string[]) => void;
   wrong?: boolean;
   disabled?: boolean;
+  onDraggingChange?: (dragging: boolean) => void;
 };
 
 export function splitMatchColumns(answers: QuizQuestionAnswer[]) {
@@ -44,6 +43,7 @@ export function splitMatchColumns(answers: QuizQuestionAnswer[]) {
   }
 
   lefts.sort((a, b) => a.order - b.order);
+  // Ordre volontairement incorrect (alphabétique ≠ ordre des numéros)
   const shuffledRights = [...rights].sort((a, b) =>
     a.label.localeCompare(b.label),
   );
@@ -51,129 +51,127 @@ export function splitMatchColumns(answers: QuizQuestionAnswer[]) {
 }
 
 export function rightIdsInLeftOrder(
-  lefts: QuizQuestionAnswer[],
-  matches: Array<{ leftId: string; rightId: string }>,
+  _lefts: QuizQuestionAnswer[],
+  orderedRightIds: string[],
 ): string[] {
-  return lefts
-    .map((left) => matches.find((m) => m.leftId === left.id)?.rightId)
-    .filter((id): id is string => !!id);
+  return orderedRightIds;
 }
 
-export function addBidirectionalMatch(
-  matches: Array<{ leftId: string; rightId: string }>,
-  leftId: string,
-  rightId: string,
-): Array<{ leftId: string; rightId: string }> {
-  const filtered = matches.filter(
-    (m) =>
-      m.leftId !== leftId &&
-      m.rightId !== rightId &&
-      m.leftId !== rightId &&
-      m.rightId !== leftId,
-  );
-  return [
-    ...filtered,
-    { leftId, rightId },
-    { leftId: rightId, rightId: leftId },
-  ];
+export function initialOrderedRightIds(answers: QuizQuestionAnswer[]): string[] {
+  return splitMatchColumns(answers).rights.map((r) => r.id);
 }
 
-export function removeMatchForLeft(
-  matches: Array<{ leftId: string; rightId: string }>,
-  leftId: string,
-): Array<{ leftId: string; rightId: string }> {
-  const rightId = matches.find((m) => m.leftId === leftId)?.rightId;
-  if (!rightId) return matches;
-  return matches.filter(
-    (m) =>
-      !(
-        (m.leftId === leftId && m.rightId === rightId) ||
-        (m.leftId === rightId && m.rightId === leftId)
-      ),
-  );
-}
-
-type SlotBox = {
-  leftId: string;
-  x: number;
+type RowBox = {
+  index: number;
   y: number;
-  width: number;
   height: number;
 };
 
-function DraggableChip({
+function DraggableReorderChip({
   right,
+  index,
   disabled,
-  onDropAt,
+  wrong,
+  getRowLayouts,
+  onMoveToIndex,
+  onDraggingChange,
 }: {
   right: QuizQuestionAnswer;
+  index: number;
   disabled?: boolean;
-  onDropAt: (rightId: string, absoluteX: number, absoluteY: number) => void;
+  wrong?: boolean;
+  getRowLayouts: () => RowBox[];
+  onMoveToIndex: (from: number, to: number) => void;
+  onDraggingChange?: (dragging: boolean) => void;
 }) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
+  const scale = useSharedValue(1);
   const z = useSharedValue(1);
 
-  const finishDrag = (absoluteX: number, absoluteY: number) => {
-    onDropAt(right.id, absoluteX, absoluteY);
+  const finishDrag = (absoluteY: number) => {
+    const layouts = getRowLayouts();
+    if (layouts.length === 0) return;
+    let target = index;
+    let best = Number.POSITIVE_INFINITY;
+    for (const row of layouts) {
+      const mid = row.y + row.height / 2;
+      const dist = Math.abs(absoluteY - mid);
+      if (dist < best) {
+        best = dist;
+        target = row.index;
+      }
+    }
+    if (target !== index) onMoveToIndex(index, target);
+  };
+
+  const setDragging = (value: boolean) => {
+    onDraggingChange?.(value);
   };
 
   const pan = Gesture.Pan()
     .enabled(!disabled)
+    .minDistance(4)
     .onBegin(() => {
-      z.value = 20;
+      z.value = 40;
+      scale.value = withSpring(1.04);
+      runOnJS(setDragging)(true);
     })
     .onUpdate((e) => {
       translateX.value = e.translationX;
       translateY.value = e.translationY;
     })
     .onEnd((e) => {
-      runOnJS(finishDrag)(e.absoluteX, e.absoluteY);
-      translateX.value = withSpring(0);
-      translateY.value = withSpring(0);
-      z.value = 1;
+      runOnJS(finishDrag)(e.absoluteY);
     })
     .onFinalize(() => {
       translateX.value = withSpring(0);
       translateY.value = withSpring(0);
+      scale.value = withSpring(1);
       z.value = 1;
+      runOnJS(setDragging)(false);
     });
 
   const style = useAnimatedStyle(() => ({
     transform: [
       { translateX: translateX.value },
       { translateY: translateY.value },
+      { scale: scale.value },
     ],
     zIndex: z.value,
+    elevation: z.value,
   }));
-
-  if (Platform.OS === "web") {
-    const webProps = {
-      draggable: !disabled,
-      onDragStart: (e: {
-        dataTransfer?: { setData: (k: string, v: string) => void };
-      }) => {
-        e.dataTransfer?.setData("text/plain", right.id);
-      },
-    };
-    return (
-      <View
-        {...(webProps as object)}
-        className="rounded-xl border border-border bg-surface px-3 py-3"
-        style={{ cursor: disabled ? "default" : "grab" } as never}
-      >
-        <Text className="text-sm text-white">{right.label}</Text>
-      </View>
-    );
-  }
 
   return (
     <GestureDetector gesture={pan}>
       <Animated.View
-        className="rounded-xl border border-border bg-surface px-3 py-3"
-        style={style}
+        style={[
+          style,
+          {
+            minHeight: 48,
+            justifyContent: "center",
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: wrong ? "#EF4444" : "#2A3344",
+            backgroundColor: wrong ? "rgba(239,68,68,0.12)" : "#151A24",
+            paddingHorizontal: 12,
+            paddingVertical: 12,
+          },
+          Platform.OS === "web"
+            ? ({
+                cursor: disabled ? "default" : "grab",
+                touchAction: "none",
+                userSelect: "none",
+              } as never)
+            : null,
+        ]}
       >
-        <Text className="text-sm text-white">{right.label}</Text>
+        <Text
+          style={{ color: "#FFFFFF", fontSize: 14 }}
+          pointerEvents="none"
+        >
+          {right.label}
+        </Text>
       </Animated.View>
     </GestureDetector>
   );
@@ -181,11 +179,11 @@ function DraggableChip({
 
 export function MatchQuestion({
   question,
-  matches,
-  onAssign,
-  onUnassign,
+  orderedRightIds,
+  onReorder,
   wrong = false,
   disabled = false,
+  onDraggingChange,
 }: Props) {
   const { width: screenW } = useWindowDimensions();
   const imageUri = resolveMediaUrl(question.payload?.imageUrl ?? null);
@@ -194,71 +192,46 @@ export function MatchQuestion({
     () => splitMatchColumns(question.answers),
     [question.answers],
   );
-  const [hoverLeftId, setHoverLeftId] = useState<string | null>(null);
-  const slotLayouts = useRef<SlotBox[]>([]);
-  const slotNodes = useRef<Record<string, View | null>>({});
+  const rightsById = useMemo(
+    () => new Map(rights.map((r) => [r.id, r])),
+    [rights],
+  );
 
-  const matchedRightForLeft = (leftId: string) =>
-    matches.find((m) => m.leftId === leftId)?.rightId ?? null;
+  const orderedRights = orderedRightIds
+    .map((id) => rightsById.get(id))
+    .filter((r): r is QuizQuestionAnswer => !!r);
 
-  const matchedLeftForRight = (rightId: string) =>
-    matches.find((m) => m.rightId === rightId)?.leftId ?? null;
+  const rowNodes = useRef<Record<number, View | null>>({});
+  const rowLayouts = useRef<RowBox[]>([]);
 
-  const labelForId = (id: string) =>
-    question.answers.find((a) => a.id === id)?.label ?? "";
-
-  const availableRights = rights.filter((r) => !matchedLeftForRight(r.id));
-
-  const refreshSlots = () => {
-    Object.entries(slotNodes.current).forEach(([leftId, node]) => {
-      node?.measureInWindow((x, y, width, height) => {
-        slotLayouts.current = [
-          ...slotLayouts.current.filter((s) => s.leftId !== leftId),
-          { leftId, x, y, width, height },
+  const measureRows = () => {
+    Object.entries(rowNodes.current).forEach(([indexStr, node]) => {
+      const index = Number(indexStr);
+      node?.measureInWindow((_x, y, _w, height) => {
+        if (height <= 0) return;
+        rowLayouts.current = [
+          ...rowLayouts.current.filter((r) => r.index !== index),
+          { index, y, height },
         ];
       });
     });
   };
 
-  const assignFromPoint = (
-    rightId: string,
-    absoluteX: number,
-    absoluteY: number,
-  ) => {
-    if (disabled) return;
-    refreshSlots();
-    // measureInWindow is async; use last known layouts and also schedule a re-check
-    const hit = slotLayouts.current.find(
-      (slot) =>
-        absoluteX >= slot.x &&
-        absoluteX <= slot.x + slot.width &&
-        absoluteY >= slot.y &&
-        absoluteY <= slot.y + slot.height,
-    );
-    if (hit) {
-      onAssign(hit.leftId, rightId);
-      return;
-    }
-    // Fallback: measure now then assign
-    let remaining = Object.keys(slotNodes.current).length;
-    Object.entries(slotNodes.current).forEach(([leftId, node]) => {
-      node?.measureInWindow((x, y, width, height) => {
-        remaining -= 1;
-        if (
-          absoluteX >= x &&
-          absoluteX <= x + width &&
-          absoluteY >= y &&
-          absoluteY <= y + height
-        ) {
-          onAssign(leftId, rightId);
-          remaining = -1;
-        }
-      });
-    });
+  useEffect(() => {
+    measureRows();
+  }, [orderedRightIds]);
+
+  const moveToIndex = (from: number, to: number) => {
+    if (from === to) return;
+    const next = [...orderedRightIds];
+    const [item] = next.splice(from, 1);
+    if (!item) return;
+    next.splice(to, 0, item);
+    onReorder(next);
   };
 
   return (
-    <View className="mt-2" onLayout={refreshSlots}>
+    <View className="mt-2" onLayout={measureRows}>
       {imageUri ? (
         <Image
           source={{ uri: imageUri }}
@@ -272,90 +245,43 @@ export function MatchQuestion({
           resizeMode="contain"
         />
       ) : null}
-      <Text className="mt-3 text-sm text-muted">
-        Glisse chaque os sur le bon numéro. Touche un numéro pour retirer.
-      </Text>
-      <View className="mt-4 flex-row gap-3">
-        <View className="w-[48%] gap-2">
-          {lefts.map((left) => {
-            const linked = matchedRightForLeft(left.id);
-            const placedLabel = linked ? labelForId(linked) : null;
-            const webDropProps =
-              Platform.OS === "web"
-                ? {
-                    onDragOver: (e: { preventDefault: () => void }) => {
-                      e.preventDefault();
-                      setHoverLeftId(left.id);
-                    },
-                    onDragLeave: () =>
-                      setHoverLeftId((id) => (id === left.id ? null : id)),
-                    onDrop: (e: {
-                      preventDefault: () => void;
-                      dataTransfer?: { getData: (k: string) => string };
-                    }) => {
-                      e.preventDefault();
-                      setHoverLeftId(null);
-                      const rightId = e.dataTransfer?.getData("text/plain");
-                      if (rightId) onAssign(left.id, rightId);
-                    },
-                  }
-                : {};
-            return (
+
+      <View className="mt-4 gap-2">
+        {lefts.map((left, index) => {
+          const right = orderedRights[index];
+          return (
+            <View
+              key={left.id}
+              collapsable={false}
+              className="flex-row items-center gap-3"
+              onLayout={measureRows}
+            >
+              <Text className="w-8 text-center text-xl font-semibold text-white">
+                {left.label}
+              </Text>
               <View
-                key={left.id}
+                className="flex-1"
                 ref={(node) => {
-                  slotNodes.current[left.id] = node;
+                  rowNodes.current[index] = node;
                 }}
-                onLayout={refreshSlots}
-                {...(webDropProps as object)}
               >
-                <Pressable
-                  disabled={disabled}
-                  onPress={() => {
-                    if (disabled || !linked) return;
-                    onUnassign(left.id);
-                  }}
-                  className={`min-h-[48px] justify-center rounded-xl border px-3 py-3 ${
-                    wrong && linked
-                      ? "border-red-500 bg-red-500/10"
-                      : hoverLeftId === left.id
-                        ? "border-accent bg-accent/10"
-                        : linked
-                          ? "border-green-500/50 bg-green-500/10"
-                          : "border-dashed border-border bg-surface/60"
-                  }`}
-                >
-                  <Text className="text-base font-semibold text-white">
-                    {left.label}
-                    {placedLabel ? (
-                      <Text className="font-normal text-white">
-                        {"  "}
-                        {placedLabel}
-                      </Text>
-                    ) : (
-                      <Text className="font-normal text-muted">{"  "}…</Text>
-                    )}
-                  </Text>
-                </Pressable>
+                {right ? (
+                  <DraggableReorderChip
+                    right={right}
+                    index={index}
+                    disabled={disabled}
+                    wrong={wrong}
+                    getRowLayouts={() => rowLayouts.current}
+                    onMoveToIndex={moveToIndex}
+                    onDraggingChange={onDraggingChange}
+                  />
+                ) : (
+                  <View className="min-h-[48px] rounded-xl border border-dashed border-border" />
+                )}
               </View>
-            );
-          })}
-        </View>
-        <View className="flex-1 gap-2">
-          {availableRights.map((right) => (
-            <DraggableChip
-              key={right.id}
-              right={right}
-              disabled={disabled}
-              onDropAt={assignFromPoint}
-            />
-          ))}
-          {availableRights.length === 0 ? (
-            <Text className="px-1 text-xs text-muted">
-              Tous les os sont placés.
-            </Text>
-          ) : null}
-        </View>
+            </View>
+          );
+        })}
       </View>
     </View>
   );

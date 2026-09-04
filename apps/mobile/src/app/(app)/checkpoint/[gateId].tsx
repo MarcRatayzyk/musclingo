@@ -8,14 +8,14 @@ import {
 } from "@/features/path/api";
 import {
   MatchQuestion,
-  addBidirectionalMatch,
-  removeMatchForLeft,
+  initialOrderedRightIds,
   rightIdsInLeftOrder,
   splitMatchColumns,
 } from "@/features/quiz/components/MatchQuestion";
 import type { QuizQuestion } from "@/features/quiz/types";
 import { ApiError } from "@/shared/api/client";
 import { PrimaryButton, Screen } from "@/shared/ui/primitives";
+import { NeuroliftAmount } from "@/shared/ui/Neurolift";
 
 type SubmitResult = {
   score: number;
@@ -59,9 +59,8 @@ export default function CheckpointGateScreen() {
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [timeLeft, setTimeLeft] = useState(60);
   const [started, setStarted] = useState(false);
-  const [matches, setMatches] = useState<
-    Array<{ leftId: string; rightId: string }>
-  >([]);
+  const [orderedRightIds, setOrderedRightIds] = useState<string[]>([]);
+  const [matchDragging, setMatchDragging] = useState(false);
   const startRef = useRef<number>(0);
   const submittedRef = useRef(false);
 
@@ -80,8 +79,13 @@ export default function CheckpointGateScreen() {
   }, [question]);
 
   useEffect(() => {
-    setMatches([]);
-  }, [question?.id]);
+    if (!matchQuestion) {
+      setOrderedRightIds([]);
+      return;
+    }
+    setOrderedRightIds(initialOrderedRightIds(matchQuestion.answers));
+    setMatchDragging(false);
+  }, [question?.id, matchQuestion]);
 
   const finish = async (
     finalAnswers: Record<
@@ -188,13 +192,23 @@ export default function CheckpointGateScreen() {
           <Text className="mt-3 text-4xl font-semibold text-white">
             {result.correctCount}/{result.totalQuestions}
           </Text>
-          <Text className="mt-2 text-muted">
-            {result.passed
-              ? `+${result.xpEarned} neurolift · ${result.timeSpentSec}s`
-              : result.timedOut
+          {result.passed ? (
+            <View className="mt-3 flex-row flex-wrap items-center gap-2">
+              <NeuroliftAmount
+                amount={result.xpEarned}
+                size="md"
+                signed
+                color="#7CFFB2"
+              />
+              <Text className="text-muted">· {result.timeSpentSec}s</Text>
+            </View>
+          ) : (
+            <Text className="mt-2 text-muted">
+              {result.timedOut
                 ? `Temps dépassé (${formatLimit(gate.timeLimitSec)}) — checkpoint invalidé.`
                 : `Il faut ${needed}/${gate.questions.length} (${thresholdPct} %)`}
-          </Text>
+            </Text>
+          )}
           <View className="mt-10 gap-3">
             {result.passed && result.nextLessonId ? (
               <PrimaryButton
@@ -214,7 +228,7 @@ export default function CheckpointGateScreen() {
                   setResult(null);
                   setIndex(0);
                   setAnswers({});
-                  setMatches([]);
+                  setOrderedRightIds([]);
                   setStarted(false);
                   setTimeLeft(gate.timeLimitSec);
                 }
@@ -262,7 +276,11 @@ export default function CheckpointGateScreen() {
         </Text>
       </View>
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        scrollEnabled={!matchDragging}
+      >
         <Text className="text-xl font-medium leading-8 text-white">
           {question?.prompt}
         </Text>
@@ -271,30 +289,18 @@ export default function CheckpointGateScreen() {
           <View className="pb-8">
             <MatchQuestion
               question={matchQuestion}
-              matches={matches}
-              onAssign={(leftId, rightId) => {
-                setMatches((current) =>
-                  addBidirectionalMatch(current, leftId, rightId),
-                );
-              }}
-              onUnassign={(leftId) => {
-                setMatches((current) => removeMatchForLeft(current, leftId));
-              }}
+              orderedRightIds={orderedRightIds}
+              onDraggingChange={setMatchDragging}
+              onReorder={setOrderedRightIds}
             />
             <View className="mt-6">
               <PrimaryButton
                 label={isLast ? "Terminer" : "Continuer"}
-                disabled={
-                  rightIdsInLeftOrder(
-                    splitMatchColumns(matchQuestion.answers).lefts,
-                    matches,
-                  ).length !==
-                  splitMatchColumns(matchQuestion.answers).lefts.length
-                }
+                disabled={orderedRightIds.length === 0}
                 onPress={() => {
                   if (!question) return;
                   const { lefts } = splitMatchColumns(matchQuestion.answers);
-                  const selected = rightIdsInLeftOrder(lefts, matches);
+                  const selected = rightIdsInLeftOrder(lefts, orderedRightIds);
                   const nextAnswers = {
                     ...answers,
                     [question.id]: {

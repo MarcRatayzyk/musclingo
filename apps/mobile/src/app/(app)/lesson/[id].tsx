@@ -34,12 +34,13 @@ import {
   getInterjectionAfterChunk,
   getLessonHooks,
   GorillaAvatar,
+  MascotAside,
   nextMascotPose,
-  type MascotLine,
   type MascotPose,
 } from "@/features/mascot";
 import { ApiError, resolveMediaUrl } from "@/shared/api/client";
 import { PrimaryButton, Screen, XpBar } from "@/shared/ui/primitives";
+import { NeuroliftAmount } from "@/shared/ui/Neurolift";
 const BG = "#0B0D10";
 const FOCUSED = "#FFFFFF";
 const MUTED = "rgba(255,255,255,0.55)";
@@ -160,8 +161,8 @@ function ContinueButton({
     }
     scale.value = withRepeat(
       withSequence(
-        withTiming(1.07, { duration: 700, easing: Easing.inOut(Easing.ease) }),
-        withTiming(1, { duration: 700, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1.04, { duration: 900, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: 900, easing: Easing.inOut(Easing.ease) }),
       ),
       -1,
       false,
@@ -171,14 +172,32 @@ function ContinueButton({
     transform: [{ scale: scale.value }],
   }));
   return (
-    <Animated.View style={animatedStyle} className="mb-2 self-center">
+    <Animated.View style={animatedStyle}>
       <Pressable
         onPress={onPress}
-        className="items-center justify-center rounded-full bg-accent px-8 py-4"
         accessibilityRole="button"
         accessibilityLabel={isTyping ? "Passer" : "Continuer"}
+        style={{
+          alignItems: "center",
+          justifyContent: "center",
+          minWidth: 56,
+          height: 44,
+          paddingHorizontal: 18,
+          borderRadius: 22,
+          backgroundColor: "rgba(124, 255, 178, 0.14)",
+          borderWidth: 1.5,
+          borderColor: "rgba(124, 255, 178, 0.55)",
+        }}
       >
-        <Text className="text-2xl font-semibold text-background">→</Text>
+        <Text
+          style={{
+            fontSize: 18,
+            fontWeight: "700",
+            color: "#7CFFB2",
+          }}
+        >
+          →
+        </Text>
       </Pressable>
     </Animated.View>
   );
@@ -374,20 +393,6 @@ function LessonInlineIllustration({
     </>
   );
 }
-function MascotLineText({
-  line,
-  color,
-}: {
-  line: MascotLine;
-  color: string;
-}) {
-  return (
-    <Text className="text-lg leading-8" style={{ color }}>
-      {line.text}
-    </Text>
-  );
-}
-
 function ChunkBlock({
   index,
   chunkIndex,
@@ -461,6 +466,7 @@ export default function LessonScreen() {
   const [chunkIndex, setChunkIndex] = useState(0);
   const [typedLen, setTypedLen] = useState(0);
   const [introDone, setIntroDone] = useState(false);
+  const [asidePending, setAsidePending] = useState(false);
   const [viewportH, setViewportH] = useState(0);
   const [viewportW, setViewportW] = useState(0);
   const [focusedIndex, setFocusedIndex] = useState(0);
@@ -556,6 +562,7 @@ export default function LessonScreen() {
     setChunkIndex(0);
     setTypedLen(0);
     setIntroDone(false);
+    setAsidePending(false);
     setFocusedIndex(0);
     setMascotPose("present");
     chunkLayouts.current = {};
@@ -568,6 +575,7 @@ export default function LessonScreen() {
   }, [hasIntro, id]);
   useEffect(() => {
     setTypedLen(0);
+    setAsidePending(false);
   }, [chunkIndex]);
   useEffect(() => {
     if (showingIntro) return;
@@ -633,12 +641,18 @@ export default function LessonScreen() {
   const safeIndex = Math.min(chunkIndex, totalChunks - 1);
   const isTyping = !showingIntro && typedLen < currentChunk.length;
   const isLastChunk = !showingIntro && safeIndex >= totalChunks - 1;
-  const canFinish = isLastChunk && !isTyping;
+  const currentAside =
+    mascotEnabled && !showingIntro && !isTyping
+      ? getInterjectionAfterChunk(mascotHooks, chunkIndex)
+      : null;
+  const canFinish = isLastChunk && !isTyping && !(asidePending && currentAside);
   const progress = showingIntro
     ? 0
     : isTyping
       ? (safeIndex + typedLen / Math.max(currentChunk.length, 1)) / totalChunks
-      : (safeIndex + 1) / totalChunks;
+      : asidePending && currentAside
+        ? (safeIndex + 0.85) / totalChunks
+        : (safeIndex + 1) / totalChunks;
   const topSpacer = Math.max(viewportH * 0.38, 72);
   const bottomSpacer = Math.max(viewportH * 0.45, 96);
   const readingDone = lesson.progress?.status === "COMPLETED";
@@ -650,8 +664,10 @@ export default function LessonScreen() {
     isCurrent: boolean,
   ) {
     // Le chunk en cours de lecture reste toujours clair, même si le
-    // focus scroll pointe ailleurs (ex. sous le dégradé du haut).
-    const focused = isCurrent || focusedIndex === index;
+    // Pendant la bulle, le texte de leçon reste en second plan.
+    const focused = asidePending
+      ? false
+      : isCurrent || focusedIndex === index;
     const color = focused ? FOCUSED : MUTED;
     return (
       <Text className="text-lg leading-8">
@@ -679,6 +695,15 @@ export default function LessonScreen() {
     if (isTyping) {
       setTypedLen(currentChunk.length);
       return;
+    }
+    // Étape bulle : on s'arrête sur l'interjection avant le chunk suivant
+    if (!asidePending && currentAside) {
+      setAsidePending(true);
+      return;
+    }
+    if (asidePending) {
+      setAsidePending(false);
+      if (isLastChunk) return;
     }
     if (!isLastChunk) {
       const next = chunkIndex + 1;
@@ -748,18 +773,21 @@ export default function LessonScreen() {
     updateFocusFromScroll();
   }
   return (
-    <Screen className="pt-11">
+    <Screen className="pt-14">
       <View className="mb-2">
         <View className="mb-1.5 flex-row items-center justify-between">
           <Text className="text-xs text-muted">
             {stepIndex + 1} / {totalSteps}
           </Text>
-          <Text className="text-xs text-accent">
-            +{lesson.xpReward} neurolift
-          </Text>
+          <NeuroliftAmount
+            amount={lesson.xpReward}
+            size="sm"
+            signed
+            color="#7CFFB2"
+          />
         </View>
         <XpBar progress={progress} color={lesson.category.color} />
-        <Text className="mt-3 text-base font-semibold leading-5 text-white">
+        <Text className="mt-5 text-base font-semibold leading-5 text-white">
           {lesson.title}
         </Text>
         {illustrations.length > 0 ? (
@@ -788,9 +816,12 @@ export default function LessonScreen() {
             <View style={{ height: topSpacer }} />
             {hasIntro && mascotHooks.intro ? (
               <View className="mb-6">
-                <MascotLineText
+                <MascotAside
                   line={mascotHooks.intro}
-                  color={showingIntro ? FOCUSED : MUTED}
+                  accentColor={lesson.category.color}
+                  dimmed={!showingIntro}
+                  compact={false}
+                  showAvatar={false}
                 />
               </View>
             ) : null}
@@ -813,7 +844,12 @@ export default function LessonScreen() {
                           );
                           return aside ? (
                             <View className="mb-5">
-                              <MascotLineText line={aside} color={MUTED} />
+                              <MascotAside
+                                line={aside}
+                                accentColor={lesson.category.color}
+                                dimmed
+                                showAvatar={false}
+                              />
                             </View>
                           ) : null;
                         })()
@@ -825,14 +861,33 @@ export default function LessonScreen() {
                   chunkIndex={chunkIndex}
                   onLayout={(y, h) => onChunkLayout(chunkIndex, y, h)}
                 >
-                  {renderChunkContent(currentDisplayed, chunkIndex, true)}
+                  {renderChunkContent(
+                    asidePending ? currentChunk : currentDisplayed,
+                    chunkIndex,
+                    !asidePending,
+                  )}
                 </ChunkBlock>
+                {asidePending && currentAside ? (
+                  <View className="mb-5">
+                    <MascotAside
+                      line={currentAside}
+                      accentColor={lesson.category.color}
+                      dimmed={false}
+                      showAvatar={false}
+                    />
+                  </View>
+                ) : null}
                 {canFinish && mascotEnabled && mascotHooks.outro ? (
                   <Animated.View
                     entering={FadeIn.duration(400)}
                     className="mb-4"
                   >
-                    <MascotLineText line={mascotHooks.outro} color={FOCUSED} />
+                    <MascotAside
+                      line={mascotHooks.outro}
+                      accentColor={lesson.category.color}
+                      compact={false}
+                      showAvatar={false}
+                    />
                   </Animated.View>
                 ) : null}
                 {canFinish && !!lesson.sources.length && (
@@ -860,32 +915,49 @@ export default function LessonScreen() {
         </ScrollView>
         <TopFade width={viewportW} />
       </View>
-      <View className="shrink-0">
-        {mascotEnabled ? (
-          <View className="mb-1" pointerEvents="none">
-            <GorillaAvatar pose={mascotPose} size="lg" />
-          </View>
-        ) : null}
+      <View className="shrink-0 pb-5">
         {!canFinish ? (
-          <ContinueButton isTyping={isTyping} onPress={onContinue} />
-        ) : showQuizCta ? (
-          <View className="mb-2">
-            <PrimaryButton
-              label="Continuer vers le quiz"
-              onPress={() => goToQuiz(lesson.id)}
-            />
+          <View className="flex-row items-end justify-between px-1">
+            {mascotEnabled ? (
+              <View pointerEvents="none" style={{ marginLeft: -4 }}>
+                <GorillaAvatar pose={mascotPose} size="lesson" />
+              </View>
+            ) : (
+              <View />
+            )}
+            <View className="mb-3 mr-1">
+              <ContinueButton isTyping={isTyping} onPress={onContinue} />
+            </View>
           </View>
         ) : (
-          <View className="mb-2 gap-2">
-            {finishError ? (
-              <Text className="text-center text-sm text-red-400">{finishError}</Text>
+          <>
+            {mascotEnabled ? (
+              <View className="mb-2" pointerEvents="none">
+                <GorillaAvatar pose={mascotPose} size="lesson" />
+              </View>
             ) : null}
-            <PrimaryButton
-              label={complete.isPending ? "…" : "J'ai compris"}
-              disabled={complete.isPending}
-              onPress={finishLesson}
-            />
-          </View>
+            {showQuizCta ? (
+              <View className="mb-2">
+                <PrimaryButton
+                  label="Continuer vers le quiz"
+                  onPress={() => goToQuiz(lesson.id)}
+                />
+              </View>
+            ) : (
+              <View className="mb-2 gap-2">
+                {finishError ? (
+                  <Text className="text-center text-sm text-red-400">
+                    {finishError}
+                  </Text>
+                ) : null}
+                <PrimaryButton
+                  label={complete.isPending ? "…" : "J'ai compris"}
+                  disabled={complete.isPending}
+                  onPress={finishLesson}
+                />
+              </View>
+            )}
+          </>
         )}
       </View>
     </Screen>

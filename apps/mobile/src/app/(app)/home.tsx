@@ -255,6 +255,10 @@ export default function HomeScreen() {
               if (lesson.state === "locked") return;
               router.push(`/(app)/lesson/${lesson.id}` as never);
             }}
+            onPressQuiz={(lesson) => {
+              if (lesson.state === "locked") return;
+              router.push(`/(app)/quiz/${lesson.id}` as never);
+            }}
             onPressGate={(gate) => {
               if (gate.state === "locked") return;
               router.push(`/(app)/checkpoint/${gate.id}` as never);

@@ -28,6 +28,7 @@ Une épaule très mobile sans contrôle, c'est une amplitude qui finit par se pa
     order: 19,
     xpReward: 30,
     tags: ["epaule", "articulation"],
+    illustrationUrl: "/uploads/articulation-epaule.png",
     ...CP.articulations,
     questions: THEME_3_QUIZZES[0]
   },
@@ -62,6 +63,7 @@ Réduire temporairement la charge, varier les prises, laisser le tendon s'adapte
   {
     title: "La hanche",
     subtitle: "Emboîture profonde, mobilité et stabilité.",
+    illustrationUrl: "/uploads/articulation-hanche.png",
     markdown: `Épaule et hanche sont toutes deux des articulations « en boule ». Mais la hanche a fait le choix inverse.
 
 ---
@@ -90,6 +92,7 @@ Et comme la forme de l'acétabulum varie selon les individus, la position idéal
   {
     title: "Le genou",
     subtitle: "Ligaments croisés, collatéraux et ménisques.",
+    illustrationUrl: "/uploads/articulation-genou.png",
     markdown: `Le genou vit entre deux géants — la hanche et la cheville — et encaisse ce que les deux lui imposent.
 
 ---
@@ -146,6 +149,7 @@ Dernier point : chaque kilo de tes squats transite par cette petite articulation
   {
     title: "Colonne et disques",
     subtitle: "Unités fonctionnelles et disques intervertébraux.",
+    illustrationUrl: "/uploads/articulation-colonne.png",
     markdown: `Entre deux vertèbres se trouve un amortisseur remarquable : le disque intervertébral.
 
 ---

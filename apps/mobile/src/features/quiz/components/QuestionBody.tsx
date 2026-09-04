@@ -1,6 +1,6 @@
 import type { QuestionType } from "@muscle-mind/types";
 import { HotspotQuestion } from "./HotspotQuestion";
-import { MatchQuestion } from "./MatchQuestion";
+import { MatchQuestion, initialOrderedRightIds } from "./MatchQuestion";
 import { MultiChoiceQuestion } from "./MultiChoiceQuestion";
 import { OrderQuestion } from "./OrderQuestion";
 import { SingleChoiceQuestion } from "./SingleChoiceQuestion";
@@ -16,8 +16,7 @@ type Props = {
   onMoveUp: (index: number) => void;
   onMoveDown: (index: number) => void;
   onTextChange: (value: string) => void;
-  onMatchAssign: (leftId: string, rightId: string) => void;
-  onMatchUnassign: (leftId: string) => void;
+  onMatchReorder: (ids: string[]) => void;
 };
 
 export function QuestionBody({
@@ -29,8 +28,7 @@ export function QuestionBody({
   onMoveUp,
   onMoveDown,
   onTextChange,
-  onMatchAssign,
-  onMatchUnassign,
+  onMatchReorder,
 }: Props) {
   const type = question.type as QuestionType;
 
@@ -64,9 +62,12 @@ export function QuestionBody({
       return (
         <MatchQuestion
           question={question}
-          matches={state.matches}
-          onAssign={onMatchAssign}
-          onUnassign={onMatchUnassign}
+          orderedRightIds={
+            state.orderedAnswerIds.length > 0
+              ? state.orderedAnswerIds
+              : initialOrderedRightIds(question.answers)
+          }
+          onReorder={onMatchReorder}
         />
       );
     case "HOTSPOT":

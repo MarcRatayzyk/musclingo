@@ -10,6 +10,8 @@ export const MASCOT_IMAGES: Record<MascotPose, ImageSourcePropType> = {
 export const MASCOT_SIZES = {
   sm: 72,
   md: 112,
+  /** Leçon : un cran sous l’ancien lg pour laisser place à la bulle. */
+  lesson: 148,
   lg: 220,
 } as const;
 

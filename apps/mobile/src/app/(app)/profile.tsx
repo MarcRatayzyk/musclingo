@@ -4,6 +4,7 @@ import { logout, useMe } from "@/features/auth/api";
 import { useCategories } from "@/features/home/api";
 import { useSessionStore } from "@/shared/store/session";
 import { Screen, XpBar } from "@/shared/ui/primitives";
+import { NeuroliftAmount, NeuroliftIcon } from "@/shared/ui/Neurolift";
 
 export default function ProfileScreen() {
   const { data: me, isLoading: meLoading } = useMe();
@@ -51,17 +52,29 @@ export default function ProfileScreen() {
 
             <View className="mt-5 flex-row justify-between">
               <Stat label="Niveau" value={String(me.level)} />
-              <Stat label="Neurolift" value={String(me.xpTotal)} />
+              <View className="items-center">
+                <NeuroliftIcon size={28} />
+                <Text className="mt-1 text-lg font-semibold text-white">
+                  {me.xpTotal}
+                </Text>
+                <Text className="text-[11px] text-muted">Neurolift</Text>
+              </View>
               <Stat label="Streak" value={`${me.streak.current}j`} />
               <Stat label="Global" value={`${overallPct}%`} accent />
             </View>
 
             <View className="mt-4">
               <XpBar progress={me.xpProgress.progress} />
-              <Text className="mt-2 text-xs text-muted">
-                {me.xpTotal} / {me.xpProgress.nextLevelXp} neurolift vers le
-                niveau {me.level + 1}
-              </Text>
+              <View className="mt-2 flex-row flex-wrap items-center gap-1.5">
+                <NeuroliftAmount
+                  amount={me.xpTotal}
+                  size="sm"
+                  color="#8B95A8"
+                />
+                <Text className="text-xs text-muted">
+                  / {me.xpProgress.nextLevelXp} vers le niveau {me.level + 1}
+                </Text>
+              </View>
             </View>
           </View>
         )}
@@ -107,9 +120,14 @@ export default function ProfileScreen() {
                   </View>
                 </View>
                 <XpBar progress={cat.progress} color={cat.color} />
-                <Text className="mt-2 text-xs text-muted">
-                  {cat.xp} neurolift acquis
-                </Text>
+                <View className="mt-2 flex-row items-center gap-1.5">
+                  <NeuroliftAmount
+                    amount={cat.xp}
+                    size="sm"
+                    color="#8B95A8"
+                  />
+                  <Text className="text-xs text-muted">acquis</Text>
+                </View>
               </View>
             );
           })}

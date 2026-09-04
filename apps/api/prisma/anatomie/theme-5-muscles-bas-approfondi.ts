@@ -28,6 +28,7 @@ Un quadriceps complet mélange donc squats lourds et travail d'extension isolé.
     order: 34,
     xpReward: 30,
     tags: ["quadriceps", "droit-femoral", "vastes"],
+    illustrationUrl: "/uploads/quadriceps.jpg",
     ...CP.musclesBasApprofondi,
     questions: THEME_5_QUIZZES[0]
   },
@@ -140,6 +141,7 @@ Le traiter ne se limite pas aux étirements : renforcer la flexion de hanche en 
     order: 38,
     xpReward: 35,
     tags: ["iliopsoas", "psoas", "flexion-hanche"],
+    illustrationUrl: "/uploads/iliopsoas.jpg",
     ...CP.musclesBasApprofondi,
     questions: THEME_5_QUIZZES[4]
   },

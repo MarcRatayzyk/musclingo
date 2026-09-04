@@ -1,5 +1,15 @@
 # Changelog
 
+## [Non publié] - 2026-09-05 (audit Anatomie)
+
+### Ajouté
+- 6 illustrations pour le parcours Anatomie (Deltoïde et coiffe des rotateurs, Quadriceps, Iliopsoas, Agoniste/antagoniste, Plans et axes, Longueur-tension), reliées à leurs leçons via `illustrationUrl`.
+- `TEST_ACCOUNTS.md` : recense les comptes de test (admin, démo, tout débloqué) et comment les recréer.
+
+### Corrigé
+- `apps/mobile/src/features/mascot/anatomie.ts` : les numéros de leçon des dialogues personnalisés de la mascotte étaient calés sur une ancienne version du parcours (avant l'ajout des sections "en profondeur"). La plupart des répliques ne se déclenchaient jamais, y compris le message de fin de parcours. Remappé sur les 44 leçons actuelles.
+- 9 questions du parcours Anatomie utilisaient un intitulé générique identique répété 2 à 4 fois dans une même section ("Quelle affirmation est vraie ?", "Quelle paire est correcte ?", etc.) ; reformulées pour être spécifiques à leur sujet, réponses inchangées.
+
 ## [Non publié] - 2026-08-29 (audit)
 
 ### Corrigé

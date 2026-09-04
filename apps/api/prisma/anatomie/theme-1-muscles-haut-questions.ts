@@ -947,7 +947,7 @@ export const THEME_1_QUIZZES: SeedQuestion[][] = [
       "Chaque muscle du tirage a son exercice « signature » dans la leçon.",
     ],
     [
-      "Quelle synthèse est fidèle ?",
+      "Quelle association largeur / épaisseur / arrière d'épaule est correcte ?",
       "Largeur : grand dorsal (+ grand rond) ; épaisseur : rhomboïdes ; arrière d’épaule : deltoïde postérieur",
       [
         "Largeur : rhomboïdes ; épaisseur : pec ; arrière : transverse",
@@ -1189,7 +1189,7 @@ export const THEME_1_QUIZZES: SeedQuestion[][] = [
       "Découpage clair de la leçon : haussement vs rétraction/abaissement.",
     ],
     [
-      "Quelle synthèse est fidèle ?",
+      "Quelle description du trio trapèze / élévateur / érecteurs est correcte ?",
       "Trapèze en 3 actions ; élévateur = cervicales–omoplate (nuque) ; érecteurs = piliers, DL",
       [
         "Le trapèze n’élève que ; les érecteurs font les shrugs ; l’élévateur dessine le V",

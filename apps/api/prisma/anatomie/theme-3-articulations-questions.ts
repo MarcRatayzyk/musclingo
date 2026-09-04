@@ -195,7 +195,7 @@ export const THEME_3_QUIZZES: SeedQuestion[][] = [
       "En développé horizontal, on veut un socle. En militaire, on laissera ensuite l'omoplate tourner (leçon scapulo-thoracique).",
     ],
     [
-      "Quelle paire est correcte ?",
+      "Concernant la glène de l'épaule, quelle affirmation est correcte ?",
       "Glenohumérale : glène peu profonde",
       [
         "Glenohumérale : acétabulum profond",
@@ -703,7 +703,7 @@ export const THEME_3_QUIZZES: SeedQuestion[][] = [
       "Le bassin est le trait d'union hanche / rachis. S'il bascule sans contrôle, le dos paie.",
     ],
     [
-      "Quelle paire est correcte ?",
+      "Comment comparer la profondeur de l'acétabulum et de la glène ?",
       "Hanche : acétabulum profond / épaule : glène peu profonde",
       [
         "Hanche : glène peu profonde / épaule : acétabulum",
@@ -1251,7 +1251,7 @@ export const THEME_3_QUIZZES: SeedQuestion[][] = [
       "Compensation ≠ technique. L'alignement reste la cible ; la cheville est souvent la cause.",
     ],
     [
-      "Quelle paire est correcte ?",
+      "Quelle définition de la dorsiflexion et de la flexion plantaire est correcte ?",
       "Dorsiflexion : pied vers le tibia / plantaire : pointe",
       [
         "Dorsiflexion : pointe / plantaire : pied vers le tibia",
@@ -1759,7 +1759,7 @@ export const THEME_3_QUIZZES: SeedQuestion[][] = [
       "On coupe le moteur trapèze/dentelé. L'épaule paie l'amplitude manquante.",
     ],
     [
-      "Quelle paire est correcte ?",
+      "Quelle association rhomboïdes / petit pectoral est correcte ?",
       "Rhomboïdes : rétraction / petit pec : bascule avant",
       [
         "Rhomboïdes : protraction / petit pec : rétraction",

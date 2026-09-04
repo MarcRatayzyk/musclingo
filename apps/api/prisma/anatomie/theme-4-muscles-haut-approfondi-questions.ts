@@ -195,7 +195,7 @@ export const THEME_4_QUIZZES: SeedQuestion[][] = [
       "En pronation, le biceps n’exploite plus sa double action. Brachial et brachio-radial restent efficaces.",
     ],
     [
-      "Quelle affirmation est vraie ?",
+      "Quelle distinction entre biceps et brachial est vraie ?",
       "Biceps : radius et supination ; brachial : ulna et flexion seule",
       [
         "Biceps : ulna et flexion seule ; brachial : radius et supination",
@@ -461,7 +461,7 @@ export const THEME_4_QUIZZES: SeedQuestion[][] = [
       "Médial et latéral = face postérieure de l’humérus.",
     ],
     [
-      "Quelle affirmation est fausse ?",
+      "Concernant le chef long du triceps, quelle affirmation est fausse ?",
       "Le chef long naît sur l’humérus et n’agit qu’au coude",
       [
         "Les trois chefs s’insèrent sur l’olécrane",
@@ -505,7 +505,7 @@ export const THEME_4_QUIZZES: SeedQuestion[][] = [
   // 3. Deltoïde et coiffe des rotateurs
   bank25([
     [
-      "Combien de chefs a le deltoïde ?",
+      "Le deltoïde est composé de combien de faisceaux distincts ?",
       "Trois : antérieur, moyen, postérieur",
       [
         "Quatre, comme la coiffe",
@@ -925,7 +925,7 @@ export const THEME_4_QUIZZES: SeedQuestion[][] = [
       "Origine : côtes. Insertion : coracoïde. Le grand pec, lui, finit sur l’humérus.",
     ],
     [
-      "Quelle affirmation est vraie ?",
+      "Quelle distinction entre grand pectoral et petit pectoral est vraie ?",
       "Le grand pec adducte le bras ; le petit pec oriente l’omoplate",
       [
         "Le petit pec adducte le bras ; le grand pec n’agit que sur l’omoplate",
@@ -1185,7 +1185,7 @@ export const THEME_4_QUIZZES: SeedQuestion[][] = [
       "Sillon = grand pec, grand dorsal, grand rond. Coracoïde = autre club.",
     ],
     [
-      "Quelle affirmation est fausse ?",
+      "Concernant le petit rond, quelle affirmation est fausse ?",
       "Le petit rond est un « petit dorsal » qui adducte et tourne en dedans",
       [
         "Le grand rond copie le grand dorsal",
@@ -1713,7 +1713,7 @@ export const THEME_4_QUIZZES: SeedQuestion[][] = [
       "Ceinture horizontale. Pas de carrés, pas de diagonale.",
     ],
     [
-      "Quelle affirmation est fausse ?",
+      "Concernant le transverse de l'abdomen, quelle affirmation est fausse ?",
       "Le transverse fléchit le tronc comme un crunch",
       [
         "Le grand droit fléchit le tronc",

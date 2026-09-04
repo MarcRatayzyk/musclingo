@@ -28,6 +28,7 @@ Maintenant, change d'exercice : dans une extension triceps, le triceps devient a
     order: 46,
     xpReward: 35,
     tags: ["agoniste", "antagoniste"],
+    illustrationUrl: "/uploads/agoniste-antagoniste.jpg",
     ...CP.organisation,
     questions: THEME_7_QUIZZES[0]
   },
@@ -88,6 +89,7 @@ Un geste réel combine souvent plusieurs plans ; nommer le plan dominant suffit 
     order: 48,
     xpReward: 35,
     tags: ["plans", "axes"],
+    illustrationUrl: "/uploads/plans-anatomiques.jpg",
     ...CP.organisation,
     questions: THEME_7_QUIZZES[2]
   },
@@ -116,6 +118,7 @@ Ta force n'est pas un chiffre : c'est une courbe.`,
     order: 49,
     xpReward: 35,
     tags: ["longueur-tension", "bras-de-levier", "insertion"],
+    illustrationUrl: "/uploads/longueur-tension.jpg",
     ...CP.organisation,
     questions: THEME_7_QUIZZES[3]
   },

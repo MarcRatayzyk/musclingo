@@ -84,6 +84,7 @@ D'où l'intérêt du travail de rotation externe, face pulls ou rotations à l'�
     order: 28,
     xpReward: 30,
     tags: ["deltoide", "coiffe", "rotateurs"],
+    illustrationUrl: "/uploads/coiffe-rotateurs.jpg",
     ...CP.musclesHautApprofondi,
     questions: THEME_4_QUIZZES[2]
   },

@@ -391,7 +391,7 @@ export const THEME_6_QUIZZES: SeedQuestion[][] = [
       "Les ligaments ne se contractent pas. Les muscles évitent les amplitudes et forces dangereuses.",
     ],
     [
-      "Quelle phrase est juste ?",
+      "Quelle distinction entre tendon et ligament est juste ?",
       "Tendon = transmission ; ligament = guidage / limitation",
       [
         "Tendon = os à os ; ligament = muscle à os",
@@ -903,7 +903,7 @@ export const THEME_6_QUIZZES: SeedQuestion[][] = [
       "Raideur vs glisse : collagène et eau entre les plans.",
     ],
     [
-      "Quelle phrase est la plus juste ?",
+      "Quelle distinction entre fascia et aponévrose est la plus juste ?",
       "Fascia = enveloppe et réseau ; aponévrose = nappe d'attache",
       [
         "Fascia = os à os ; aponévrose = muscle à os uniquement",
@@ -1149,7 +1149,7 @@ export const THEME_6_QUIZZES: SeedQuestion[][] = [
       "Fuseaux et Golgi informent ; l'alpha commande ; agoniste et antagoniste s'accordent.",
     ],
     [
-      "Quelle affirmation est juste ?",
+      "Quel trio décrit correctement motoneurone alpha, fuseau et organe de Golgi ?",
       "Alpha commande ; fuseau étire ; Golgi tensionne (mesure)",
       [
         "Alpha mesure l'étirement ; fuseau commande la fibre",

@@ -61,7 +61,7 @@ export const THEME_5_QUIZZES: SeedQuestion[][] = [
       "Hanche fixe, genou qui s'étend : le droit fémoral se raccourcit vraiment au genou.",
     ],
     [
-      "L'action commune des quatre chefs du quadriceps est…",
+      "Malgré leurs origines différentes, qu'ont en commun les quatre chefs du quadriceps ?",
       "L'extension du genou",
       [
         "La flexion du genou",

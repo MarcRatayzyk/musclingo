@@ -443,7 +443,7 @@ export const THEME_7_QUIZZES: SeedQuestion[][] = [
       "Même famille que ischios et érecteurs sur le hinge / l'extension de hanche.",
     ],
     [
-      "Quelle phrase est juste ?",
+      "Quelle répartition entre muscles de poussée et de tirage est juste ?",
       "Poussée = pecs + delt ant + triceps ; tirage = dorsal + rhomboïdes + trap + biceps",
       [
         "Poussée = dorsal + biceps ; tirage = pecs + triceps",
@@ -625,7 +625,7 @@ export const THEME_7_QUIZZES: SeedQuestion[][] = [
       "Gauche/droite = sagittal = flex/ext. Les latérales sont frontales.",
     ],
     [
-      "Quelle phrase est juste ?",
+      "Quelle association entre plan anatomique et type de mouvement est juste ?",
       "Sagittal = flex/ext ; frontal = abd/add ; transverse = rotations (et écartés)",
       [
         "Sagittal = abd/add ; frontal = rotations ; transverse = curl",

@@ -7,15 +7,18 @@ import { OFFLINE, offlineFetch } from "./offline";
 function resolveApiUrl(): string {
   if (OFFLINE) return "";
 
+  const fromExtra = Constants.expoConfig?.extra?.apiUrl;
   const configured =
-    process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3001";
+    (typeof fromExtra === "string" && fromExtra.trim()) ||
+    process.env.EXPO_PUBLIC_API_URL ||
+    "http://localhost:3001";
 
   if (Platform.OS === "web") return configured;
 
   const needsLanHost =
     configured.includes("localhost") || configured.includes("127.0.0.1");
 
-  if (!needsLanHost) return configured;
+  if (!needsLanHost) return configured.replace(/\/$/, "");
 
   const debuggerHost =
     Constants.expoGoConfig?.debuggerHost ??

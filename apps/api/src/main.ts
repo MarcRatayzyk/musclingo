@@ -44,14 +44,15 @@ async function bootstrap() {
   }
   app.useStaticAssets(uploadsDir, { prefix: "/uploads/" });
 
-  const origins = (process.env.CORS_ORIGINS ?? "http://localhost:3000")
-    .split(",")
-    .map((o) => o.trim());
-
-  app.enableCors({
-    origin: origins,
-    credentials: true,
-  });
+  const corsRaw = process.env.CORS_ORIGINS?.trim();
+  if (!corsRaw || corsRaw === "*") {
+    app.enableCors({ origin: true, credentials: true });
+  } else {
+    app.enableCors({
+      origin: corsRaw.split(",").map((o) => o.trim()),
+      credentials: true,
+    });
+  }
 
   const config = new DocumentBuilder()
     .setTitle("Muscle Mind API")

@@ -11,5 +11,6 @@ watchPatterns = [
 
 [deploy]
 startCommand = "pnpm --filter @muscle-mind/api start"
-# Set these in Railway Variables (or via a linked Postgres/Redis):
-# DATABASE_URL, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET, REDIS_URL (optional), CORS_ORIGINS, PORT
+# Requis: DATABASE_URL (ref Postgres), JWT_ACCESS_SECRET, JWT_REFRESH_SECRET
+# Optionnel: REDIS_URL, CORS_ORIGINS=*, SKIP_SEED=1 apres le 1er seed
+# Networking: Generate Domain (public) pour que l'APK puisse joindre l'API

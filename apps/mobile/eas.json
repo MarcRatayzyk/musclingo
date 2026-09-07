@@ -11,6 +11,17 @@
         "buildType": "apk"
       },
       "env": {
+        "EXPO_PUBLIC_OFFLINE": "0",
+        "EXPO_PUBLIC_API_URL": "https://CHANGE_ME.up.railway.app"
+      }
+    },
+    "offline": {
+      "distribution": "internal",
+      "credentialsSource": "local",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
         "EXPO_PUBLIC_OFFLINE": "1"
       }
     },
@@ -20,7 +31,8 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_OFFLINE": "1"
+        "EXPO_PUBLIC_OFFLINE": "0",
+        "EXPO_PUBLIC_API_URL": "https://CHANGE_ME.up.railway.app"
       }
     }
   },

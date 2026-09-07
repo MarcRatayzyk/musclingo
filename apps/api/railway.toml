@@ -1,0 +1,15 @@
+[build]
+buildCommand = "pnpm --filter @muscle-mind/api build"
+watchPatterns = [
+  "/apps/api/**",
+  "/packages/types/**",
+  "/package.json",
+  "/pnpm-lock.yaml",
+  "/pnpm-workspace.yaml",
+  "/turbo.json"
+]
+
+[deploy]
+startCommand = "pnpm --filter @muscle-mind/api start"
+# Set these in Railway Variables (or via a linked Postgres/Redis):
+# DATABASE_URL, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET, REDIS_URL (optional), CORS_ORIGINS, PORT

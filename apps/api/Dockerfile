@@ -11,10 +11,7 @@ RUN pnpm install --filter @muscle-mind/api... --frozen-lockfile || pnpm install 
 FROM base AS build
 COPY --from=deps /app /app
 COPY . .
-RUN pnpm --filter @muscle-mind/types build
-WORKDIR /app/apps/api
-RUN pnpm prisma generate
-RUN pnpm build
+RUN pnpm --filter @muscle-mind/api build
 
 FROM node:22-alpine AS runner
 WORKDIR /app
@@ -23,6 +20,8 @@ COPY --from=build /app/apps/api/dist ./dist
 COPY --from=build /app/apps/api/package.json ./
 COPY --from=build /app/apps/api/node_modules ./node_modules
 COPY --from=build /app/apps/api/prisma ./prisma
+COPY --from=build /app/packages/types ./packages/types
 COPY --from=build /app/node_modules/.pnpm ./node_modules/.pnpm
+COPY --from=build /app/node_modules/@muscle-mind ./node_modules/@muscle-mind
 EXPOSE 3001
 CMD ["node", "dist/main.js"]

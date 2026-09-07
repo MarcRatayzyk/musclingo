@@ -7,9 +7,10 @@ export {
   useAnatomyMascotEnabled,
 } from "./anatomie";
 export { hasSeenAnatomyOnboarding, markAnatomyOnboardingSeen } from "./storage";
-export { MASCOT_POSE_CYCLE, nextMascotPose } from "./assets";
+export { MASCOT_POSE_CYCLE, nextMascotPose, mascotKindFromCategorySlug } from "./assets";
 export { getAnatomyPathIllustrationAtLesson } from "./anatomy-path-images";
-export { GorillaAvatar } from "./components/GorillaAvatar";
+export { getNutritionPathIllustrationAtLesson } from "./nutrition-path-images";
+export { GorillaAvatar, quizResultMascotSource } from "./components/GorillaAvatar";
 export { MascotSpeechBubble } from "./components/MascotSpeechBubble";
 export { MascotAside } from "./components/MascotAside";
 export { AnatomyPathOnboarding } from "./components/AnatomyPathOnboarding";

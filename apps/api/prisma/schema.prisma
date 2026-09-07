@@ -49,6 +49,16 @@ model User {
   xpTotal              Int              @default(0)
   level                Int              @default(1)
   memoryGameBestScore  Int              @default(0)
+  /** Bouteilles restantes aujourd'hui (reset UTC quotidien). */
+  waterBottles         Int              @default(20)
+  /** Jour UTC du dernier reset / conso de bouteilles. */
+  waterBottlesDate     DateTime?
+  /** @deprecated Étoiles n’étaient plus dépensables — migré vers neuroCoinBalance. */
+  starBalance          Int              @default(0)
+  /** Seed one-shot starBalance depuis le total carrière. */
+  starBalanceSeeded    Boolean          @default(false)
+  /** NeuroCoins dépensables (boutique). */
+  neuroCoinBalance     Int              @default(0)
   preferredCategoryId  String?
   preferredCategory    Category?        @relation("PreferredCategory", fields: [preferredCategoryId], references: [id])
   createdAt            DateTime         @default(now())

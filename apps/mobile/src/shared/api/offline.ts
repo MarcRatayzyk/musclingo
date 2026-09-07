@@ -1,6 +1,7 @@
 import {
   computeLessonQuizStars,
   getLessonQuizXpMultiplier,
+  getNeuroCoinsForStarsGained,
   isLessonQuizPassed,
 } from "@muscle-mind/types";
 
@@ -41,6 +42,10 @@ type OfflineState = {
   streak: number;
   quizSessionId: string;
   quizQuestionIds: string[];
+  waterBottles: number;
+  starsTotal: number;
+  starBalance: number;
+  neuroCoinBalance: number;
 };
 
 const OFFLINE_SESSION = "offline_session_quiz";
@@ -60,6 +65,10 @@ const state: OfflineState = {
   streak: 1,
   quizSessionId: OFFLINE_SESSION,
   quizQuestionIds: [],
+  waterBottles: 20,
+  starsTotal: 0,
+  starBalance: 0,
+  neuroCoinBalance: 0,
 };
 
 function categoryMeta() {
@@ -83,6 +92,12 @@ function me() {
     xpTotal: state.xpTotal,
     level: state.level,
     memoryGameBestScore: state.memoryBest,
+    starsTotal: state.starsTotal,
+    starBalance: state.starBalance,
+    neuroCoinBalance: state.neuroCoinBalance,
+    waterBottles: state.waterBottles,
+    waterBottlesMax: 20,
+    waterBottleCost: 4,
     xpProgress: {
       level: state.level,
       currentLevelXp: state.xpTotal % nextLevelXp,
@@ -386,6 +401,35 @@ export async function offlineFetch<T>(
     return lessonDetail(lessonMatch[1]) as T;
   }
 
+  const startMatch = path.match(/^\/lessons\/([^/]+)\/start$/);
+  if (startMatch && method === "POST") {
+    const id = startMatch[1];
+    const alreadyRead =
+      (id === LESSON_1 && state.lesson1Done) ||
+      (id === LESSON_2 && state.lesson2Done);
+    let consumed = 0;
+    if (!alreadyRead) {
+      if (state.waterBottles < 4) {
+        const err = new Error(
+          `Plus assez de bouteilles (4 nécessaires, ${state.waterBottles} restantes)`,
+        ) as Error & { status: number };
+        err.status = 403;
+        throw err;
+      }
+      state.waterBottles -= 4;
+      consumed = 4;
+    }
+    return {
+      lessonId: id,
+      alreadyRead,
+      consumed,
+      waterBottles: state.waterBottles,
+      waterBottlesMax: 20,
+      waterBottleCost: 4,
+      starsTotal: state.starsTotal,
+    } as T;
+  }
+
   const completeMatch = path.match(/^\/lessons\/([^/]+)\/complete$/);
   if (completeMatch && method === "POST") {
     const id = completeMatch[1];
@@ -452,12 +496,16 @@ export async function offlineFetch<T>(
     const xpEarned = passed
       ? Math.round(15 * getLessonQuizXpMultiplier(stars)) + (perfect ? 5 : 0)
       : 0;
+    const prevBest = state.quiz1BestStars;
+    const neuroCoinsEarned = passed
+      ? getNeuroCoinsForStarsGained(stars, prevBest)
+      : 0;
+    const starsGained = passed ? Math.max(0, stars - prevBest) : 0;
     if (passed) {
       state.quiz1Passed = true;
-      state.quiz1BestStars = Math.max(
-        state.quiz1BestStars,
-        stars,
-      ) as 0 | 1 | 2 | 3;
+      state.quiz1BestStars = Math.max(prevBest, stars) as 0 | 1 | 2 | 3;
+      state.starsTotal = state.quiz1BestStars;
+      state.neuroCoinBalance += neuroCoinsEarned;
       state.xpTotal += xpEarned;
     }
     return {
@@ -465,6 +513,8 @@ export async function offlineFetch<T>(
       perfect,
       passed,
       stars,
+      starsGained,
+      neuroCoinsEarned,
       timeSpentSec: totalTimeSpentSec,
       nextLessonId: passed ? LESSON_2 : null,
       categoryId: CAT_ID,
@@ -613,6 +663,118 @@ export async function offlineFetch<T>(
       livesLost: Number(body.wrongCount ?? 0),
       lives: 3,
       badgesEarned: [],
+    } as T;
+  }
+
+  if (path === "/shop/catalog" && method === "GET") {
+    return {
+      offers: [
+        {
+          id: "coins-pack-s",
+          kind: "coins",
+          title: "Gourde rapide",
+          description: "4 bouteilles pour reprendre une leçon.",
+          priceNeuroCoins: 10,
+          rewardBottles: 4,
+        },
+        {
+          id: "coins-pack-m",
+          kind: "coins",
+          title: "Pack hydratation",
+          description: "12 bouteilles pour enchaîner.",
+          priceNeuroCoins: 25,
+          rewardBottles: 12,
+          badge: "Populaire",
+        },
+        {
+          id: "coins-pack-l",
+          kind: "coins",
+          title: "Réserve complète",
+          description: "30 bouteilles — meilleur ratio.",
+          priceNeuroCoins: 50,
+          rewardBottles: 30,
+          badge: "Bonus",
+        },
+        {
+          id: "money-pack-s",
+          kind: "money",
+          title: "Recharge jour",
+          description: "Remplit ta réserve quotidienne.",
+          priceEuro: 0.99,
+          rewardBottles: 20,
+          badge: "Démo",
+        },
+        {
+          id: "money-pack-m",
+          kind: "money",
+          title: "Pack semaine",
+          description: "100 bouteilles pour progresser sans frein.",
+          priceEuro: 4.99,
+          rewardBottles: 100,
+          badge: "Démo",
+        },
+        {
+          id: "money-pack-l",
+          kind: "money",
+          title: "Pack premium",
+          description: "250 bouteilles — offre fictive sans paiement réel.",
+          priceEuro: 9.99,
+          rewardBottles: 250,
+          badge: "Démo",
+        },
+      ],
+    } as T;
+  }
+
+  if (path === "/shop/purchase" && method === "POST") {
+    const offerId = String(body.offerId ?? "");
+    const catalog = [
+      {
+        id: "coins-pack-s",
+        kind: "coins" as const,
+        priceNeuroCoins: 10,
+        rewardBottles: 4,
+      },
+      {
+        id: "coins-pack-m",
+        kind: "coins" as const,
+        priceNeuroCoins: 25,
+        rewardBottles: 12,
+      },
+      {
+        id: "coins-pack-l",
+        kind: "coins" as const,
+        priceNeuroCoins: 50,
+        rewardBottles: 30,
+      },
+      { id: "money-pack-s", kind: "money" as const, rewardBottles: 20 },
+      { id: "money-pack-m", kind: "money" as const, rewardBottles: 100 },
+      { id: "money-pack-l", kind: "money" as const, rewardBottles: 250 },
+    ];
+    const offer = catalog.find((o) => o.id === offerId);
+    if (!offer) throw new Error("Offre introuvable");
+    if (offer.kind === "coins") {
+      const price = offer.priceNeuroCoins ?? 0;
+      if (state.neuroCoinBalance < price) {
+        const err = new Error(
+          `Pas assez de NeuroCoins (${price} nécessaires, ${state.neuroCoinBalance} disponibles)`,
+        ) as Error & { status: number };
+        err.status = 403;
+        throw err;
+      }
+      state.neuroCoinBalance -= price;
+    }
+    state.waterBottles += offer.rewardBottles;
+    return {
+      demo: offer.kind === "money",
+      offerId: offer.id,
+      rewardBottles: offer.rewardBottles,
+      neuroCoinBalance: state.neuroCoinBalance,
+      waterBottles: state.waterBottles,
+      message:
+        offer.kind === "money"
+          ? "Achat démo : aucun paiement réel."
+          : undefined,
     } as T;
   }
 

@@ -21,6 +21,11 @@ export class LessonsController {
     return this.lessons.getById(id, user.userId);
   }
 
+  @Post(":id/start")
+  start(@Param("id") id: string, @CurrentUser() user: AuthUser) {
+    return this.lessons.start(id, user.userId);
+  }
+
   @Post(":id/complete")
   complete(
     @Param("id") id: string,

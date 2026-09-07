@@ -1,7 +1,8 @@
-﻿import { bank25 } from "./qcm-bank";
+﻿import { bank25, diversifyBank, type QcmItem } from "./qcm-bank";
 import type { SeedQuestion } from "../anatomie-quiz-helpers";
+import { THEME_0_EXTRAS } from "./diversified-extras";
 
-export const THEME_0_QUIZZES: SeedQuestion[][] = [
+const THEME_0_RAW: SeedQuestion[][] = [
   bank25([
     [
       "Quel os unique constitue le bras, de l'épaule au coude ?",
@@ -866,4 +867,8 @@ export const THEME_0_QUIZZES: SeedQuestion[][] = [
     ],
   ] satisfies QcmItem[]),
 ];
+
+export const THEME_0_QUIZZES: SeedQuestion[][] = THEME_0_RAW.map((bank, i) =>
+  diversifyBank(bank, THEME_0_EXTRAS[i]!),
+);
 

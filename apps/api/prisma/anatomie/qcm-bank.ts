@@ -22,3 +22,21 @@ export function bank25(items: QcmItem[]): SeedQuestion[] {
     ),
   );
 }
+
+/**
+ * Remplace 4 QCM par des types diversifiés (TF / MULTI / ORDER),
+ * placés en tête de banque. Conserve 21 QCM.
+ */
+export function diversifyBank(
+  bank: SeedQuestion[],
+  extras: SeedQuestion[],
+): SeedQuestion[] {
+  if (bank.length !== 25) {
+    throw new Error(`diversifyBank attend une banque de 25, reçu ${bank.length}`);
+  }
+  if (extras.length !== 4) {
+    throw new Error(`diversifyBank attend 4 extras, reçu ${extras.length}`);
+  }
+  return [...extras, ...bank.slice(0, 21)];
+}
+

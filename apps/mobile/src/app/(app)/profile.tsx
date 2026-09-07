@@ -5,6 +5,9 @@ import { useCategories } from "@/features/home/api";
 import { useSessionStore } from "@/shared/store/session";
 import { Screen, XpBar } from "@/shared/ui/primitives";
 import { NeuroliftAmount, NeuroliftIcon } from "@/shared/ui/Neurolift";
+import { NeuroCoinAmount } from "@/shared/ui/NeuroCoin";
+import { StarAmount } from "@/shared/ui/Star";
+import { WaterBottleAmount } from "@/shared/ui/WaterBottle";
 
 export default function ProfileScreen() {
   const { data: me, isLoading: meLoading } = useMe();
@@ -31,52 +34,84 @@ export default function ProfileScreen() {
         {meLoading || !me ? (
           <Text className="mt-6 text-muted">Chargement…</Text>
         ) : (
-          <View
-            
-            
-            className="mt-6 rounded-3xl border border-border bg-surface p-5"
-          >
-            <View className="flex-row items-center gap-4">
-              <View className="h-16 w-16 items-center justify-center rounded-full bg-accent/15">
-                <Text className="text-2xl font-semibold text-accent">
-                  {me.displayName.slice(0, 1).toUpperCase()}
-                </Text>
+          <>
+            <View className="mt-6 rounded-3xl border border-border bg-surface p-5">
+              <View className="flex-row items-center gap-4">
+                <View className="h-16 w-16 items-center justify-center rounded-full bg-accent/15">
+                  <Text className="text-2xl font-semibold text-accent">
+                    {me.displayName.slice(0, 1).toUpperCase()}
+                  </Text>
+                </View>
+                <View className="flex-1">
+                  <Text className="text-xl font-semibold text-white">
+                    {me.displayName}
+                  </Text>
+                  <Text className="mt-1 text-sm text-muted">{me.email}</Text>
+                </View>
               </View>
-              <View className="flex-1">
-                <Text className="text-xl font-semibold text-white">
-                  {me.displayName}
-                </Text>
-                <Text className="mt-1 text-sm text-muted">{me.email}</Text>
+
+              <View className="mt-5 flex-row justify-between">
+                <Stat label="Niveau" value={String(me.level)} />
+                <View className="items-center">
+                  <NeuroliftIcon size={28} />
+                  <Text className="mt-1 text-lg font-semibold text-white">
+                    {me.xpTotal}
+                  </Text>
+                  <Text className="text-[11px] text-muted">Neurolift</Text>
+                </View>
+                <Stat label="Streak" value={`${me.streak.current}j`} />
+                <Stat label="Global" value={`${overallPct}%`} accent />
+              </View>
+
+              <View className="mt-4">
+                <XpBar progress={me.xpProgress.progress} />
+                <View className="mt-2 flex-row flex-wrap items-center gap-1.5">
+                  <NeuroliftAmount
+                    amount={me.xpTotal}
+                    size="sm"
+                    color="#8B95A8"
+                  />
+                  <Text className="text-xs text-muted">
+                    / {me.xpProgress.nextLevelXp} vers le niveau {me.level + 1}
+                  </Text>
+                </View>
               </View>
             </View>
 
-            <View className="mt-5 flex-row justify-between">
-              <Stat label="Niveau" value={String(me.level)} />
-              <View className="items-center">
-                <NeuroliftIcon size={28} />
-                <Text className="mt-1 text-lg font-semibold text-white">
-                  {me.xpTotal}
+            <View className="mt-4 flex-row gap-3">
+              <View className="flex-1 items-center rounded-3xl border border-border bg-surface p-4">
+                <StarAmount amount={me.starsTotal ?? 0} size="lg" />
+                <Text className="mt-1 text-center text-[11px] text-muted">
+                  Étoiles gagnées
                 </Text>
-                <Text className="text-[11px] text-muted">Neurolift</Text>
               </View>
-              <Stat label="Streak" value={`${me.streak.current}j`} />
-              <Stat label="Global" value={`${overallPct}%`} accent />
-            </View>
-
-            <View className="mt-4">
-              <XpBar progress={me.xpProgress.progress} />
-              <View className="mt-2 flex-row flex-wrap items-center gap-1.5">
-                <NeuroliftAmount
-                  amount={me.xpTotal}
-                  size="sm"
-                  color="#8B95A8"
+              <View className="flex-1 items-center rounded-3xl border border-border bg-surface p-4">
+                <NeuroCoinAmount
+                  amount={me.neuroCoinBalance ?? 0}
+                  size="lg"
                 />
-                <Text className="text-xs text-muted">
-                  / {me.xpProgress.nextLevelXp} vers le niveau {me.level + 1}
+                <Text className="mt-1 text-center text-[11px] text-muted">
+                  NeuroCoins
                 </Text>
               </View>
             </View>
-          </View>
+
+            <View className="mt-3 flex-row gap-3">
+              <View className="flex-1 items-center rounded-3xl border border-border bg-surface p-4">
+                <WaterBottleAmount
+                  amount={me.waterBottles ?? 20}
+                  max={me.waterBottlesMax ?? 20}
+                  size="lg"
+                />
+                <Text className="mt-1 text-center text-[11px] text-muted">
+                  Bouteilles du jour
+                </Text>
+                <Text className="mt-0.5 text-center text-[10px] text-muted">
+                  −{me.waterBottleCost ?? 4} / nouvelle leçon
+                </Text>
+              </View>
+            </View>
+          </>
         )}
 
         <Text className="mb-3 mt-8 text-lg font-semibold text-white">

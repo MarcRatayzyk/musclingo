@@ -9,6 +9,8 @@ import {
   QUIZ_PASS_THRESHOLD,
   isGateScorePassing,
   isLessonQuizPassed,
+  maxStarsForTheme,
+  requiredStarsForTheme,
 } from "@muscle-mind/types";
 import { PrismaService } from "../../prisma/prisma.service";
 
@@ -45,11 +47,14 @@ export type PathGateNode = {
   questionCount: number;
   bestScore: number | null;
   xpReward: number;
+  themeStars: number;
+  themeStarsMax: number;
+  themeStarsRequired: number;
 };
 
 type EvaluatedLesson = Omit<PathLessonNode, "state">;
 
-type GateEval = PathGateNode & { allUnitLessonsPassed: boolean };
+type GateEval = PathGateNode;
 
 @Injectable()
 export class PathService {
@@ -108,6 +113,9 @@ export class PathService {
                 questionCount: gate.questionCount,
                 bestScore: gate.bestScore,
                 xpReward: gate.xpReward,
+                themeStars: gate.themeStars,
+                themeStarsMax: gate.themeStarsMax,
+                themeStarsRequired: gate.themeStarsRequired,
               }
             : null,
         };
@@ -169,7 +177,7 @@ export class PathService {
     if (!node) throw new NotFoundException("Checkpoint gate not found");
     if (node.state === "locked") {
       throw new ForbiddenException(
-        "Ce checkpoint est verrouillé. Termine toutes les leçons du thème.",
+        `Ce checkpoint est verrouillé. Il faut ${node.themeStarsRequired} étoiles sur le thème (${node.themeStars}/${node.themeStarsMax}).`,
       );
     }
     return { gate, node };
@@ -411,8 +419,17 @@ export class PathService {
       const unitLessons = evaluated.filter(
         (l) => l.checkpointOrder === gate.checkpointOrder,
       );
-      const allUnitLessonsPassed =
-        unitLessons.length > 0 && unitLessons.every((l) => l.passed);
+      const quizLessons = unitLessons.filter((l) => l.hasQuiz);
+      const themeStars = quizLessons.reduce(
+        (sum, l) => sum + (l.bestStars ?? 0),
+        0,
+      );
+      const themeStarsMax = maxStarsForTheme(quizLessons.length);
+      const themeStarsRequired = requiredStarsForTheme(quizLessons.length);
+      const starsUnlocked =
+        themeStarsRequired === 0
+          ? unitLessons.length > 0 && unitLessons.every((l) => l.passed)
+          : themeStars >= themeStarsRequired;
       const bestScore = gate.results[0]?.score ?? null;
       const passed =
         bestScore !== null &&
@@ -424,7 +441,7 @@ export class PathService {
 
       let state: PathNodeState;
       if (passed) state = "completed";
-      else if (allUnitLessonsPassed) state = "available";
+      else if (starsUnlocked) state = "available";
       else state = "locked";
 
       return {
@@ -439,7 +456,9 @@ export class PathService {
         questionCount: gate.questionCount,
         bestScore,
         xpReward: gate.xpReward,
-        allUnitLessonsPassed,
+        themeStars,
+        themeStarsMax,
+        themeStarsRequired,
       };
     });
 

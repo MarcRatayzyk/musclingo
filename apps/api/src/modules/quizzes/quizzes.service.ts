@@ -9,15 +9,19 @@ import {
   LESSON_QUIZ_WRONG_PENALTY_SEC,
   SubmitQuizInput,
   UpsertQuizInput,
+  WATER_BOTTLE_QUIZ_RETRY_COST,
   computeLessonQuizStars,
   getLessonQuizXpMultiplier,
+  getNeuroCoinsForStarsGained,
   isLessonQuizPassed,
 } from "@muscle-mind/types";
 import { Prisma, ProgressStatus } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { PathService } from "../categories/path.service";
 import { GamificationService } from "../gamification/gamification.service";
+import { isPoolAnswerCorrect } from "../questions/pool-score";
 import { QuestionPoolService } from "../questions/question-pool.service";
+import { UsersService } from "../users/users.service";
 
 @Injectable()
 export class QuizzesService {
@@ -26,6 +30,7 @@ export class QuizzesService {
     private readonly gamification: GamificationService,
     private readonly path: PathService,
     private readonly questionPool: QuestionPoolService,
+    private readonly users: UsersService,
   ) {}
 
   async getByLessonId(lessonId: string, userId: string) {
@@ -42,6 +47,7 @@ export class QuizzesService {
             categoryId: true,
             checkpointKey: true,
             tags: true,
+            category: { select: { slug: true } },
           },
         },
       },
@@ -49,6 +55,22 @@ export class QuizzesService {
 
     if (!quiz || quiz.lesson.status !== "PUBLISHED") {
       throw new NotFoundException("Quiz not found");
+    }
+
+    const priorAttempts = await this.prisma.quizResult.count({
+      where: { userId, quizId: quiz.id },
+    });
+    const isRetry = priorAttempts > 0;
+    let waterBottles: number | undefined;
+    if (isRetry) {
+      const water = await this.users.consumeWaterBottles(
+        userId,
+        WATER_BOTTLE_QUIZ_RETRY_COST,
+      );
+      waterBottles = water.waterBottles;
+    } else {
+      const water = await this.users.ensureWaterBottlesFresh(userId);
+      waterBottles = water.waterBottles;
     }
 
     const draw = await this.questionPool.drawForQuiz(
@@ -65,6 +87,7 @@ export class QuizzesService {
       id: quiz.id,
       lessonId: quiz.lessonId,
       lessonTitle: quiz.lesson.title,
+      categorySlug: quiz.lesson.category.slug,
       sessionId: draw.sessionId,
       xpReward: quiz.xpReward,
       perfectBonusXp: quiz.perfectBonusXp,
@@ -73,6 +96,9 @@ export class QuizzesService {
       wrongPenaltySec: LESSON_QUIZ_WRONG_PENALTY_SEC,
       questions: draw.questions,
       answerKeys: draw.answerKeys,
+      isRetry,
+      waterBottleRetryCost: isRetry ? WATER_BOTTLE_QUIZ_RETRY_COST : 0,
+      waterBottles,
     };
   }
 
@@ -94,11 +120,11 @@ export class QuizzesService {
     if (!question) {
       throw new BadRequestException("Invalid or expired quiz session");
     }
-    const isCorrect =
-      question.type === "MATCH"
-        ? input.selectedAnswerIds.join("|") === question.correctChoiceId
-        : input.selectedAnswerIds.length === 1 &&
-          input.selectedAnswerIds[0] === question.correctChoiceId;
+    const isCorrect = isPoolAnswerCorrect(
+      question.type,
+      input.selectedAnswerIds,
+      question.correctChoiceId,
+    );
     return { correct: isCorrect };
   }
 
@@ -149,11 +175,11 @@ export class QuizzesService {
         throw new BadRequestException("Question time exceeded limit");
       }
 
-      const isCorrect =
-        question.type === "MATCH"
-          ? submission.selectedAnswerIds.join("|") === question.correctChoiceId
-          : submission.selectedAnswerIds.length === 1 &&
-            submission.selectedAnswerIds[0] === question.correctChoiceId;
+      const isCorrect = isPoolAnswerCorrect(
+        question.type,
+        submission.selectedAnswerIds,
+        question.correctChoiceId,
+      );
 
       if (isCorrect) correctCount += 1;
 
@@ -161,7 +187,7 @@ export class QuizzesService {
         questionId: question.id,
         isCorrect,
         explanation: question.explanation,
-        correctAnswerIds: [question.correctChoiceId],
+        correctAnswerIds: question.correctChoiceId.split("|"),
         timeSpentSec: submission.timeSpentSec,
       };
     });
@@ -179,6 +205,17 @@ export class QuizzesService {
     const bonus = perfect ? quiz.perfectBonusXp : 0;
     const xpEarned = passed ? baseXp + bonus : 0;
 
+    const previousBest = await this.prisma.quizResult.findFirst({
+      where: { userId, quizId },
+      orderBy: { stars: "desc" },
+      select: { stars: true },
+    });
+    const prevStars = previousBest?.stars ?? 0;
+    const starsGained = passed ? Math.max(0, stars - prevStars) : 0;
+    const neuroCoinsEarned = passed
+      ? getNeuroCoinsForStarsGained(stars, prevStars)
+      : 0;
+
     await this.prisma.quizResult.create({
       data: {
         userId,
@@ -194,6 +231,9 @@ export class QuizzesService {
       },
     });
 
+    if (neuroCoinsEarned > 0) {
+      await this.users.creditNeuroCoins(userId, neuroCoinsEarned);
+    }
     await this.prisma.quizSession.deleteMany({
       where: { id: input.sessionId, userId },
     });
@@ -262,6 +302,8 @@ export class QuizzesService {
       perfect,
       passed,
       stars,
+      starsGained,
+      neuroCoinsEarned,
       timeSpentSec: input.totalTimeSpentSec,
       nextLessonId,
       categoryId: quiz.lesson.categoryId,

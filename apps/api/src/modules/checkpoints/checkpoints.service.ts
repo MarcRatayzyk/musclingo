@@ -98,21 +98,42 @@ export class CheckpointsService {
     let correctCount = 0;
     const feedback = gate.questions.map((question) => {
       const submission = answerMap.get(question.id);
-      const correctIds = question.answers
-        .filter((a) => a.isCorrect)
-        .map((a) => a.id)
-        .sort();
+      const selected = submission?.selectedAnswerIds ?? [];
 
-      const isCorrect =
-        question.type === "MATCH"
-          ? isMatchSelectionCorrect(
-              question.answers,
-              submission?.selectedAnswerIds ?? [],
-            )
-          : !!submission &&
-            submission.selectedAnswerIds.length === 1 &&
-            correctIds.length === 1 &&
-            submission.selectedAnswerIds[0] === correctIds[0];
+      let correctAnswerIds: string[];
+      let isCorrect: boolean;
+
+      if (question.type === "MATCH") {
+        correctAnswerIds = [];
+        isCorrect = isMatchSelectionCorrect(question.answers, selected);
+      } else if (question.type === "MULTI") {
+        correctAnswerIds = question.answers
+          .filter((a) => a.isCorrect)
+          .map((a) => a.id)
+          .sort();
+        const selectedSorted = [...selected].sort();
+        isCorrect =
+          selectedSorted.length === correctAnswerIds.length &&
+          correctAnswerIds.length > 0 &&
+          selectedSorted.every((id, i) => id === correctAnswerIds[i]);
+      } else if (question.type === "ORDER") {
+        correctAnswerIds = [...question.answers]
+          .sort((a, b) => a.order - b.order)
+          .map((a) => a.id);
+        isCorrect =
+          selected.length === correctAnswerIds.length &&
+          correctAnswerIds.length > 0 &&
+          selected.every((id, i) => id === correctAnswerIds[i]);
+      } else {
+        correctAnswerIds = question.answers
+          .filter((a) => a.isCorrect)
+          .map((a) => a.id)
+          .sort();
+        isCorrect =
+          selected.length === 1 &&
+          correctAnswerIds.length === 1 &&
+          selected[0] === correctAnswerIds[0];
+      }
 
       if (isCorrect) correctCount += 1;
 
@@ -120,7 +141,7 @@ export class CheckpointsService {
         questionId: question.id,
         isCorrect,
         explanation: question.explanation,
-        correctAnswerIds: correctIds,
+        correctAnswerIds,
       };
     });
 

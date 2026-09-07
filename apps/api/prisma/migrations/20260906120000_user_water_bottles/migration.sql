@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN "waterBottles" INTEGER NOT NULL DEFAULT 20;
+ALTER TABLE "User" ADD COLUMN "waterBottlesDate" TIMESTAMP(3);

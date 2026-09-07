@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN "starBalance" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "User" ADD COLUMN "starBalanceSeeded" BOOLEAN NOT NULL DEFAULT false;

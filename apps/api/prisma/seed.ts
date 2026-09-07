@@ -281,7 +281,7 @@ function buildGateQuestionCreates(gate: NutritionGateSeed | AnatomieGateSeed) {
         create: q.answers.map((a, i) => ({
           label: a.label,
           isCorrect: a.isCorrect,
-          order: i,
+          order: a.order ?? i,
           matchKey: a.matchKey ?? undefined,
         })),
       },

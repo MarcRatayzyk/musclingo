@@ -11,6 +11,7 @@ import { CheckpointsModule } from "./modules/checkpoints/checkpoints.module";
 import { MiniGamesModule } from "./modules/mini-games/mini-games.module";
 import { GamificationModule } from "./modules/gamification/gamification.module";
 import { AdminModule } from "./modules/admin/admin.module";
+import { ShopModule } from "./modules/shop/shop.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { RedisModule } from "./redis/redis.module";
 import { HealthController } from "./health.controller";
@@ -30,6 +31,7 @@ import { HealthController } from "./health.controller";
     MiniGamesModule,
     GamificationModule,
     AdminModule,
+    ShopModule,
   ],
   controllers: [HealthController],
   providers: [

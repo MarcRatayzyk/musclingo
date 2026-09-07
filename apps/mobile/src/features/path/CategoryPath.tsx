@@ -19,8 +19,10 @@ import Animated, {
 } from "react-native-reanimated";
 import type { CategoryPath, PathGateNode, PathLessonNode } from "./api";
 import { getAnatomyPathIllustrationAtLesson } from "../mascot/anatomy-path-images";
+import { getNutritionPathIllustrationAtLesson } from "../mascot/nutrition-path-images";
 import { getLessonPathIcon } from "./icons";
 import { LessonPreviewSheet } from "./LessonPreviewSheet";
+import { StarIcon } from "@/shared/ui/Star";
 
 type Props = {
   path: CategoryPath;
@@ -70,6 +72,9 @@ type PathRow =
 const NODE_SIZE = 72;
 const NODE_PAD = 18;
 const ANATOMY_ILL_SIZE = 155;
+
+const LOCK_CLOSED = require("../../../assets/lock-closed.png");
+const LOCK_OPEN = require("../../../assets/lock-open.png");
 
 function sideOffsetForIndex(index: number) {
   if (index % 2 === 0) return 0;
@@ -207,19 +212,44 @@ function CurrentNodePulse({
   );
 }
 
-function AnatomyIllustration({
+function PathMascotIllustration({
   source,
+  label,
 }: {
-  source: NonNullable<ReturnType<typeof getAnatomyPathIllustrationAtLesson>>;
+  source: ImageSourcePropType;
+  label: string;
 }) {
   return (
     <Image
       source={source}
-      accessibilityLabel="Illustration du parcours anatomie"
+      accessibilityLabel={label}
       resizeMode="contain"
       style={{ width: ANATOMY_ILL_SIZE, height: ANATOMY_ILL_SIZE }}
     />
   );
+}
+
+function getPathMascotIllustration(
+  slug: string,
+  checkpointKey: string,
+  lessonOrder: number,
+  lessonTitle?: string,
+): ImageSourcePropType | null {
+  if (slug === "anatomie") {
+    return getAnatomyPathIllustrationAtLesson(
+      checkpointKey,
+      lessonOrder,
+      lessonTitle,
+    );
+  }
+  if (slug === "nutrition") {
+    return getNutritionPathIllustrationAtLesson(
+      checkpointKey,
+      lessonOrder,
+      lessonTitle,
+    );
+  }
+  return null;
 }
 
 function GateNode({
@@ -289,18 +319,26 @@ function GateNode({
                 elevation: isCurrent ? 10 : 0,
               }}
             >
-              <Text
+              <Image
+                source={locked ? LOCK_CLOSED : LOCK_OPEN}
+                accessibilityLabel={
+                  locked
+                    ? "Checkpoint verrouillé"
+                    : completed
+                      ? "Checkpoint validé"
+                      : "Checkpoint disponible"
+                }
+                resizeMode="contain"
                 style={{
-                  fontSize: 28,
-                  color: completed
+                  width: 34,
+                  height: 34,
+                  tintColor: completed
                     ? "#0B0F14"
                     : available
                       ? "#FFFFFF"
                       : "#7A8499",
                 }}
-              >
-                ⚡
-              </Text>
+              />
             </View>
 
             {completed && (
@@ -336,7 +374,7 @@ function GateNode({
             </Text>
             <Text className="mt-0.5 text-center text-[11px] text-muted">
               {locked
-                ? "Termine le thème"
+                ? `${gate.themeStars ?? 0}/${gate.themeStarsRequired ?? 0} ★ pour débloquer`
                 : available
                   ? `${gate.questionCount} Q · ${gate.timeLimitSec}s`
                   : "Validé"}
@@ -483,29 +521,25 @@ function LessonNode({
               <View
                 style={{
                   position: "absolute",
-                  right: 2,
-                  bottom: 2,
+                  right: -2,
+                  bottom: -2,
                   flexDirection: "row",
-                  gap: 1,
-                  paddingHorizontal: 4,
-                  paddingVertical: 2,
-                  borderRadius: 8,
+                  gap: 2,
+                  paddingHorizontal: 5,
+                  paddingVertical: 3,
+                  borderRadius: 10,
                   backgroundColor: "#0B0F14",
                   borderWidth: 2,
                   borderColor: color,
                 }}
               >
                 {[1, 2, 3].map((n) => (
-                  <Text
+                  <View
                     key={n}
-                    style={{
-                      color,
-                      fontSize: 9,
-                      opacity: n <= (lesson.bestStars ?? 0) ? 1 : 0.25,
-                    }}
+                    style={{ opacity: n <= (lesson.bestStars ?? 0) ? 1 : 0.28 }}
                   >
-                    ★
-                  </Text>
+                    <StarIcon size={16} />
+                  </View>
                 ))}
               </View>
             )}
@@ -627,16 +661,18 @@ export function CategoryPathView({
         }
 
         const lesson = row.item as FlatLesson & { showUnitHeader?: boolean };
-        const anatomyIllustration =
-          path.slug === "anatomie"
-            ? getAnatomyPathIllustrationAtLesson(
-                lesson.unitKey,
-                lesson.order,
-                lesson.title,
-              )
-            : null;
-        const lessonSideOffset = anatomyIllustration ? 0 : sideOffset;
-        const illOnLeft = anatomyIllustration != null && sideOffset > 0;
+        const pathIllustration = getPathMascotIllustration(
+          path.slug,
+          lesson.unitKey,
+          lesson.order,
+          lesson.title,
+        );
+        const lessonSideOffset = pathIllustration ? 0 : sideOffset;
+        const illOnLeft = pathIllustration != null && sideOffset > 0;
+        const mascotLabel =
+          path.slug === "nutrition"
+            ? "Mascotte du parcours nutrition"
+            : "Illustration du parcours anatomie";
 
         return (
           <Fragment key={lesson.id}>
@@ -663,8 +699,11 @@ export function CategoryPathView({
                   width: "100%",
                 }}
               >
-                {anatomyIllustration && illOnLeft ? (
-                  <AnatomyIllustration source={anatomyIllustration} />
+                {pathIllustration && illOnLeft ? (
+                  <PathMascotIllustration
+                    source={pathIllustration}
+                    label={mascotLabel}
+                  />
                 ) : null}
                 <LessonNode
                   lesson={lesson}
@@ -675,8 +714,11 @@ export function CategoryPathView({
                   isCurrent={lesson.id === currentLessonId}
                   onPress={() => setPreviewLesson(lesson)}
                 />
-                {anatomyIllustration && !illOnLeft ? (
-                  <AnatomyIllustration source={anatomyIllustration} />
+                {pathIllustration && !illOnLeft ? (
+                  <PathMascotIllustration
+                    source={pathIllustration}
+                    label={mascotLabel}
+                  />
                 ) : null}
               </View>
             </View>

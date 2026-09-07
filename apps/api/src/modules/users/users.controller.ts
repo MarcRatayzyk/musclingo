@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch, Post } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Patch, Post } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import {
   SubmitMemoryGameScoreSchema,
@@ -38,5 +38,17 @@ export class UsersController {
   ) {
     const { score } = body as { score: number };
     return this.users.submitMemoryGameScore(user.userId, score);
+  }
+
+  @Post("me/streak-goal/claim")
+  claimStreakGoal(
+    @CurrentUser() user: AuthUser,
+    @Body() body: { days?: number },
+  ) {
+    const days = body?.days;
+    if (days !== 7 && days !== 20 && days !== 50) {
+      throw new BadRequestException("Objectif invalide");
+    }
+    return this.users.claimStreakGoal(user.userId, days);
   }
 }

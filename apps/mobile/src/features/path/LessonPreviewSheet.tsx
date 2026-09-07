@@ -1,6 +1,15 @@
+import { useState } from "react";
 import { Modal, Pressable, Text, View } from "react-native";
+import { WATER_BOTTLE_QUIZ_RETRY_COST } from "@muscle-mind/types";
 import type { PathLessonNode } from "./api";
+import { useStartLesson } from "@/features/home/api";
+import { ApiError } from "@/shared/api/client";
 import { NeuroliftAmount } from "@/shared/ui/Neurolift";
+import { StarRow } from "@/shared/ui/Star";
+import {
+  WATER_BOTTLE_COST,
+  WaterBottleIcon,
+} from "@/shared/ui/WaterBottle";
 
 function darkenHex(hex: string, amount = 0.4): string {
   const raw = hex.replace("#", "");
@@ -24,11 +33,15 @@ function SolidButton({
   color,
   lip,
   onPress,
+  disabled,
+  trailing,
 }: {
   label: string;
   color: string;
   lip: string;
   onPress: () => void;
+  disabled?: boolean;
+  trailing?: React.ReactNode;
 }) {
   return (
     <View
@@ -36,12 +49,17 @@ function SolidButton({
         borderRadius: 16,
         backgroundColor: lip,
         paddingBottom: 5,
+        opacity: disabled ? 0.55 : 1,
       }}
     >
       <Pressable
         onPress={onPress}
+        disabled={disabled}
         style={{
           alignItems: "center",
+          justifyContent: "center",
+          flexDirection: "row",
+          gap: 10,
           borderRadius: 16,
           paddingVertical: 14,
           backgroundColor: color,
@@ -58,6 +76,7 @@ function SolidButton({
         >
           {label}
         </Text>
+        {trailing}
       </Pressable>
     </View>
   );
@@ -78,17 +97,54 @@ export function LessonPreviewSheet({
   onStart: (lesson: PathLessonNode) => void;
   onStartQuiz?: (lesson: PathLessonNode) => void;
 }) {
+  const startLesson = useStartLesson();
+  const [startError, setStartError] = useState<string | null>(null);
+
   if (!lesson) return null;
 
   const completed = lesson.state === "completed";
   const quizPending =
     lesson.readingCompleted && lesson.hasQuiz && !lesson.passed;
+  const firstRead = !lesson.readingCompleted;
   const lip = darkenHex(color, 0.45);
   const primaryLabel = quizPending
     ? "Faire le quiz"
     : completed
       ? "Revoir"
       : "C'est parti !";
+
+  async function handleStartLesson() {
+    if (!lesson) return;
+    setStartError(null);
+
+    if (!firstRead) {
+      onStart(lesson);
+      return;
+    }
+
+    try {
+      await startLesson.mutateAsync(lesson.id);
+      onStart(lesson);
+    } catch (err) {
+      const status =
+        err instanceof ApiError
+          ? err.status
+          : typeof err === "object" &&
+              err &&
+              "status" in err &&
+              typeof (err as { status: unknown }).status === "number"
+            ? (err as { status: number }).status
+            : 0;
+      const message =
+        err instanceof Error ? err.message : "Impossible de démarrer";
+      setStartError(
+        status === 403
+          ? message ||
+              `Plus assez de bouteilles (${WATER_BOTTLE_COST} nécessaires)`
+          : message,
+      );
+    }
+  }
 
   return (
     <Modal
@@ -117,11 +173,6 @@ export function LessonPreviewSheet({
             borderWidth: 1,
             borderColor: "rgba(255,255,255,0.1)",
             backgroundColor: "#121820",
-            shadowColor: color,
-            shadowOpacity: 0.4,
-            shadowRadius: 28,
-            shadowOffset: { width: 0, height: 12 },
-            elevation: 20,
           }}
         >
           <View
@@ -154,33 +205,10 @@ export function LessonPreviewSheet({
                 color={color}
               />
             </View>
-            {completed && lesson.bestStars != null ? (
-              <View style={{ flexDirection: "row", gap: 4, marginTop: 10 }}>
-                {[1, 2, 3].map((n) => (
-                  <Text
-                    key={n}
-                    style={{
-                      color,
-                      fontSize: 16,
-                      opacity: n <= (lesson.bestStars ?? 0) ? 1 : 0.25,
-                    }}
-                  >
-                    ★
-                  </Text>
-                ))}
+            {lesson.bestStars != null && lesson.bestStars > 0 ? (
+              <View style={{ marginTop: 12 }}>
+                <StarRow stars={lesson.bestStars} size={26} />
               </View>
-            ) : null}
-            {quizPending ? (
-              <Text
-                style={{
-                  marginTop: 10,
-                  color: color,
-                  fontSize: 12,
-                  fontWeight: "600",
-                }}
-              >
-                Leçon lue — quiz à faire
-              </Text>
             ) : null}
           </View>
 
@@ -217,6 +245,20 @@ export function LessonPreviewSheet({
               </Text>
             ) : null}
 
+            {startError ? (
+              <Text
+                style={{
+                  marginTop: 14,
+                  color: "#F87171",
+                  fontSize: 13,
+                  textAlign: "center",
+                  fontWeight: "600",
+                }}
+              >
+                {startError}
+              </Text>
+            ) : null}
+
             <View style={{ marginTop: 22, gap: 10 }}>
               {quizPending && onStartQuiz ? (
                 <>
@@ -227,7 +269,7 @@ export function LessonPreviewSheet({
                     onPress={() => onStartQuiz(lesson)}
                   />
                   <Pressable
-                    onPress={() => onStart(lesson)}
+                    onPress={() => void handleStartLesson()}
                     style={{
                       alignItems: "center",
                       borderRadius: 16,
@@ -251,12 +293,77 @@ export function LessonPreviewSheet({
                   </Pressable>
                 </>
               ) : (
-                <SolidButton
-                  label={primaryLabel}
-                  color={color}
-                  lip={lip}
-                  onPress={() => onStart(lesson)}
-                />
+                <>
+                  <SolidButton
+                    label={
+                      startLesson.isPending ? "…" : primaryLabel
+                    }
+                    color={color}
+                    lip={lip}
+                    disabled={startLesson.isPending}
+                    onPress={() => void handleStartLesson()}
+                    trailing={
+                      firstRead ? (
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 3,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              color: "#0B0F14",
+                              fontSize: 14,
+                              fontWeight: "800",
+                            }}
+                          >
+                            −{WATER_BOTTLE_COST}
+                          </Text>
+                          <WaterBottleIcon size={18} />
+                        </View>
+                      ) : undefined
+                    }
+                  />
+                  {completed && lesson.hasQuiz && onStartQuiz ? (
+                    <Pressable
+                      onPress={() => onStartQuiz(lesson)}
+                      style={{
+                        alignItems: "center",
+                        flexDirection: "row",
+                        justifyContent: "center",
+                        gap: 8,
+                        borderRadius: 16,
+                        paddingVertical: 12,
+                        borderWidth: 1.5,
+                        borderColor: "rgba(255,255,255,0.18)",
+                        backgroundColor: "rgba(255,255,255,0.04)",
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: "#FFFFFF",
+                          fontSize: 14,
+                          fontWeight: "700",
+                          letterSpacing: 0.4,
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        Refaire le quiz
+                      </Text>
+                      <Text
+                        style={{
+                          color: "#8B95A8",
+                          fontSize: 13,
+                          fontWeight: "700",
+                        }}
+                      >
+                        −{WATER_BOTTLE_QUIZ_RETRY_COST}
+                      </Text>
+                      <WaterBottleIcon size={16} />
+                    </Pressable>
+                  ) : null}
+                </>
               )}
             </View>
           </View>

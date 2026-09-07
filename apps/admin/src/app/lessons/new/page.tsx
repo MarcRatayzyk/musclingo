@@ -407,7 +407,7 @@ export function LessonForm({
             onChange={(e) =>
               setForm({ ...form, checkpointTitle: e.target.value })
             }
-            placeholder="Muscles du haut du corps"
+            placeholder="Haut du corps niveau 1"
           />
         </Field>
         <Field label="Ordre checkpoint">

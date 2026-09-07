@@ -1,5 +1,8 @@
-import { Modal, Pressable, ScrollView, Text, View } from "react-native";
+import { Image, Modal, Pressable, ScrollView, Text, View } from "react-native";
 import type { CategoryPath, PathGateNode, PathLessonNode } from "./api";
+
+const LOCK_CLOSED = require("../../../assets/lock-closed.png");
+const LOCK_OPEN = require("../../../assets/lock-open.png");
 
 function stateLabel(state: PathLessonNode["state"]) {
   if (state === "available") return "À toi de jouer";
@@ -111,30 +114,55 @@ export function UnitDetailSheet({
                       onPressGate(unit.gate!);
                       onClose();
                     }}
-                    className="mb-2 rounded-2xl border border-border bg-elevated px-4 py-3"
+                    className="mb-2 flex-row items-center gap-3 rounded-2xl border border-border bg-elevated px-4 py-3"
                     style={{
                       opacity: unit.gate.state === "locked" ? 0.55 : 1,
                       borderColor: path.color + "66",
                     }}
                   >
-                    <Text className="text-base font-semibold text-white">
-                      ⚡ {unit.gate.title}
-                    </Text>
-                    <Text
-                      className="mt-1 text-xs font-medium"
+                    <Image
+                      source={
+                        unit.gate.state === "locked" ? LOCK_CLOSED : LOCK_OPEN
+                      }
+                      accessibilityLabel={
+                        unit.gate.state === "locked"
+                          ? "Checkpoint verrouillé"
+                          : unit.gate.state === "completed"
+                            ? "Checkpoint validé"
+                            : "Checkpoint disponible"
+                      }
+                      resizeMode="contain"
                       style={{
-                        color:
+                        width: 22,
+                        height: 22,
+                        tintColor:
                           unit.gate.state === "available"
                             ? path.color
-                            : "#8B95A8",
+                            : unit.gate.state === "completed"
+                              ? path.color
+                              : "#8B95A8",
                       }}
-                    >
-                      {unit.gate.state === "locked"
-                        ? "Termine le thème"
-                        : unit.gate.state === "available"
-                          ? `${unit.gate.questionCount} Q · ${unit.gate.timeLimitSec}s`
-                          : "Validé"}
-                    </Text>
+                    />
+                    <View className="min-w-0 flex-1">
+                      <Text className="text-base font-semibold text-white">
+                        {unit.gate.title}
+                      </Text>
+                      <Text
+                        className="mt-1 text-xs font-medium"
+                        style={{
+                          color:
+                            unit.gate.state === "available"
+                              ? path.color
+                              : "#8B95A8",
+                        }}
+                      >
+                        {unit.gate.state === "locked"
+                          ? `${unit.gate.themeStars ?? 0}/${unit.gate.themeStarsRequired ?? 0} ★ pour débloquer`
+                          : unit.gate.state === "available"
+                            ? `${unit.gate.questionCount} Q · ${unit.gate.timeLimitSec}s`
+                            : "Validé"}
+                      </Text>
+                    </View>
                   </Pressable>
                 ) : null}
               </ScrollView>

@@ -37,6 +37,22 @@ export function getLessonQuizXpMultiplier(stars: number): number {
 }
 
 /**
+ * NeuroCoins : 15 par étoile.
+ * Le crédit = delta vs meilleur précédent (starsGained × 15).
+ */
+export const NEUROCOINS_PER_STAR = 15;
+
+/** NeuroCoins gagnés en passant de `prevStars` à `stars` (amélioration seulement). */
+export function getNeuroCoinsForStarsGained(
+  stars: number,
+  prevStars = 0,
+): number {
+  const next = Math.max(0, Math.min(3, Math.floor(stars)));
+  const prev = Math.max(0, Math.min(3, Math.floor(prevStars)));
+  return Math.max(0, next - prev) * NEUROCOINS_PER_STAR;
+}
+
+/**
  * Score de passage en tenant compte du nombre de questions.
  * Ex. 6 questions × 70 % → 4 bonnes réponses (arrondi) suffisent.
  */
@@ -56,6 +72,23 @@ export function isQuizScorePassing(
 /** Minimum checkpoint gate score (0–1), default 90 %. */
 export const GATE_PASS_THRESHOLD = 0.9;
 
+/**
+ * Part des étoiles max du thème pour débloquer le checkpoint.
+ * Ex. 4 leçons → max 12 → 8 étoiles (2/3 ≈ moyenne 2★ / leçon).
+ * Aligné sur l’exemple produit ; proche d’un objectif « ~75 % de réussite ».
+ */
+export const CHECKPOINT_STARS_RATIO = 2 / 3;
+
+export function maxStarsForTheme(quizLessonCount: number): number {
+  return Math.max(0, Math.floor(quizLessonCount)) * 3;
+}
+
+export function requiredStarsForTheme(quizLessonCount: number): number {
+  const max = maxStarsForTheme(quizLessonCount);
+  if (max <= 0) return 0;
+  return Math.ceil(max * CHECKPOINT_STARS_RATIO);
+}
+
 export function isGateScorePassing(
   score: number,
   totalQuestions: number,
@@ -66,6 +99,9 @@ export function isGateScorePassing(
   const needed = Math.max(1, Math.round(totalQuestions * passThreshold));
   return correct >= needed;
 }
+
+/** Bouteilles pour relancer un quiz déjà tenté. */
+export const WATER_BOTTLE_QUIZ_RETRY_COST = 2;
 
 /** Cumulative XP thresholds for levels 1..n (index 0 = level 1). */
 export const LEVEL_THRESHOLDS = [

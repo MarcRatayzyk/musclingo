@@ -4,9 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { AdminShell } from "@/components/admin-shell";
 import { api } from "@/lib/api";
-import { LessonForm } from "../new/page";
-
-type Category = { id: string; name: string };
+import { Category, LessonForm } from "@/components/lesson-form";
 
 type AnswerDraft = {
   label: string;

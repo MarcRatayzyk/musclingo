@@ -19,7 +19,7 @@ export function RewardsHud({
   const { data: me } = useMe();
   const streak = me?.streak?.current ?? 0;
   const coins = me?.neuroCoinBalance ?? 0;
-  const bottles = me?.waterBottles ?? 20;
+  const bottles = me?.waterBottles ?? 15;
 
   return (
     <View

@@ -99,8 +99,8 @@ export default function ProfileScreen() {
             <View className="mt-3 flex-row gap-3">
               <View className="flex-1 items-center rounded-3xl border border-border bg-surface p-4">
                 <WaterBottleAmount
-                  amount={me.waterBottles ?? 20}
-                  max={me.waterBottlesMax ?? 20}
+                  amount={me.waterBottles ?? 15}
+                  max={me.waterBottlesMax ?? 15}
                   size="lg"
                 />
                 <Text className="mt-1 text-center text-[11px] text-muted">

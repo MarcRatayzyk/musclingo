@@ -50,7 +50,7 @@ model User {
   level                Int              @default(1)
   memoryGameBestScore  Int              @default(0)
   /** Bouteilles restantes aujourd'hui (reset UTC quotidien). */
-  waterBottles         Int              @default(20)
+  waterBottles         Int              @default(15)
   /** Jour UTC du dernier reset / conso de bouteilles. */
   waterBottlesDate     DateTime?
   /** @deprecated Étoiles n’étaient plus dépensables — migré vers neuroCoinBalance. */

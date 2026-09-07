@@ -65,7 +65,7 @@ const state: OfflineState = {
   streak: 1,
   quizSessionId: OFFLINE_SESSION,
   quizQuestionIds: [],
-  waterBottles: 20,
+  waterBottles: 15,
   starsTotal: 0,
   starBalance: 0,
   neuroCoinBalance: 0,
@@ -96,7 +96,7 @@ function me() {
     starBalance: state.starBalance,
     neuroCoinBalance: state.neuroCoinBalance,
     waterBottles: state.waterBottles,
-    waterBottlesMax: 20,
+    waterBottlesMax: 15,
     waterBottleCost: 4,
     xpProgress: {
       level: state.level,
@@ -424,7 +424,7 @@ export async function offlineFetch<T>(
       alreadyRead,
       consumed,
       waterBottles: state.waterBottles,
-      waterBottlesMax: 20,
+      waterBottlesMax: 15,
       waterBottleCost: 4,
       starsTotal: state.starsTotal,
     } as T;
@@ -673,16 +673,16 @@ export async function offlineFetch<T>(
           id: "coins-pack-s",
           kind: "coins",
           title: "Gourde rapide",
-          description: "4 bouteilles pour reprendre une leçon.",
-          priceNeuroCoins: 10,
+          description: "",
+          priceNeuroCoins: 150,
           rewardBottles: 4,
         },
         {
           id: "coins-pack-m",
           kind: "coins",
           title: "Pack hydratation",
-          description: "12 bouteilles pour enchaîner.",
-          priceNeuroCoins: 25,
+          description: "",
+          priceNeuroCoins: 300,
           rewardBottles: 12,
           badge: "Populaire",
         },
@@ -690,37 +690,51 @@ export async function offlineFetch<T>(
           id: "coins-pack-l",
           kind: "coins",
           title: "Réserve complète",
-          description: "30 bouteilles — meilleur ratio.",
-          priceNeuroCoins: 50,
+          description: "",
+          priceNeuroCoins: 450,
           rewardBottles: 30,
           badge: "Bonus",
+        },
+        {
+          id: "sub-genius",
+          kind: "money",
+          title: "Genius",
+          description: "",
+          priceEuro: 5.99,
+          rewardBottles: 0,
+          badge: "Recommandé",
+        },
+        {
+          id: "sub-boost",
+          kind: "money",
+          title: "Boost",
+          description: "",
+          priceEuro: 2.99,
+          rewardBottles: 0,
         },
         {
           id: "money-pack-s",
           kind: "money",
           title: "Recharge jour",
-          description: "Remplit ta réserve quotidienne.",
+          description: "",
           priceEuro: 0.99,
           rewardBottles: 20,
-          badge: "Démo",
         },
         {
           id: "money-pack-m",
           kind: "money",
           title: "Pack semaine",
-          description: "100 bouteilles pour progresser sans frein.",
+          description: "",
           priceEuro: 4.99,
           rewardBottles: 100,
-          badge: "Démo",
         },
         {
           id: "money-pack-l",
           kind: "money",
           title: "Pack premium",
-          description: "250 bouteilles — offre fictive sans paiement réel.",
+          description: "",
           priceEuro: 9.99,
           rewardBottles: 250,
-          badge: "Démo",
         },
       ],
     } as T;
@@ -732,21 +746,23 @@ export async function offlineFetch<T>(
       {
         id: "coins-pack-s",
         kind: "coins" as const,
-        priceNeuroCoins: 10,
+        priceNeuroCoins: 150,
         rewardBottles: 4,
       },
       {
         id: "coins-pack-m",
         kind: "coins" as const,
-        priceNeuroCoins: 25,
+        priceNeuroCoins: 300,
         rewardBottles: 12,
       },
       {
         id: "coins-pack-l",
         kind: "coins" as const,
-        priceNeuroCoins: 50,
+        priceNeuroCoins: 450,
         rewardBottles: 30,
       },
+      { id: "sub-genius", kind: "money" as const, rewardBottles: 0 },
+      { id: "sub-boost", kind: "money" as const, rewardBottles: 0 },
       { id: "money-pack-s", kind: "money" as const, rewardBottles: 20 },
       { id: "money-pack-m", kind: "money" as const, rewardBottles: 100 },
       { id: "money-pack-l", kind: "money" as const, rewardBottles: 250 },
@@ -765,6 +781,7 @@ export async function offlineFetch<T>(
       state.neuroCoinBalance -= price;
     }
     state.waterBottles += offer.rewardBottles;
+    const isSubscription = offer.id.startsWith("sub-");
     return {
       demo: offer.kind === "money",
       offerId: offer.id,
@@ -773,7 +790,9 @@ export async function offlineFetch<T>(
       waterBottles: state.waterBottles,
       message:
         offer.kind === "money"
-          ? "Achat démo : aucun paiement réel."
+          ? isSubscription
+            ? "Abonnement démo activé — aucun paiement réel."
+            : "Achat démo : aucun paiement réel."
           : undefined,
     } as T;
   }

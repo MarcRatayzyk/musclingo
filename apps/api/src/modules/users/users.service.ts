@@ -6,7 +6,7 @@ import {
 import { getXpProgress } from "@muscle-mind/types";
 import { PrismaService } from "../../prisma/prisma.service";
 
-export const WATER_BOTTLES_MAX = 20;
+export const WATER_BOTTLES_MAX = 15;
 export const WATER_BOTTLE_COST = 4;
 
 function utcDay(d = new Date()) {
@@ -138,7 +138,7 @@ export class UsersService {
     };
   }
 
-  /** Reset quotidien UTC → 20 bouteilles. */
+  /** Reset quotidien UTC → 15 bouteilles. */
   async ensureWaterBottlesFresh(userId: string) {
     const today = utcDay();
     const user = await this.prisma.user.findUnique({

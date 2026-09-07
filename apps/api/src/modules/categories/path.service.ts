@@ -60,8 +60,9 @@ type GateEval = PathGateNode;
 export class PathService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** Opt-in only: progressive locking is the default. */
   private isUnlockAllLessons(): boolean {
-    return process.env.UNLOCK_ALL_LESSONS !== "false";
+    return process.env.UNLOCK_ALL_LESSONS === "true";
   }
 
   async getCategoryPath(categoryId: string, userId: string) {

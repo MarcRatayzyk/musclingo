@@ -2,7 +2,7 @@ import { Image, Text, View, type TextStyle } from "react-native";
 
 const SOURCE = require("../../../assets/water-bottle.png");
 
-export const WATER_BOTTLES_MAX = 20;
+export const WATER_BOTTLES_MAX = 15;
 export const WATER_BOTTLE_COST = 4;
 
 export function WaterBottleIcon({ size = 18 }: { size?: number }) {

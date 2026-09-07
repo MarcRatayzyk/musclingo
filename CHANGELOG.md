@@ -1,5 +1,17 @@
 # Changelog
 
+## [Non publié] - 2026-09-07 (déploiement)
+
+### Corrigé
+- `apps/api/Dockerfile` : l'image plantait au démarrage (`Cannot find module '@nestjs/core'`) à cause des liens symboliques pnpm cassés par la copie multi-stage. Remplacé par `pnpm deploy --prod` (node_modules autonome, sans lien symbolique).
+- Les migrations Prisma n'étaient jamais appliquées automatiquement au démarrage du conteneur — ajouté `prisma migrate deploy` au lancement.
+- `apps/api/src/main.ts` : l'API ignorait la variable `PORT` imposée par la plupart des hébergeurs (Railway, Render...) et n'écoutait que sur `API_PORT`. Elle lit maintenant `PORT` en priorité.
+
+### Ajouté
+- `.dockerignore` à la racine (le build envoyait tout le monorepo, node_modules compris, comme contexte — builds très lents).
+
+Image testée de bout en bout en local (build, migrations, démarrage, `/health`) avant ce commit.
+
 ## [Non publié] - 2026-09-05 (audit Anatomie)
 
 ### Ajouté

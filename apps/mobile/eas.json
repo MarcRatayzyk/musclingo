@@ -32,7 +32,7 @@
       },
       "env": {
         "EXPO_PUBLIC_OFFLINE": "0",
-        "EXPO_PUBLIC_API_URL": "https://CHANGE_ME.up.railway.app"
+        "EXPO_PUBLIC_API_URL": "https://muscle-mindapi-production.up.railway.app"
       }
     }
   },

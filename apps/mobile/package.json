@@ -9,6 +9,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web --port 8090",
+    "build": "pnpm --filter @muscle-mind/types build",
+    "start": "expo start --web --port 8090",
     "build:apk": "eas build -p android --profile preview",
     "build:aab": "eas build -p android --profile production",
     "eas-build-post-install": "cd ../.. && pnpm --filter @muscle-mind/types build",

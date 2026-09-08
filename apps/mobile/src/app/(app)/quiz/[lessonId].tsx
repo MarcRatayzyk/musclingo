@@ -568,13 +568,15 @@ export default function QuizScreen() {
             Les 10 questions doivent être répondues en moins d&apos;une minute.
           </Text>
           <View className="mt-10 w-full">
-            <PrimaryButton label="Réessayer" onPress={resetQuiz} />
-            <View className="mt-3 flex-row items-center justify-center gap-2">
-              <Text className="text-sm text-muted">
-                Coût : {WATER_BOTTLE_QUIZ_RETRY_COST}
+            <Pressable
+              onPress={resetQuiz}
+              className="flex-row items-center justify-center gap-2 rounded-2xl bg-accent py-4 active:opacity-90"
+            >
+              <Text className="text-base font-semibold text-background">
+                Réessayer −{WATER_BOTTLE_QUIZ_RETRY_COST}
               </Text>
-              <WaterBottleIcon size={18} />
-            </View>
+              <WaterBottleIcon size={20} />
+            </Pressable>
           </View>
         </View>
       </Screen>
@@ -666,18 +668,15 @@ export default function QuizScreen() {
               className="mt-12 w-full gap-4"
             >
               {!result.passed ? (
-                <View>
-                  <PrimaryButton
-                    label="Réessayer le quiz"
-                    onPress={resetQuiz}
-                  />
-                  <View className="mt-3 flex-row items-center justify-center gap-2">
-                    <Text className="text-sm text-muted">
-                      Coût : {WATER_BOTTLE_QUIZ_RETRY_COST}
-                    </Text>
-                    <WaterBottleIcon size={18} />
-                  </View>
-                </View>
+                <Pressable
+                  onPress={resetQuiz}
+                  className="flex-row items-center justify-center gap-2 rounded-2xl bg-accent py-4 active:opacity-90"
+                >
+                  <Text className="text-base font-semibold text-background">
+                    Réessayer −{WATER_BOTTLE_QUIZ_RETRY_COST}
+                  </Text>
+                  <WaterBottleIcon size={20} />
+                </Pressable>
               ) : result.nextLessonId ? (
                 <PrimaryButton
                   label="Leçon suivante"

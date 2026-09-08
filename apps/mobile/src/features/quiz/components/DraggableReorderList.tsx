@@ -9,8 +9,8 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 
-const GAP = 10;
-const ROW_H = 54;
+const DEFAULT_GAP = 6;
+const DEFAULT_ROW_H = 44;
 
 const SPRING = {
   damping: 20,
@@ -27,7 +27,9 @@ type Props<T extends { id: string }> = {
   wrong?: boolean;
   onDraggingChange?: (dragging: boolean) => void;
   renderItem: (item: T, index: number) => React.ReactNode;
-  hint?: string;
+  hint?: string | null;
+  rowHeight?: number;
+  gap?: number;
 };
 
 function ReorderRow<T extends { id: string }>({
@@ -36,6 +38,8 @@ function ReorderRow<T extends { id: string }>({
   count,
   disabled,
   wrong,
+  rowHeight,
+  gap,
   activeIndex,
   dragY,
   hoverIndex,
@@ -49,6 +53,8 @@ function ReorderRow<T extends { id: string }>({
   count: number;
   disabled?: boolean;
   wrong?: boolean;
+  rowHeight: number;
+  gap: number;
   activeIndex: SharedValue<number>;
   dragY: SharedValue<number>;
   hoverIndex: SharedValue<number>;
@@ -72,7 +78,7 @@ function ReorderRow<T extends { id: string }>({
       activeIndex.value = index;
       hoverIndex.value = index;
       dragY.value = 0;
-      scale.value = withSpring(1.05, SPRING);
+      scale.value = withSpring(1.04, SPRING);
       z.value = 40;
       runOnJS(setDragging)(true);
     })
@@ -91,7 +97,7 @@ function ReorderRow<T extends { id: string }>({
           }
         }
       } else {
-        const step = ROW_H + GAP;
+        const step = rowHeight + gap;
         target = Math.round(index + e.translationY / step);
       }
       hoverIndex.value = Math.max(0, Math.min(count - 1, target));
@@ -128,7 +134,7 @@ function ReorderRow<T extends { id: string }>({
 
     let shift = 0;
     if (from >= 0 && to >= 0 && from !== to) {
-      const step = ROW_H + GAP;
+      const step = rowHeight + gap;
       if (from < to && index > from && index <= to) shift = -step;
       else if (from > to && index >= to && index < from) shift = step;
     }
@@ -148,13 +154,13 @@ function ReorderRow<T extends { id: string }>({
         style={[
           style,
           {
-            height: ROW_H,
-            marginBottom: GAP,
-            borderRadius: 14,
+            height: rowHeight,
+            marginBottom: gap,
+            borderRadius: 12,
             borderWidth: 1.5,
             backgroundColor: wrong ? "rgba(239,68,68,0.12)" : "#151A24",
             justifyContent: "center",
-            paddingHorizontal: 14,
+            paddingHorizontal: 12,
           },
           Platform.OS === "web"
             ? ({
@@ -178,7 +184,9 @@ export function DraggableReorderList<T extends { id: string }>({
   wrong = false,
   onDraggingChange,
   renderItem,
-  hint = "Maintiens puis glisse pour réordonner",
+  hint = null,
+  rowHeight = DEFAULT_ROW_H,
+  gap = DEFAULT_GAP,
 }: Props<T>) {
   const activeIndex = useSharedValue(-1);
   const dragY = useSharedValue(0);
@@ -236,6 +244,8 @@ export function DraggableReorderList<T extends { id: string }>({
             count={items.length}
             disabled={disabled}
             wrong={wrong}
+            rowHeight={rowHeight}
+            gap={gap}
             activeIndex={activeIndex}
             dragY={dragY}
             hoverIndex={hoverIndex}
@@ -247,8 +257,11 @@ export function DraggableReorderList<T extends { id: string }>({
         </View>
       ))}
       {hint ? (
-        <Text className="mt-1 text-center text-xs text-muted">{hint}</Text>
+        <Text className="text-center text-[11px] text-muted">{hint}</Text>
       ) : null}
     </View>
   );
 }
+
+export const MATCH_ROW_H = DEFAULT_ROW_H;
+export const MATCH_ROW_GAP = DEFAULT_GAP;

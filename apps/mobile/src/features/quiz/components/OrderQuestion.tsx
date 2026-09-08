@@ -1,6 +1,10 @@
 import { useMemo } from "react";
 import { Text, View } from "react-native";
-import { DraggableReorderList } from "./DraggableReorderList";
+import {
+  DraggableReorderList,
+  MATCH_ROW_GAP,
+  MATCH_ROW_H,
+} from "./DraggableReorderList";
 import type { QuizQuestionAnswer } from "../types";
 
 type OrderQuestionInput = {
@@ -11,9 +15,7 @@ type Props = {
   orderedIds: string[];
   answersById: Map<string, QuizQuestionAnswer>;
   onReorder: (ids: string[]) => void;
-  /** @deprecated Prefer onReorder — kept for QuestionBody compat. */
   onMoveUp?: (index: number) => void;
-  /** @deprecated Prefer onReorder — kept for QuestionBody compat. */
   onMoveDown?: (index: number) => void;
   wrong?: boolean;
   disabled?: boolean;
@@ -43,7 +45,6 @@ export function OrderQuestion({
       onReorder(ids);
       return;
     }
-    // Fallback legacy up/down if only those are provided
     const from = orderedIds.findIndex((id, i) => id !== ids[i]);
     if (from < 0) return;
     const to = ids.findIndex((id) => id === orderedIds[from]);
@@ -56,30 +57,35 @@ export function OrderQuestion({
   };
 
   return (
-    <View className="mt-2">
-      <Text className="text-sm text-muted">
+    <View className="mt-1 flex-1" style={{ minHeight: 0 }}>
+      <Text className="mb-2 text-sm text-muted">
         Remets les étapes dans le bon ordre
       </Text>
-      <View className="mt-4">
-        <DraggableReorderList
-          items={items}
-          onReorder={handleReorder}
-          disabled={disabled}
-          wrong={wrong}
-          onDraggingChange={onDraggingChange}
-          hint="Maintiens une étape puis glisse-la à sa place"
-          renderItem={(answer, index) => (
-            <View className="flex-row items-center gap-3">
-              <View className="h-7 w-7 items-center justify-center rounded-full bg-elevated">
-                <Text className="text-sm font-semibold text-accent">
-                  {index + 1}
-                </Text>
-              </View>
-              <Text className="flex-1 text-base text-white">{answer.label}</Text>
+      <DraggableReorderList
+        items={items}
+        onReorder={handleReorder}
+        disabled={disabled}
+        wrong={wrong}
+        onDraggingChange={onDraggingChange}
+        hint={null}
+        rowHeight={MATCH_ROW_H}
+        gap={MATCH_ROW_GAP}
+        renderItem={(answer, index) => (
+          <View className="flex-row items-center gap-3">
+            <View className="h-6 w-6 items-center justify-center rounded-full bg-elevated">
+              <Text className="text-xs font-semibold text-accent">
+                {index + 1}
+              </Text>
             </View>
-          )}
-        />
-      </View>
+            <Text
+              className="flex-1 text-[15px] text-white"
+              numberOfLines={2}
+            >
+              {answer.label}
+            </Text>
+          </View>
+        )}
+      />
     </View>
   );
 }

@@ -1,6 +1,8 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
+import { EXTRA_QUIZ_TIME_SEC } from "@muscle-mind/types";
+import { useMe } from "@/features/auth/api";
 import { ConfettiBurst } from "@/features/gamification/confetti";
 import {
   useCheckpointGate,
@@ -14,6 +16,7 @@ import {
 } from "@/features/quiz/components/MatchQuestion";
 import type { QuizQuestion } from "@/features/quiz/types";
 import { ApiError } from "@/shared/api/client";
+import { ExtraTimeIcon } from "@/shared/ui/BoostIcons";
 import { PrimaryButton, Screen } from "@/shared/ui/primitives";
 import { NeuroliftAmount } from "@/shared/ui/Neurolift";
 
@@ -49,6 +52,7 @@ function formatTimer(sec: number) {
 
 export default function CheckpointGateScreen() {
   const { gateId } = useLocalSearchParams<{ gateId: string }>();
+  const { data: me } = useMe();
   const { data: gate, isLoading, isError, error } = useCheckpointGate(gateId);
   const submit = useSubmitCheckpointGate();
 
@@ -59,10 +63,17 @@ export default function CheckpointGateScreen() {
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [timeLeft, setTimeLeft] = useState(60);
   const [started, setStarted] = useState(false);
+  const [useExtraTime, setUseExtraTime] = useState(false);
   const [orderedRightIds, setOrderedRightIds] = useState<string[]>([]);
   const [matchDragging, setMatchDragging] = useState(false);
   const startRef = useRef<number>(0);
   const submittedRef = useRef(false);
+  const useExtraTimeRef = useRef(false);
+
+  const effectiveLimit = useMemo(() => {
+    if (!gate) return 60;
+    return gate.timeLimitSec + (useExtraTime ? EXTRA_QUIZ_TIME_SEC : 0);
+  }, [gate, useExtraTime]);
 
   const question = gate?.questions[index];
   const isLast = !!gate && index >= gate.questions.length - 1;
@@ -95,8 +106,11 @@ export default function CheckpointGateScreen() {
   ) => {
     if (!gate || submittedRef.current) return;
     submittedRef.current = true;
+    const limit =
+      gate.timeLimitSec +
+      (useExtraTimeRef.current ? EXTRA_QUIZ_TIME_SEC : 0);
     const elapsed = Math.min(
-      gate.timeLimitSec,
+      limit,
       Math.max(1, Math.round((Date.now() - startRef.current) / 1000)),
     );
     try {
@@ -104,6 +118,7 @@ export default function CheckpointGateScreen() {
         gateId: gate.id,
         answers: Object.values(finalAnswers),
         timeSpentSec: elapsed,
+        useExtraTime: useExtraTimeRef.current,
       });
       setResult(res);
     } catch {
@@ -141,8 +156,9 @@ export default function CheckpointGateScreen() {
 
   const begin = () => {
     if (!gate) return;
+    useExtraTimeRef.current = useExtraTime;
     setStarted(true);
-    setTimeLeft(gate.timeLimitSec);
+    setTimeLeft(effectiveLimit);
     startRef.current = Date.now();
   };
 
@@ -150,6 +166,9 @@ export default function CheckpointGateScreen() {
     () => (gate ? Math.round(gate.passThreshold * 100) : 90),
     [gate],
   );
+
+  const extraCharges =
+    gate?.extraTimeCharges ?? me?.extraTimeCharges ?? 0;
 
   if (isError) {
     const locked = error instanceof ApiError && error.status === 403;
@@ -230,6 +249,7 @@ export default function CheckpointGateScreen() {
                   setAnswers({});
                   setOrderedRightIds([]);
                   setStarted(false);
+                  setUseExtraTime(false);
                   setTimeLeft(gate.timeLimitSec);
                 }
               }}
@@ -251,10 +271,26 @@ export default function CheckpointGateScreen() {
             {gate.title}
           </Text>
           <Text className="mt-4 text-base text-muted">
-            {gate.questionCount} questions en {formatLimit(gate.timeLimitSec)}.
+            {gate.questionCount} questions en {formatLimit(effectiveLimit)}.
             Objectif : {thresholdPct} % minimum. Si le temps est dépassé, le
             checkpoint est invalidé.
           </Text>
+          {extraCharges > 0 ? (
+            <Pressable
+              onPress={() => setUseExtraTime((v) => !v)}
+              className={`mt-6 flex-row items-center gap-3 rounded-2xl border px-4 py-3 ${
+                useExtraTime
+                  ? "border-accent bg-accent/15"
+                  : "border-border bg-surface"
+              }`}
+            >
+              <ExtraTimeIcon size={40} />
+              <Text className="flex-1 text-base font-medium text-white">
+                +{EXTRA_QUIZ_TIME_SEC} s ({extraCharges} restant
+                {extraCharges > 1 ? "s" : ""})
+              </Text>
+            </Pressable>
+          ) : null}
           <View className="mt-10">
             <PrimaryButton label="C'est parti" onPress={begin} />
           </View>
@@ -265,7 +301,7 @@ export default function CheckpointGateScreen() {
 
   return (
     <Screen>
-      <View className="mb-6 flex-row items-center justify-between">
+      <View className="mb-3 flex-row items-center justify-between">
         <Text className="text-sm text-muted">
           {index + 1} / {gate.questions.length}
         </Text>
@@ -276,49 +312,54 @@ export default function CheckpointGateScreen() {
         </Text>
       </View>
 
-      <ScrollView
-        className="flex-1"
-        showsVerticalScrollIndicator={false}
-        scrollEnabled={!matchDragging}
-      >
-        <Text className="text-xl font-medium leading-8 text-white">
-          {question?.prompt}
-        </Text>
-
-        {matchQuestion ? (
-          <View className="pb-8">
-            <MatchQuestion
-              question={matchQuestion}
-              orderedRightIds={orderedRightIds}
-              onDraggingChange={setMatchDragging}
-              onReorder={setOrderedRightIds}
+      {matchQuestion ? (
+        <View className="flex-1" style={{ minHeight: 0 }}>
+          <Text
+            className="mb-2 text-lg font-medium leading-6 text-white"
+            numberOfLines={2}
+          >
+            {question?.prompt}
+          </Text>
+          <MatchQuestion
+            question={matchQuestion}
+            orderedRightIds={orderedRightIds}
+            onDraggingChange={setMatchDragging}
+            onReorder={setOrderedRightIds}
+          />
+          <View className="mt-3 shrink-0">
+            <PrimaryButton
+              label={isLast ? "Terminer" : "Continuer"}
+              disabled={orderedRightIds.length === 0}
+              onPress={() => {
+                if (!question) return;
+                const { lefts } = splitMatchColumns(matchQuestion.answers);
+                const selected = rightIdsInLeftOrder(lefts, orderedRightIds);
+                const nextAnswers = {
+                  ...answers,
+                  [question.id]: {
+                    questionId: question.id,
+                    selectedAnswerIds: selected,
+                  },
+                };
+                setAnswers(nextAnswers);
+                if (isLast) {
+                  void finish(nextAnswers);
+                  return;
+                }
+                setIndex((i) => i + 1);
+              }}
             />
-            <View className="mt-6">
-              <PrimaryButton
-                label={isLast ? "Terminer" : "Continuer"}
-                disabled={orderedRightIds.length === 0}
-                onPress={() => {
-                  if (!question) return;
-                  const { lefts } = splitMatchColumns(matchQuestion.answers);
-                  const selected = rightIdsInLeftOrder(lefts, orderedRightIds);
-                  const nextAnswers = {
-                    ...answers,
-                    [question.id]: {
-                      questionId: question.id,
-                      selectedAnswerIds: selected,
-                    },
-                  };
-                  setAnswers(nextAnswers);
-                  if (isLast) {
-                    void finish(nextAnswers);
-                    return;
-                  }
-                  setIndex((i) => i + 1);
-                }}
-              />
-            </View>
           </View>
-        ) : (
+        </View>
+      ) : (
+        <ScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          scrollEnabled={!matchDragging}
+        >
+          <Text className="text-xl font-medium leading-8 text-white">
+            {question?.prompt}
+          </Text>
           <View className="mt-8 gap-3 pb-8">
             {(question?.answers ?? []).map((a) => (
               <Pressable
@@ -330,8 +371,8 @@ export default function CheckpointGateScreen() {
               </Pressable>
             ))}
           </View>
-        )}
-      </ScrollView>
+        </ScrollView>
+      )}
     </Screen>
   );
 }

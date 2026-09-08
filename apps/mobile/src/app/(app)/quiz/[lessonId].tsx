@@ -656,22 +656,10 @@ export default function QuizScreen() {
             <OrderQuestion
               orderedIds={orderedIds}
               answersById={answersById}
-              onMoveUp={(i) => {
-                if (i <= 0) return;
-                setOrderedIds((prev) => {
-                  const next = [...prev];
-                  [next[i - 1], next[i]] = [next[i]!, next[i - 1]!];
-                  return next;
-                });
-              }}
-              onMoveDown={(i) => {
-                setOrderedIds((prev) => {
-                  if (i >= prev.length - 1) return prev;
-                  const next = [...prev];
-                  [next[i], next[i + 1]] = [next[i + 1]!, next[i]!];
-                  return next;
-                });
-              }}
+              wrong={validateWrong}
+              disabled={!!lockedChoice}
+              onDraggingChange={setMatchDragging}
+              onReorder={setOrderedIds}
             />
             {validateWrong ? (
               <Text className="mt-2 text-center text-sm text-red-400">

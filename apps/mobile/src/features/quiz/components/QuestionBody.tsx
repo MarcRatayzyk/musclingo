@@ -61,6 +61,7 @@ export function QuestionBody({
         <OrderQuestion
           orderedIds={state.orderedAnswerIds}
           answersById={answersById}
+          onReorder={onMatchReorder}
           onMoveUp={onMoveUp}
           onMoveDown={onMoveDown}
         />

@@ -6,12 +6,12 @@ export const CP = {
   },
   musclesHaut: {
     checkpointKey: "muscles-haut",
-    checkpointTitle: "Muscles du haut du corps",
+    checkpointTitle: "Haut du corps niveau 1",
     checkpointOrder: 1,
   },
   musclesBas: {
     checkpointKey: "muscles-bas",
-    checkpointTitle: "Muscles du bas du corps",
+    checkpointTitle: "Bas du corps niveau 1",
     checkpointOrder: 2,
   },
   articulations: {
@@ -21,12 +21,12 @@ export const CP = {
   },
   musclesHautApprofondi: {
     checkpointKey: "muscles-haut-approfondi",
-    checkpointTitle: "Haut du corps en profondeur",
+    checkpointTitle: "Haut du corps niveau 2",
     checkpointOrder: 4,
   },
   musclesBasApprofondi: {
     checkpointKey: "muscles-bas-approfondi",
-    checkpointTitle: "Bas du corps en profondeur",
+    checkpointTitle: "Bas du corps niveau 2",
     checkpointOrder: 5,
   },
   tissus: {

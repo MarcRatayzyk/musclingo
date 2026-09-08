@@ -18,6 +18,13 @@ export type Me = {
   xpTotal: number;
   level: number;
   memoryGameBestScore: number;
+  starsTotal: number;
+  /** @deprecated Conservé pour compat — utiliser neuroCoinBalance. */
+  starBalance: number;
+  neuroCoinBalance: number;
+  waterBottles: number;
+  waterBottlesMax: number;
+  waterBottleCost: number;
   xpProgress: {
     level: number;
     currentLevelXp: number;

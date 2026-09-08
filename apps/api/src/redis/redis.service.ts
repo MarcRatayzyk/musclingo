@@ -12,8 +12,23 @@ export class RedisService implements OnModuleDestroy {
   private useMemory = false;
 
   constructor() {
+    const redisUrl = process.env.REDIS_URL?.trim();
+    const isProd = process.env.NODE_ENV === "production";
+    const isLocalhostRedis =
+      !redisUrl ||
+      redisUrl.includes("localhost") ||
+      redisUrl.includes("127.0.0.1");
+
+    // En prod sans Redis Railway, ne pas tenter localhost (ça bloque/spam les logs).
+    if (isProd && isLocalhostRedis) {
+      this.useMemory = true;
+      this.client = null;
+      this.logger.warn("REDIS_URL absent — store de tokens en mémoire");
+      return;
+    }
+
     try {
-      this.client = new Redis(process.env.REDIS_URL ?? "redis://localhost:6379", {
+      this.client = new Redis(redisUrl ?? "redis://localhost:6379", {
         maxRetriesPerRequest: 1,
         lazyConnect: true,
         connectTimeout: 1500,

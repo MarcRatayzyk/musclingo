@@ -1,19 +1,16 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo } from "react";
 import {
   Image,
-  Platform,
   Text,
   View,
   useWindowDimensions,
 } from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
 import { resolveMediaUrl } from "@/shared/api/client";
+import {
+  DraggableReorderList,
+  MATCH_ROW_GAP,
+  MATCH_ROW_H,
+} from "./DraggableReorderList";
 import type { QuizQuestion, QuizQuestionAnswer } from "../types";
 
 type Props = {
@@ -43,7 +40,6 @@ export function splitMatchColumns(answers: QuizQuestionAnswer[]) {
   }
 
   lefts.sort((a, b) => a.order - b.order);
-  // Ordre volontairement incorrect (alphabétique ≠ ordre des numéros)
   const shuffledRights = [...rights].sort((a, b) =>
     a.label.localeCompare(b.label),
   );
@@ -61,122 +57,6 @@ export function initialOrderedRightIds(answers: QuizQuestionAnswer[]): string[] 
   return splitMatchColumns(answers).rights.map((r) => r.id);
 }
 
-type RowBox = {
-  index: number;
-  y: number;
-  height: number;
-};
-
-function DraggableReorderChip({
-  right,
-  index,
-  disabled,
-  wrong,
-  getRowLayouts,
-  onMoveToIndex,
-  onDraggingChange,
-}: {
-  right: QuizQuestionAnswer;
-  index: number;
-  disabled?: boolean;
-  wrong?: boolean;
-  getRowLayouts: () => RowBox[];
-  onMoveToIndex: (from: number, to: number) => void;
-  onDraggingChange?: (dragging: boolean) => void;
-}) {
-  const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
-  const scale = useSharedValue(1);
-  const z = useSharedValue(1);
-
-  const finishDrag = (absoluteY: number) => {
-    const layouts = getRowLayouts();
-    if (layouts.length === 0) return;
-    let target = index;
-    let best = Number.POSITIVE_INFINITY;
-    for (const row of layouts) {
-      const mid = row.y + row.height / 2;
-      const dist = Math.abs(absoluteY - mid);
-      if (dist < best) {
-        best = dist;
-        target = row.index;
-      }
-    }
-    if (target !== index) onMoveToIndex(index, target);
-  };
-
-  const setDragging = (value: boolean) => {
-    onDraggingChange?.(value);
-  };
-
-  const pan = Gesture.Pan()
-    .enabled(!disabled)
-    .minDistance(4)
-    .onBegin(() => {
-      z.value = 40;
-      scale.value = withSpring(1.04);
-      runOnJS(setDragging)(true);
-    })
-    .onUpdate((e) => {
-      translateX.value = e.translationX;
-      translateY.value = e.translationY;
-    })
-    .onEnd((e) => {
-      runOnJS(finishDrag)(e.absoluteY);
-    })
-    .onFinalize(() => {
-      translateX.value = withSpring(0);
-      translateY.value = withSpring(0);
-      scale.value = withSpring(1);
-      z.value = 1;
-      runOnJS(setDragging)(false);
-    });
-
-  const style = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: translateX.value },
-      { translateY: translateY.value },
-      { scale: scale.value },
-    ],
-    zIndex: z.value,
-    elevation: z.value,
-  }));
-
-  return (
-    <GestureDetector gesture={pan}>
-      <Animated.View
-        style={[
-          style,
-          {
-            minHeight: 48,
-            justifyContent: "center",
-            borderRadius: 12,
-            borderWidth: 1,
-            borderColor: wrong ? "#EF4444" : "#2A3344",
-            backgroundColor: wrong ? "rgba(239,68,68,0.12)" : "#151A24",
-            paddingHorizontal: 12,
-            paddingVertical: 12,
-          },
-          Platform.OS === "web"
-            ? ({
-                cursor: disabled ? "default" : "grab",
-                touchAction: "none",
-                userSelect: "none",
-              } as never)
-            : null,
-        ]}
-      >
-        <Text
-          style={{ color: "#FFFFFF", fontSize: 14 }}
-          pointerEvents="none"
-        >
-          {right.label}
-        </Text>
-      </Animated.View>
-    </GestureDetector>
-  );
-}
-
 export function MatchQuestion({
   question,
   orderedRightIds,
@@ -185,9 +65,8 @@ export function MatchQuestion({
   disabled = false,
   onDraggingChange,
 }: Props) {
-  const { width: screenW } = useWindowDimensions();
+  const { height: screenH } = useWindowDimensions();
   const imageUri = resolveMediaUrl(question.payload?.imageUrl ?? null);
-  const imgW = screenW - 48;
   const { lefts, rights } = useMemo(
     () => splitMatchColumns(question.answers),
     [question.answers],
@@ -201,87 +80,73 @@ export function MatchQuestion({
     .map((id) => rightsById.get(id))
     .filter((r): r is QuizQuestionAnswer => !!r);
 
-  const rowNodes = useRef<Record<number, View | null>>({});
-  const rowLayouts = useRef<RowBox[]>([]);
-
-  const measureRows = () => {
-    Object.entries(rowNodes.current).forEach(([indexStr, node]) => {
-      const index = Number(indexStr);
-      node?.measureInWindow((_x, y, _w, height) => {
-        if (height <= 0) return;
-        rowLayouts.current = [
-          ...rowLayouts.current.filter((r) => r.index !== index),
-          { index, y, height },
-        ];
-      });
-    });
-  };
-
-  useEffect(() => {
-    measureRows();
-  }, [orderedRightIds]);
-
-  const moveToIndex = (from: number, to: number) => {
-    if (from === to) return;
-    const next = [...orderedRightIds];
-    const [item] = next.splice(from, 1);
-    if (!item) return;
-    next.splice(to, 0, item);
-    onReorder(next);
-  };
+  const listH =
+    orderedRights.length * (MATCH_ROW_H + MATCH_ROW_GAP) - MATCH_ROW_GAP;
+  // Image takes remaining space but stays capped so 4 rows + bouton restent visibles.
+  const imgMax = Math.min(Math.max(screenH * 0.32, 140), 220);
 
   return (
-    <View className="mt-2" onLayout={measureRows}>
+    <View className="flex-1" style={{ minHeight: 0 }}>
       {imageUri ? (
-        <Image
-          source={{ uri: imageUri }}
-          accessibilityLabel="Illustration numérotée"
+        <View
           style={{
-            width: imgW,
-            height: Math.min(imgW * 1.15, 300),
-            marginTop: 8,
-            alignSelf: "center",
+            flexGrow: 1,
+            flexShrink: 1,
+            minHeight: 110,
+            maxHeight: imgMax,
+            marginBottom: 8,
           }}
-          resizeMode="contain"
-        />
+        >
+          <Image
+            source={{ uri: imageUri }}
+            accessibilityLabel="Illustration numérotée"
+            style={{ width: "100%", height: "100%" }}
+            resizeMode="contain"
+          />
+        </View>
       ) : null}
 
-      <View className="mt-4 gap-2">
-        {lefts.map((left, index) => {
-          const right = orderedRights[index];
-          return (
+      <View
+        className="flex-row gap-2"
+        style={{ height: listH, flexShrink: 0 }}
+      >
+        <View className="w-7">
+          {lefts.map((left) => (
             <View
               key={left.id}
-              collapsable={false}
-              className="flex-row items-center gap-3"
-              onLayout={measureRows}
+              style={{
+                height: MATCH_ROW_H,
+                marginBottom: MATCH_ROW_GAP,
+                justifyContent: "center",
+              }}
             >
-              <Text className="w-8 text-center text-xl font-semibold text-white">
+              <Text className="text-center text-lg font-semibold text-white">
                 {left.label}
               </Text>
-              <View
-                className="flex-1"
-                ref={(node) => {
-                  rowNodes.current[index] = node;
-                }}
-              >
-                {right ? (
-                  <DraggableReorderChip
-                    right={right}
-                    index={index}
-                    disabled={disabled}
-                    wrong={wrong}
-                    getRowLayouts={() => rowLayouts.current}
-                    onMoveToIndex={moveToIndex}
-                    onDraggingChange={onDraggingChange}
-                  />
-                ) : (
-                  <View className="min-h-[48px] rounded-xl border border-dashed border-border" />
-                )}
-              </View>
             </View>
-          );
-        })}
+          ))}
+        </View>
+
+        <View className="flex-1">
+          <DraggableReorderList
+            items={orderedRights}
+            onReorder={onReorder}
+            disabled={disabled}
+            wrong={wrong}
+            onDraggingChange={onDraggingChange}
+            hint={null}
+            rowHeight={MATCH_ROW_H}
+            gap={MATCH_ROW_GAP}
+            renderItem={(right) => (
+              <Text
+                style={{ color: "#FFFFFF", fontSize: 14, lineHeight: 18 }}
+                numberOfLines={2}
+              >
+                {right.label}
+              </Text>
+            )}
+          />
+        </View>
       </View>
     </View>
   );

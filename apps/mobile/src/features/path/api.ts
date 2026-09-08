@@ -34,6 +34,9 @@ export type PathGateNode = {
   questionCount: number;
   bestScore: number | null;
   xpReward: number;
+  themeStars: number;
+  themeStarsMax: number;
+  themeStarsRequired: number;
 };
 
 export type CategoryPath = {

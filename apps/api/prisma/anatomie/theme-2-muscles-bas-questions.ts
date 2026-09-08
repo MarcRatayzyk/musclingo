@@ -1,7 +1,8 @@
-import { bank25 } from "./qcm-bank";
-import type { SeedQuestion } from "../anatomie-quiz-helpers";
+import { bank25, diversifyBank } from "./qcm-bank";
+import { THEME_2_EXTRAS_0 } from "./diversified-extras";
 
 export const THEME_2_QUIZZES: SeedQuestion[][] = [
+  diversifyBank(
   bank25([
     [
       "Combien de chefs compose le quadriceps ?",
@@ -154,6 +155,8 @@ export const THEME_2_QUIZZES: SeedQuestion[][] = [
       "Le sartorius est à part, en écharpe ; les quatre chefs sont VL, VM, VI, DF.",
     ],
   ]),
+  THEME_2_EXTRAS_0,
+  ),
 
   bank25([
     [

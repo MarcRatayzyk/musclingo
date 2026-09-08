@@ -1,5 +1,11 @@
-import { Pressable, Text, View } from "react-native";
-import type { QuizQuestion, QuizQuestionAnswer } from "../types";
+import { useMemo } from "react";
+import { Text, View } from "react-native";
+import {
+  DraggableReorderList,
+  MATCH_ROW_GAP,
+  MATCH_ROW_H,
+} from "./DraggableReorderList";
+import type { QuizQuestionAnswer } from "../types";
 
 type OrderQuestionInput = {
   answers: QuizQuestionAnswer[];
@@ -8,54 +14,78 @@ type OrderQuestionInput = {
 type Props = {
   orderedIds: string[];
   answersById: Map<string, QuizQuestionAnswer>;
-  onMoveUp: (index: number) => void;
-  onMoveDown: (index: number) => void;
+  onReorder: (ids: string[]) => void;
+  onMoveUp?: (index: number) => void;
+  onMoveDown?: (index: number) => void;
+  wrong?: boolean;
+  disabled?: boolean;
+  onDraggingChange?: (dragging: boolean) => void;
 };
 
 export function OrderQuestion({
   orderedIds,
   answersById,
+  onReorder,
   onMoveUp,
   onMoveDown,
+  wrong = false,
+  disabled = false,
+  onDraggingChange,
 }: Props) {
+  const items = useMemo(
+    () =>
+      orderedIds
+        .map((id) => answersById.get(id))
+        .filter((a): a is QuizQuestionAnswer => !!a),
+    [orderedIds, answersById],
+  );
+
+  const handleReorder = (ids: string[]) => {
+    if (onReorder) {
+      onReorder(ids);
+      return;
+    }
+    const from = orderedIds.findIndex((id, i) => id !== ids[i]);
+    if (from < 0) return;
+    const to = ids.findIndex((id) => id === orderedIds[from]);
+    if (to < 0 || from === to) return;
+    if (to < from) {
+      for (let i = from; i > to; i -= 1) onMoveUp?.(i);
+    } else {
+      for (let i = from; i < to; i += 1) onMoveDown?.(i);
+    }
+  };
+
   return (
-    <View className="mt-2">
-      <Text className="text-sm text-muted">
+    <View className="mt-1 flex-1" style={{ minHeight: 0 }}>
+      <Text className="mb-2 text-sm text-muted">
         Remets les étapes dans le bon ordre
       </Text>
-      <View className="mt-4 gap-3">
-        {orderedIds.map((id, index) => {
-          const answer = answersById.get(id);
-          if (!answer) return null;
-          return (
-            <View
-              key={id}
-              className="flex-row items-center gap-2 rounded-2xl border border-border bg-surface px-3 py-3"
-            >
-              <Text className="w-6 text-center text-sm text-muted">
+      <DraggableReorderList
+        items={items}
+        onReorder={handleReorder}
+        disabled={disabled}
+        wrong={wrong}
+        onDraggingChange={onDraggingChange}
+        hint={null}
+        rowHeight={MATCH_ROW_H}
+        gap={MATCH_ROW_GAP}
+        renderItem={(answer, index) => (
+          <View className="flex-row items-center gap-3">
+            <View className="h-6 w-6 items-center justify-center rounded-full bg-elevated">
+              <Text className="text-xs font-semibold text-accent">
                 {index + 1}
               </Text>
-              <Text className="flex-1 text-base text-white">{answer.label}</Text>
-              <View className="gap-1">
-                <Pressable
-                  onPress={() => onMoveUp(index)}
-                  disabled={index === 0}
-                  className={`rounded-lg px-2 py-1 ${index === 0 ? "opacity-30" : "active:opacity-70"}`}
-                >
-                  <Text className="text-accent">▲</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => onMoveDown(index)}
-                  disabled={index === orderedIds.length - 1}
-                  className={`rounded-lg px-2 py-1 ${index === orderedIds.length - 1 ? "opacity-30" : "active:opacity-70"}`}
-                >
-                  <Text className="text-accent">▼</Text>
-                </Pressable>
-              </View>
             </View>
-          );
-        })}
-      </View>
+            <Text
+              className="flex-1 text-[15px] text-white"
+              numberOfLines={2}
+            >
+              {answer.label}
+            </Text>
+          </View>
+        )}
+      />
     </View>
   );
 }

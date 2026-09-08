@@ -1,0 +1,12 @@
+[build]
+buildCommand = "pnpm --filter @muscle-mind/types build"
+watchPatterns = [
+  "/apps/mobile/**",
+  "/packages/types/**",
+  "/package.json",
+  "/pnpm-lock.yaml",
+  "/pnpm-workspace.yaml"
+]
+
+[deploy]
+startCommand = "pnpm --filter @muscle-mind/mobile exec expo start --web --port $PORT"

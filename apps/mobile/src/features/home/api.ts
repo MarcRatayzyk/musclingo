@@ -53,6 +53,7 @@ export type QuizPayload = {
   id: string;
   lessonId: string;
   lessonTitle: string;
+  categorySlug?: string;
   sessionId: string;
   xpReward: number;
   perfectBonusXp: number;
@@ -62,7 +63,7 @@ export type QuizPayload = {
   questions: Array<{
     id: string;
     prompt: string;
-    type?: "SINGLE" | "TRUE_FALSE" | "MATCH";
+    type?: "SINGLE" | "TRUE_FALSE" | "MULTI" | "ORDER" | "MATCH";
     imageUrl?: string | null;
     choices: Array<{
       id: string;
@@ -72,6 +73,9 @@ export type QuizPayload = {
     }>;
   }>;
   answerKeys: Record<string, string>;
+  isRetry?: boolean;
+  waterBottleRetryCost?: number;
+  waterBottles?: number;
 };
 
 /** Compat API ancienne (`questionTimeSec`) et offline. */
@@ -171,7 +175,42 @@ export function useCompleteLesson() {
   });
 }
 
+export type StartLessonResult = {
+  lessonId: string;
+  alreadyRead: boolean;
+  consumed: number;
+  waterBottles: number;
+  waterBottlesMax: number;
+  waterBottleCost: number;
+  starsTotal: number;
+};
+
+export function useStartLesson() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<StartLessonResult>(`/lessons/${id}/start`, {
+        method: "POST",
+        body: JSON.stringify({}),
+      }),
+    onSuccess: async (data) => {
+      qc.setQueryData(["me"], (prev: unknown) => {
+        if (!prev || typeof prev !== "object") return prev;
+        return {
+          ...prev,
+          waterBottles: data.waterBottles,
+          waterBottlesMax: data.waterBottlesMax,
+          waterBottleCost: data.waterBottleCost,
+          starsTotal: data.starsTotal,
+        };
+      });
+      await qc.invalidateQueries({ queryKey: ["me"] });
+    },
+  });
+}
+
 export function useQuizByLesson(lessonId: string) {
+  const qc = useQueryClient();
   return useQuery({
     queryKey: ["quiz", lessonId],
     queryFn: async () => {
@@ -179,9 +218,18 @@ export function useQuizByLesson(lessonId: string) {
       const raw = await apiFetch<QuizPayload & { questionTimeSec?: number }>(
         `/quizzes/by-lesson/${lessonId}`,
       );
-      return normalizeQuizPayload(raw);
+      const normalized = normalizeQuizPayload(raw);
+      if (typeof normalized.waterBottles === "number") {
+        qc.setQueryData(["me"], (prev: unknown) => {
+          if (!prev || typeof prev !== "object") return prev;
+          return { ...prev, waterBottles: normalized.waterBottles };
+        });
+      }
+      void qc.invalidateQueries({ queryKey: ["me"] });
+      return normalized;
     },
     enabled: !!lessonId,
+    retry: false,
   });
 }
 
@@ -211,6 +259,8 @@ export function useSubmitQuiz() {
         perfect: boolean;
         passed: boolean;
         stars: 0 | 1 | 2 | 3;
+        starsGained?: number;
+        neuroCoinsEarned?: number;
         timeSpentSec: number;
         nextLessonId: string | null;
         categoryId: string;

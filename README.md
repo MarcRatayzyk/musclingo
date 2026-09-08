@@ -66,6 +66,15 @@ pnpm dev:web                            # App mobile dans le navigateur
 
 Sur appareil physique (Expo Go), pointe `EXPO_PUBLIC_API_URL` dans `apps/mobile/.env` vers l’IP LAN de ta machine (pas `localhost`). Sur PC, garde `http://localhost:3001`.
 
+### APK connecté à Railway
+
+1. `@muscle-mind/api` Online avec `DATABASE_URL` (réf. Postgres) + secrets JWT.
+2. API → **Settings → Networking → Generate Domain** (domaine public).
+3. Colle l’URL `https://….up.railway.app` dans `apps/mobile/eas.json` (`EXPO_PUBLIC_API_URL` des profils `preview` / `production`).
+4. Au démarrage, l’API lance `migrate` + `seed` (Nutrition incluse). Ensuite tu peux mettre `SKIP_SEED=1`.
+5. Build : `pnpm --filter @muscle-mind/mobile build:apk`  
+   (profil `offline` = démo locale sans API).
+
 ### Comptes seed
 
 - **Admin** (back-office http://localhost:3000) : `admin@musclemind.app` / `Admin123!`

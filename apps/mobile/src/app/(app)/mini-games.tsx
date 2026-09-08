@@ -3,6 +3,7 @@ import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { useMiniGames } from "@/features/mini-games/api";
 import { getPathIcon } from "@/features/path/icons";
 import { Screen } from "@/shared/ui/primitives";
+import { RewardsTopBar } from "@/shared/ui/RewardsTopBar";
 
 type CardItem = {
   key: string;
@@ -98,7 +99,8 @@ export default function MiniGamesHubScreen() {
   ];
 
   return (
-    <Screen>
+    <Screen className="pt-8">
+      <RewardsTopBar />
       <Text className="text-xs uppercase tracking-[3px] text-accent">
         Mini-jeux
       </Text>

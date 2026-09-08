@@ -1,7 +1,6 @@
 import { Redirect, router } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Image,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Pressable,
@@ -13,7 +12,6 @@ import { useMe } from "@/features/auth/api";
 import { useCategories, useOngoingPaths } from "@/features/home/api";
 import { CategoryPathView } from "@/features/path/CategoryPath";
 import { useCategoryPath } from "@/features/path/api";
-import { getPathIcon } from "@/features/path/icons";
 import { SectionBanner } from "@/features/path/SectionBanner";
 import { unitKeyFromLessonScroll } from "@/features/path/scroll-sync";
 import { UnitDetailSheet } from "@/features/path/UnitDetailSheet";
@@ -21,12 +19,16 @@ import {
   AnatomyPathOnboarding,
   hasSeenAnatomyOnboarding,
 } from "@/features/mascot";
+import { useStreakGoalClaim } from "@/features/onboarding/useStreakGoalClaim";
 import { Screen } from "@/shared/ui/primitives";
+import { RewardsTopBar } from "@/shared/ui/RewardsTopBar";
+import { MenuHamburgerIcon } from "@/shared/ui/MenuHamburger";
 
 export default function HomeScreen() {
   const { data: me, isLoading: meLoading, isError: meError } = useMe();
   const { data: ongoing } = useOngoingPaths();
   const { data: categories, isError: categoriesError } = useCategories();
+  useStreakGoalClaim();
 
   const scrollRef = useRef<ScrollView>(null);
   const scrollH = useRef(0);
@@ -52,7 +54,6 @@ export default function HomeScreen() {
     [path],
   );
   const lessonCount = lessons.length;
-  const completedCount = lessons.filter((l) => l.state === "completed").length;
 
   const focusLessonId = useMemo(() => {
     if (!path) return null;
@@ -114,8 +115,6 @@ export default function HomeScreen() {
     return () => clearTimeout(t);
   }, [scrollToFocus, path]);
 
-  const pathSlug = path?.slug ?? me?.preferredCategory?.slug ?? "anatomie";
-
   useEffect(() => {
     if (pathLoading || !path) return;
     if (path.slug !== "anatomie") return;
@@ -148,40 +147,31 @@ export default function HomeScreen() {
     path?.units[0];
 
   return (
-    <Screen>
-      <View className="mb-3 flex-row items-center justify-between">
-        <View className="flex-1 flex-row items-center pr-3">
-          <View
-            className="mr-3 items-center justify-center"
+    <Screen className="pt-8">
+      <RewardsTopBar
+        trailing={
+          <Pressable
+            onPress={() =>
+              router.push("/(app)/categories?mode=picker" as never)
+            }
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Voir les autres parcours"
             style={{
-              width: 48,
-              height: 48,
-              borderRadius: 24,
-              borderWidth: 2,
-              backgroundColor: pathColor,
-              borderColor: pathColor,
+              width: 44,
+              height: 44,
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: "rgba(255,255,255,0.12)",
+              backgroundColor: "#141820",
             }}
           >
-            <Image
-              source={getPathIcon(pathSlug)}
-              resizeMode="contain"
-              style={{ width: 26, height: 26, tintColor: "#0B0F14" }}
-            />
-          </View>
-          <Text className="text-sm font-medium" style={{ color: pathColor }}>
-            {path ? `${completedCount}/${lessonCount} leçons` : "—"}
-          </Text>
-        </View>
-        <Pressable
-          onPress={() =>
-            router.push("/(app)/categories?mode=picker" as never)
-          }
-          hitSlop={12}
-          className="h-11 w-11 items-center justify-center rounded-2xl border border-border bg-elevated"
-        >
-          <Text className="text-xl text-accent">⊞</Text>
-        </Pressable>
-      </View>
+            <MenuHamburgerIcon size={20} color="#FFFFFF" />
+          </Pressable>
+        }
+      />
 
       {path && activeUnit && lessonCount > 0 && (
         <SectionBanner

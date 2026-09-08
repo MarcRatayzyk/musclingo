@@ -6,6 +6,7 @@ import {
 import { Prisma, QuestionType } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { matchRightIdsInLeftOrder, withPairedMatchKeys } from "./match-score";
+import type { PoolAnswerType } from "./pool-score";
 
 export type PoolChoice = {
   id: string;
@@ -16,7 +17,7 @@ export type PoolChoice = {
 
 export type PoolQuestion = {
   id: string;
-  type: "SINGLE" | "TRUE_FALSE" | "MATCH";
+  type: PoolAnswerType;
   prompt: string;
   imageUrl: string | null;
   choices: PoolChoice[];
@@ -42,6 +43,14 @@ const RECENT_ATTEMPTS = 5;
 const ALLOWED_TYPES: QuestionType[] = [
   QuestionType.SINGLE,
   QuestionType.TRUE_FALSE,
+];
+
+const LESSON_BANK_TYPES: QuestionType[] = [
+  QuestionType.SINGLE,
+  QuestionType.TRUE_FALSE,
+  QuestionType.MULTI,
+  QuestionType.ORDER,
+  QuestionType.MATCH,
 ];
 
 function shuffle<T>(items: T[]): T[] {
@@ -79,10 +88,23 @@ type AnswerRow = {
   order?: number;
 };
 
-function isLessonBankQuestion(answers: AnswerRow[]) {
+function isValidSingleOrTf(answers: AnswerRow[]) {
   return (
-    answers.length === 4 && answers.filter((a) => a.isCorrect).length === 1
+    answers.length >= 2 && answers.filter((a) => a.isCorrect).length === 1
   );
+}
+
+function isValidMulti(answers: AnswerRow[]) {
+  const correct = answers.filter((a) => a.isCorrect).length;
+  const wrong = answers.length - correct;
+  return correct >= 2 && wrong >= 1;
+}
+
+function isValidOrder(answers: AnswerRow[]) {
+  if (answers.length < 2) return false;
+  const orders = answers.map((a) => a.order ?? -1);
+  const unique = new Set(orders);
+  return unique.size === answers.length && orders.every((o) => o >= 0);
 }
 
 function readImageUrl(payload: Prisma.JsonValue | null): string | null {
@@ -90,7 +112,9 @@ function readImageUrl(payload: Prisma.JsonValue | null): string | null {
     return null;
   }
   const imageUrl = (payload as { imageUrl?: unknown }).imageUrl;
-  return typeof imageUrl === "string" ? imageUrl : null;
+  return typeof imageUrl === "string" && imageUrl.length > 0
+    ? imageUrl
+    : null;
 }
 
 function readThemeTags(payload: Prisma.JsonValue | null): string[] {
@@ -130,6 +154,16 @@ function pickFromPool(
     ...unitUsed,
   ];
   return ordered.slice(0, count);
+}
+
+function pickShuffled(
+  pool: PoolQuestionInternal[],
+  take: number,
+  excludeIds: Set<string>,
+): PoolQuestionInternal[] {
+  const fresh = shuffle(pool.filter((q) => !excludeIds.has(q.id)));
+  const used = shuffle(pool.filter((q) => excludeIds.has(q.id)));
+  return [...fresh, ...used].slice(0, take);
 }
 
 @Injectable()
@@ -266,8 +300,9 @@ export class QuestionPoolService {
   ): PoolQuestionInternal | null {
     if (!row) return null;
     const imageUrl = readImageUrl(row.payload ?? null);
+    const type = row.type ?? QuestionType.SINGLE;
 
-    if (row.type === QuestionType.MATCH) {
+    if (type === QuestionType.MATCH) {
       const answers = withPairedMatchKeys(row.answers);
       const rightIds = matchRightIdsInLeftOrder(answers);
       if (rightIds.length < 2) return null;
@@ -287,16 +322,56 @@ export class QuestionPoolService {
       };
     }
 
+    if (type === QuestionType.MULTI) {
+      if (!isValidMulti(row.answers)) return null;
+      const correctIds = row.answers
+        .filter((a) => a.isCorrect)
+        .map((a) => a.id)
+        .sort();
+      return {
+        id: poolId,
+        type: "MULTI",
+        prompt: row.prompt,
+        imageUrl,
+        explanation: row.explanation,
+        correctChoiceId: correctIds.join("|"),
+        choices: shuffle(
+          row.answers.map((a) => ({ id: a.id, label: a.label, order: a.order })),
+        ),
+      };
+    }
+
+    if (type === QuestionType.ORDER) {
+      if (!isValidOrder(row.answers)) return null;
+      const orderedIds = [...row.answers]
+        .sort((a, b) => a.order - b.order)
+        .map((a) => a.id);
+      return {
+        id: poolId,
+        type: "ORDER",
+        prompt: row.prompt,
+        imageUrl,
+        explanation: row.explanation,
+        correctChoiceId: orderedIds.join("|"),
+        choices: shuffle(
+          row.answers.map((a) => ({ id: a.id, label: a.label, order: a.order })),
+        ),
+      };
+    }
+
+    if (!isValidSingleOrTf(row.answers)) return null;
     const correct = row.answers.find((a) => a.isCorrect);
-    if (!correct || row.answers.length < 2) return null;
+    if (!correct) return null;
     return {
       id: poolId,
-      type: row.type === QuestionType.TRUE_FALSE ? "TRUE_FALSE" : "SINGLE",
+      type: type === QuestionType.TRUE_FALSE ? "TRUE_FALSE" : "SINGLE",
       prompt: row.prompt,
       imageUrl,
       explanation: row.explanation,
       correctChoiceId: correct.id,
-      choices: shuffle(row.answers.map((a) => ({ id: a.id, label: a.label }))),
+      choices: shuffle(
+        row.answers.map((a) => ({ id: a.id, label: a.label, order: a.order })),
+      ),
     };
   }
 
@@ -308,44 +383,47 @@ export class QuestionPoolService {
     const rows = await this.prisma.question.findMany({
       where: {
         quizId,
-        type: { in: [QuestionType.SINGLE, QuestionType.MATCH] },
+        type: { in: LESSON_BANK_TYPES },
       },
       include: { answers: { orderBy: { order: "asc" } } },
       orderBy: { order: "asc" },
     });
 
-    const singles: PoolQuestionInternal[] = [];
-    const matches: PoolQuestionInternal[] = [];
+    const imageMatches: PoolQuestionInternal[] = [];
+    const rest: PoolQuestionInternal[] = [];
+
     for (const row of rows) {
-      if (row.type === QuestionType.MATCH) {
-        const built = this.toInternalQuestion(lessonPoolQuestionId(row.id), row);
-        if (built) matches.push(built);
-        continue;
-      }
-      if (!isLessonBankQuestion(row.answers)) continue;
       const built = this.toInternalQuestion(lessonPoolQuestionId(row.id), row);
-      if (built) singles.push(built);
+      if (!built) continue;
+      if (built.type === "MATCH" && built.imageUrl) {
+        imageMatches.push(built);
+      } else if (built.type === "MATCH") {
+        // Text-only MATCH: only used if no image MATCH exists
+        rest.push(built);
+      } else {
+        rest.push(built);
+      }
     }
 
-    const matchSlot = matches.length > 0 ? 1 : 0;
-    const singleCount = count - matchSlot;
-    if (singles.length < singleCount) return [];
+    const reserveImageMatch = imageMatches.length > 0 ? 1 : 0;
+    const restCount = count - reserveImageMatch;
+    if (rest.length < restCount) return [];
 
-    const pickShuffled = (
-      pool: PoolQuestionInternal[],
-      take: number,
-    ): PoolQuestionInternal[] => {
-      const fresh = shuffle(pool.filter((q) => !excludeIds.has(q.id)));
-      const used = shuffle(pool.filter((q) => excludeIds.has(q.id)));
-      return [...fresh, ...used].slice(0, take);
-    };
+    const pickedImageMatch = reserveImageMatch
+      ? pickShuffled(imageMatches, 1, excludeIds)
+      : [];
 
-    const pickedMatch = matchSlot ? pickShuffled(matches, 1) : [];
-    const pickedSingles = pickShuffled(singles, count - pickedMatch.length);
-    if (pickedSingles.length + pickedMatch.length < count) return [];
+    const restPool =
+      reserveImageMatch > 0
+        ? rest.filter((q) => q.type !== "MATCH")
+        : rest;
 
-    const rest = shuffle(pickedSingles);
-    return [...pickedMatch, ...rest];
+    if (restPool.length < restCount) return [];
+
+    const pickedRest = pickShuffled(restPool, restCount, excludeIds);
+    if (pickedImageMatch.length + pickedRest.length < count) return [];
+
+    return [...pickedImageMatch, ...shuffle(pickedRest)];
   }
 
   private async getRecentlyUsedQuestionIds(

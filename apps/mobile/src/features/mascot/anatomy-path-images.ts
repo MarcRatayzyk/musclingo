@@ -5,7 +5,7 @@ export const ANATOMY_PATH_IMAGES = {
   dos: require("../../../assets/G_Dos.png"),
   epaule: require("../../../assets/G_epaule.png"),
   fessiers: require("../../../assets/G_Fessiers.png"),
-  jambe: require("../../../assets/gorrile_jambe-removebg-preview.png"),
+  jambe: require("../../../assets/G_jambe.png"),
   lecture: require("../../../assets/G_lecture.png"),
   douteDos: require("../../../assets/G_doute_dos.png"),
   detente: require("../../../assets/G_detente.png"),

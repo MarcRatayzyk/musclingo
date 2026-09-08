@@ -5,6 +5,8 @@ import { MASCOT_NAME, type MascotPose } from "../types";
 
 const BUBBLE_STROKE = "#FFFFFF";
 const BUBBLE_FILL = "#151A22";
+/** Pointe du triangle dans le SVG (viewBox 24). */
+const TAIL_TIP_IN_SVG = 9;
 
 type MascotSpeechBubbleProps = {
   pose?: MascotPose;
@@ -12,16 +14,48 @@ type MascotSpeechBubbleProps = {
   text?: string;
   compact?: boolean;
   accentColor?: string;
-  /** Past interventions stay readable but quieter. */
   dimmed?: boolean;
   showAvatar?: boolean;
+  showName?: boolean;
+  tail?: "bottom" | "top";
+  /**
+   * Position horizontale de la pointe de flèche (depuis la gauche de la bulle).
+   * Utile pour pointer le centre du Gorille placé en dessous.
+   */
+  tailTipX?: number;
 };
 
-/** Queue de bulle (bas-gauche), style icône outline. */
-function BubbleTail({ dimmed }: { dimmed?: boolean }) {
+function BubbleTail({
+  dimmed,
+  direction,
+  tipX,
+}: {
+  dimmed?: boolean;
+  direction: "bottom" | "top";
+  tipX: number;
+}) {
   const stroke = dimmed ? "rgba(255,255,255,0.45)" : BUBBLE_STROKE;
+  const marginLeft = Math.max(0, tipX - TAIL_TIP_IN_SVG);
+
+  if (direction === "top") {
+    return (
+      <View style={{ marginLeft, marginBottom: -2, zIndex: 1 }}>
+        <Svg width={24} height={16} viewBox="0 0 24 16">
+          <Path
+            d="M9 2 L21 16 H3 Z"
+            fill={BUBBLE_FILL}
+            stroke={stroke}
+            strokeWidth={2}
+            strokeLinejoin="round"
+          />
+          <Path d="M5 16 H19" stroke={BUBBLE_FILL} strokeWidth={4} />
+        </Svg>
+      </View>
+    );
+  }
+
   return (
-    <View style={{ marginLeft: 28, marginTop: -2, zIndex: 1 }}>
+    <View style={{ marginLeft, marginTop: -2, zIndex: 1 }}>
       <Svg width={24} height={16} viewBox="0 0 24 16">
         <Path
           d="M3 0 H21 L9 14 Z"
@@ -30,7 +64,6 @@ function BubbleTail({ dimmed }: { dimmed?: boolean }) {
           strokeWidth={2}
           strokeLinejoin="round"
         />
-        {/* Masque le trait supérieur pour coller au corps de la bulle */}
         <Path d="M5 0 H19" stroke={BUBBLE_FILL} strokeWidth={4} />
       </Svg>
     </View>
@@ -45,6 +78,9 @@ export function MascotSpeechBubble({
   accentColor = "#5B8CFF",
   dimmed = false,
   showAvatar = true,
+  showName = true,
+  tail = "bottom",
+  tailTipX = 37,
 }: MascotSpeechBubbleProps) {
   const avatarSize = compact ? "sm" : "md";
 
@@ -52,25 +88,30 @@ export function MascotSpeechBubble({
     <View
       style={{
         flexDirection: "row",
-        alignItems: "flex-end",
+        alignItems: tail === "top" ? "flex-start" : "flex-end",
         gap: 10,
         opacity: dimmed ? 0.55 : 1,
       }}
     >
       {showAvatar ? <GorillaAvatar pose={pose} size={avatarSize} /> : null}
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text
-          style={{
-            marginBottom: 6,
-            fontSize: 11,
-            fontWeight: "700",
-            letterSpacing: 1.2,
-            textTransform: "uppercase",
-            color: accentColor,
-          }}
-        >
-          {MASCOT_NAME}
-        </Text>
+        {showName ? (
+          <Text
+            style={{
+              marginBottom: 6,
+              fontSize: 11,
+              fontWeight: "700",
+              letterSpacing: 1.2,
+              textTransform: "uppercase",
+              color: accentColor,
+            }}
+          >
+            {MASCOT_NAME}
+          </Text>
+        ) : null}
+        {tail === "top" ? (
+          <BubbleTail dimmed={dimmed} direction="top" tipX={tailTipX} />
+        ) : null}
         <View
           style={{
             backgroundColor: BUBBLE_FILL,
@@ -93,7 +134,9 @@ export function MascotSpeechBubble({
             </Text>
           )}
         </View>
-        <BubbleTail dimmed={dimmed} />
+        {tail === "bottom" ? (
+          <BubbleTail dimmed={dimmed} direction="bottom" tipX={tailTipX} />
+        ) : null}
       </View>
     </View>
   );

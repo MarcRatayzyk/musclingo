@@ -5,6 +5,7 @@ import { MultiChoiceQuestion } from "./MultiChoiceQuestion";
 import { OrderQuestion } from "./OrderQuestion";
 import { SingleChoiceQuestion } from "./SingleChoiceQuestion";
 import { TextQuestion } from "./TextQuestion";
+import { TrueFalseQuestion } from "./TrueFalseQuestion";
 import type { QuizAnswerState, QuizQuestion } from "../types";
 
 type Props = {
@@ -17,6 +18,9 @@ type Props = {
   onMoveDown: (index: number) => void;
   onTextChange: (value: string) => void;
   onMatchReorder: (ids: string[]) => void;
+  lockedChoiceId?: string | null;
+  wrongChoiceId?: string | null;
+  disabled?: boolean;
 };
 
 export function QuestionBody({
@@ -29,6 +33,9 @@ export function QuestionBody({
   onMoveDown,
   onTextChange,
   onMatchReorder,
+  lockedChoiceId = null,
+  wrongChoiceId = null,
+  disabled = false,
 }: Props) {
   const type = question.type as QuestionType;
 
@@ -54,6 +61,7 @@ export function QuestionBody({
         <OrderQuestion
           orderedIds={state.orderedAnswerIds}
           answersById={answersById}
+          onReorder={onMatchReorder}
           onMoveUp={onMoveUp}
           onMoveDown={onMoveDown}
         />
@@ -78,8 +86,17 @@ export function QuestionBody({
           onSelect={onSelectSingle}
         />
       );
-    case "SINGLE":
     case "TRUE_FALSE":
+      return (
+        <TrueFalseQuestion
+          choices={question.answers}
+          lockedChoiceId={lockedChoiceId}
+          wrongChoiceId={wrongChoiceId}
+          disabled={disabled}
+          onSelect={onSelectSingle}
+        />
+      );
+    case "SINGLE":
     default:
       return (
         <SingleChoiceQuestion

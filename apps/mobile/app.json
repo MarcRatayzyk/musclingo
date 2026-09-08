@@ -23,12 +23,19 @@
         "backgroundColor": "#0B0D10"
       },
       "package": "app.musclemind.mobile",
-      "versionCode": 5
+      "versionCode": 7,
+      "softwareKeyboardLayoutMode": "pan"
+    },
+    "androidNavigationBar": {
+      "visible": "sticky-immersive",
+      "barStyle": "light-content",
+      "backgroundColor": "#0B0D10"
     },
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-font"
+      "expo-font",
+      "expo-navigation-bar"
     ],
     "experiments": {
       "typedRoutes": true

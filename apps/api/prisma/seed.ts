@@ -281,7 +281,7 @@ function buildGateQuestionCreates(gate: NutritionGateSeed | AnatomieGateSeed) {
         create: q.answers.map((a, i) => ({
           label: a.label,
           isCorrect: a.isCorrect,
-          order: i,
+          order: a.order ?? i,
           matchKey: a.matchKey ?? undefined,
         })),
       },
@@ -454,6 +454,15 @@ async function main() {
       create: cat,
     });
   }
+
+  // Compte démo : skip onboarding mobile (preferredCategory requis).
+  const nutritionForDemo = await prisma.category.findUniqueOrThrow({
+    where: { slug: "nutrition" },
+  });
+  await prisma.user.update({
+    where: { email: demoEmail },
+    data: { preferredCategoryId: nutritionForDemo.id },
+  });
 
   await prisma.badge.upsert({
     where: { code: "FIRST_LESSON" },

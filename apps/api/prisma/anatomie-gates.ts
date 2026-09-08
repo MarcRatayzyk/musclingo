@@ -45,13 +45,13 @@ export const ANATOMIE_GATES: AnatomieGateSeed[] = [
   {
     ...CP.musclesHaut,
     ...GATE,
-    title: "Checkpoint Muscles du haut du corps",
+    title: "Checkpoint Haut du corps niveau 1",
     questions: condenseThemeToGate20(THEME_1_QUIZZES),
   },
   {
     ...CP.musclesBas,
     ...GATE,
-    title: "Checkpoint Muscles du bas du corps",
+    title: "Checkpoint Bas du corps niveau 1",
     questions: condenseThemeToGate20(THEME_2_QUIZZES),
   },
   {
@@ -63,13 +63,13 @@ export const ANATOMIE_GATES: AnatomieGateSeed[] = [
   {
     ...CP.musclesHautApprofondi,
     ...GATE,
-    title: "Checkpoint Haut du corps en profondeur",
+    title: "Checkpoint Haut du corps niveau 2",
     questions: condenseThemeToGate20(THEME_4_QUIZZES),
   },
   {
     ...CP.musclesBasApprofondi,
     ...GATE,
-    title: "Checkpoint Bas du corps en profondeur",
+    title: "Checkpoint Bas du corps niveau 2",
     questions: condenseThemeToGate20(THEME_5_QUIZZES),
   },
   {

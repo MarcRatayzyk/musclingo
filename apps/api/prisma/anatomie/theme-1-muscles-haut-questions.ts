@@ -1,7 +1,8 @@
-import { bank25 } from "./qcm-bank";
+import { bank25, diversifyBank } from "./qcm-bank";
 import type { SeedQuestion } from "../anatomie-quiz-helpers";
+import { THEME_1_EXTRAS } from "./diversified-extras";
 
-export const THEME_1_QUIZZES: SeedQuestion[][] = [
+const THEME_1_RAW: SeedQuestion[][] = [
   // 1. Les bras
   bank25([
     [
@@ -1198,5 +1199,9 @@ export const THEME_1_QUIZZES: SeedQuestion[][] = [
       ],
       "Triangle (sup/moy/inf), muscle sous le trap (élévateur, nuque raide), piliers sacrum–crâne qui tiennent le deadlift.",
     ],
-  ])
+  ]),
 ];
+
+export const THEME_1_QUIZZES: SeedQuestion[][] = THEME_1_RAW.map((bank, i) =>
+  diversifyBank(bank, THEME_1_EXTRAS[i]!),
+);

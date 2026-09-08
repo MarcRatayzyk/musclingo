@@ -40,7 +40,6 @@ import {
 } from "@/features/mascot";
 import { ApiError, resolveMediaUrl } from "@/shared/api/client";
 import { PrimaryButton, Screen, XpBar } from "@/shared/ui/primitives";
-import { NeuroliftAmount } from "@/shared/ui/Neurolift";
 const BG = "#0B0D10";
 const FOCUSED = "#FFFFFF";
 const MUTED = "rgba(255,255,255,0.55)";
@@ -635,9 +634,6 @@ export default function LessonScreen() {
     );
   }
   const totalChunks = Math.max(chunks.length, 1);
-  const hasIntroStep = hasIntro;
-  const totalSteps = totalChunks + (hasIntroStep ? 1 : 0);
-  const stepIndex = showingIntro ? 0 : chunkIndex + (hasIntroStep ? 1 : 0);
   const safeIndex = Math.min(chunkIndex, totalChunks - 1);
   const isTyping = !showingIntro && typedLen < currentChunk.length;
   const isLastChunk = !showingIntro && safeIndex >= totalChunks - 1;
@@ -775,17 +771,6 @@ export default function LessonScreen() {
   return (
     <Screen className="pt-14">
       <View className="mb-2">
-        <View className="mb-1.5 flex-row items-center justify-between">
-          <Text className="text-xs text-muted">
-            {stepIndex + 1} / {totalSteps}
-          </Text>
-          <NeuroliftAmount
-            amount={lesson.xpReward}
-            size="sm"
-            signed
-            color="#7CFFB2"
-          />
-        </View>
         <XpBar progress={progress} color={lesson.category.color} />
         <Text className="mt-5 text-base font-semibold leading-5 text-white">
           {lesson.title}
@@ -915,9 +900,9 @@ export default function LessonScreen() {
         </ScrollView>
         <TopFade width={viewportW} />
       </View>
-      <View className="shrink-0 pb-5">
+      <View className="shrink-0 pb-10">
         {!canFinish ? (
-          <View className="flex-row items-end justify-between px-1">
+          <View className="flex-row items-end justify-between px-1 pb-2">
             {mascotEnabled ? (
               <View pointerEvents="none" style={{ marginLeft: -4 }}>
                 <GorillaAvatar pose={mascotPose} size="lesson" />
@@ -925,14 +910,14 @@ export default function LessonScreen() {
             ) : (
               <View />
             )}
-            <View className="mb-3 mr-1">
+            <View className="mb-4 mr-1">
               <ContinueButton isTyping={isTyping} onPress={onContinue} />
             </View>
           </View>
         ) : (
           <>
             {mascotEnabled ? (
-              <View className="mb-2" pointerEvents="none">
+              <View className="mb-4" pointerEvents="none">
                 <GorillaAvatar pose={mascotPose} size="lesson" />
               </View>
             ) : null}

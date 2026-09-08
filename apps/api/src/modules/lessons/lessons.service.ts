@@ -12,6 +12,11 @@ import {
 import { PrismaService } from "../../prisma/prisma.service";
 import { PathService } from "../categories/path.service";
 import { GamificationService } from "../gamification/gamification.service";
+import {
+  UsersService,
+  WATER_BOTTLE_COST,
+  WATER_BOTTLES_MAX,
+} from "../users/users.service";
 
 @Injectable()
 export class LessonsService {
@@ -19,6 +24,7 @@ export class LessonsService {
     private readonly prisma: PrismaService,
     private readonly gamification: GamificationService,
     private readonly path: PathService,
+    private readonly users: UsersService,
   ) {}
 
   async getById(lessonId: string, userId: string) {
@@ -64,6 +70,54 @@ export class LessonsService {
             completedAt: lesson.progress[0].completedAt,
           }
         : null,
+    };
+  }
+
+  /**
+   * Première lecture : consomme 4 bouteilles.
+   * Revoir (déjà COMPLETED) : gratuit.
+   */
+  async start(lessonId: string, userId: string) {
+    await this.path.assertLessonUnlocked(lessonId, userId);
+
+    const lesson = await this.prisma.lesson.findUnique({
+      where: { id: lessonId },
+      select: { id: true, status: true },
+    });
+    if (!lesson || lesson.status !== "PUBLISHED") {
+      throw new NotFoundException("Lesson not found");
+    }
+
+    const progress = await this.prisma.lessonProgress.findUnique({
+      where: { userId_lessonId: { userId, lessonId } },
+    });
+    const alreadyRead = progress?.status === ProgressStatus.COMPLETED;
+
+    let waterBottles: number;
+    let consumed = 0;
+
+    if (alreadyRead) {
+      const water = await this.users.ensureWaterBottlesFresh(userId);
+      waterBottles = water.waterBottles;
+    } else {
+      const water = await this.users.consumeWaterBottles(
+        userId,
+        WATER_BOTTLE_COST,
+      );
+      waterBottles = water.waterBottles;
+      consumed = water.consumed;
+    }
+
+    const starsTotal = await this.users.getStarsTotal(userId);
+
+    return {
+      lessonId,
+      alreadyRead,
+      consumed,
+      waterBottles,
+      waterBottlesMax: WATER_BOTTLES_MAX,
+      waterBottleCost: WATER_BOTTLE_COST,
+      starsTotal,
     };
   }
 

@@ -335,7 +335,7 @@ function LessonInlineIllustration({
 }) {
   const [open, setOpen] = useState(false);
   const [aspectRatio, setAspectRatio] = useState(1.6);
-  const { width: screenW } = useWindowDimensions();
+  const { width: screenW, height: screenH } = useWindowDimensions();
   useEffect(() => {
     let cancelled = false;
     Image.getSize(
@@ -352,12 +352,23 @@ function LessonInlineIllustration({
     };
   }, [uri]);
   const hasLegend = legend.length > 0;
-  const imgMaxW = hasLegend ? Math.min(screenW * 0.58, 240) : screenW - 40;
-  const imgH = Math.min(imgMaxW / aspectRatio, 260);
-  const imgW = imgH * aspectRatio;
+  // Cap by screen height so lesson text stays readable on short / landscape screens.
+  const maxImgH = Math.min(
+    hasLegend ? 168 : 200,
+    Math.max(88, Math.round(screenH * 0.2)),
+  );
+  const maxImgW = hasLegend
+    ? Math.min(screenW * 0.46, 176)
+    : Math.min(screenW - 40, 280);
+  let imgW = maxImgW;
+  let imgH = imgW / aspectRatio;
+  if (imgH > maxImgH) {
+    imgH = maxImgH;
+    imgW = imgH * aspectRatio;
+  }
   return (
     <>
-      <Animated.View entering={FadeIn.duration(500)} className="mt-3">
+      <Animated.View entering={FadeIn.duration(500)} className="mt-2">
         <Pressable
           onPress={() => setOpen(true)}
           className="flex-row items-center gap-3"
@@ -373,7 +384,7 @@ function LessonInlineIllustration({
             />
           </View>
           {hasLegend ? (
-            <View className="min-w-0 flex-1 gap-1.5">
+            <View className="min-w-0 flex-1 gap-1">
               <Text className="text-[10px] uppercase tracking-widest text-white/40">
                 Légende
               </Text>

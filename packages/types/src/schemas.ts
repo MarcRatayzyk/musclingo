@@ -1,8 +1,12 @@
 import { z } from "zod";
 import {
+  EXTRA_QUIZ_TIME_SEC,
   LESSON_QUIZ_QUESTION_COUNT,
   LESSON_QUIZ_TOTAL_TIME_SEC,
 } from "./levels";
+
+const LESSON_QUIZ_MAX_TIME_SEC =
+  LESSON_QUIZ_TOTAL_TIME_SEC + EXTRA_QUIZ_TIME_SEC;
 
 export const RoleSchema = z.enum(["USER", "ADMIN"]);
 export type Role = z.infer<typeof RoleSchema>;
@@ -69,7 +73,7 @@ export const SubmitQuizAnswerSchema = z.object({
     .number()
     .int()
     .min(1)
-    .max(LESSON_QUIZ_TOTAL_TIME_SEC),
+    .max(LESSON_QUIZ_MAX_TIME_SEC),
 });
 
 export const SubmitQuizSchema = z.object({
@@ -79,7 +83,7 @@ export const SubmitQuizSchema = z.object({
     .number()
     .int()
     .min(1)
-    .max(LESSON_QUIZ_TOTAL_TIME_SEC),
+    .max(LESSON_QUIZ_MAX_TIME_SEC),
 });
 export type SubmitQuizInput = z.infer<typeof SubmitQuizSchema>;
 
@@ -90,6 +94,22 @@ export const CheckQuizAnswerSchema = z.object({
 });
 export type CheckQuizAnswerInput = z.infer<typeof CheckQuizAnswerSchema>;
 
+export const UseQuizHintSchema = z.object({
+  sessionId: z.string().cuid(),
+  questionId: z.string().min(1),
+});
+export type UseQuizHintInput = z.infer<typeof UseQuizHintSchema>;
+
+export const StartQuizSchema = z.object({
+  useExtraTime: z.boolean().optional().default(false),
+});
+export type StartQuizInput = z.infer<typeof StartQuizSchema>;
+
+export const StartCheckpointGateSchema = z.object({
+  useExtraTime: z.boolean().optional().default(false),
+});
+export type StartCheckpointGateInput = z.infer<typeof StartCheckpointGateSchema>;
+
 export const SubmitCheckpointGateSchema = z.object({
   answers: z.array(
     z.object({
@@ -98,6 +118,7 @@ export const SubmitCheckpointGateSchema = z.object({
     }),
   ),
   timeSpentSec: z.number().int().min(0).max(600),
+  useExtraTime: z.boolean().optional().default(false),
 });
 export type SubmitCheckpointGateInput = z.infer<
   typeof SubmitCheckpointGateSchema

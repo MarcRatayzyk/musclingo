@@ -86,6 +86,10 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
+        name="level-roadmap"
+        options={{ href: null, tabBarStyle: { display: "none" } }}
+      />
+      <Tabs.Screen
         name="categories"
         options={{ href: null, tabBarStyle: { display: "none" } }}
       />

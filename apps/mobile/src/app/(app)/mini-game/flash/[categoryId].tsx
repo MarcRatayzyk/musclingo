@@ -1,9 +1,19 @@
-import { MINI_GAME_MIN_DURATION_SEC } from "@muscle-mind/types";
+import { MINI_GAME_LIVES, MINI_GAME_MIN_DURATION_SEC } from "@muscle-mind/types";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import {
+  Image,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
+import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { ConfettiBurst } from "@/features/gamification/confetti";
 import {
+  useMiniGames,
   useMiniGameQuestions,
   useSubmitMiniGameResult,
   type MiniGameResult,
@@ -12,7 +22,11 @@ import { clampDuration, useFlashQuiz } from "@/features/mini-games/useFlashQuiz"
 import { resolveMediaUrl } from "@/shared/api/client";
 import { PrimaryButton, Screen } from "@/shared/ui/primitives";
 
-const PRESETS = [30, 60, 120];
+const DURATION_MODES = [
+  { sec: 30, label: "Éclair", hint: "Tout donner" },
+  { sec: 60, label: "Rapide", hint: "Équilibré" },
+  { sec: 120, label: "Endurance", hint: "Tenir le rythme" },
+] as const;
 
 function Hearts({ left, total }: { left: number; total: number }) {
   return (
@@ -29,21 +43,168 @@ function Hearts({ left, total }: { left: number; total: number }) {
   );
 }
 
+function SetupHero({
+  name,
+  color,
+  bestScore,
+  gamesPlayed,
+}: {
+  name: string;
+  color: string;
+  bestScore: number;
+  gamesPlayed: number;
+}) {
+  return (
+    <Animated.View
+      entering={FadeIn.duration(420)}
+      style={{
+        borderRadius: 28,
+        borderWidth: 1,
+        borderColor: color + "55",
+        overflow: "hidden",
+        marginBottom: 22,
+      }}
+    >
+      <Svg
+        pointerEvents="none"
+        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+        width="100%"
+        height="100%"
+        preserveAspectRatio="none"
+      >
+        <Defs>
+          <LinearGradient id="flashSetupBg" x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor={color} stopOpacity="0.28" />
+            <Stop offset="0.55" stopColor="#121820" stopOpacity="1" />
+            <Stop offset="1" stopColor="#0B0F14" stopOpacity="1" />
+          </LinearGradient>
+        </Defs>
+        <Rect x="0" y="0" width="100%" height="100%" fill="url(#flashSetupBg)" />
+      </Svg>
+      <View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          top: -36,
+          right: -24,
+          width: 120,
+          height: 120,
+          borderRadius: 60,
+          backgroundColor: color + "22",
+        }}
+      />
+      <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 18 }}>
+        <Text
+          style={{
+            color: "#FFFFFF",
+            fontSize: 34,
+            fontWeight: "900",
+            letterSpacing: 0.3,
+          }}
+        >
+          {name}
+        </Text>
+
+        <View
+          style={{
+            marginTop: 16,
+            flexDirection: "row",
+            gap: 10,
+          }}
+        >
+          <View
+            style={{
+              flex: 1,
+              borderRadius: 16,
+              backgroundColor: "rgba(0,0,0,0.28)",
+              paddingVertical: 12,
+              paddingHorizontal: 12,
+            }}
+          >
+            <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 11 }}>
+              Record
+            </Text>
+            <Text
+              style={{
+                color: "#FFFFFF",
+                fontSize: 24,
+                fontWeight: "800",
+                marginTop: 2,
+              }}
+            >
+              {bestScore}
+            </Text>
+          </View>
+          <View
+            style={{
+              flex: 1,
+              borderRadius: 16,
+              backgroundColor: "rgba(0,0,0,0.28)",
+              paddingVertical: 12,
+              paddingHorizontal: 12,
+            }}
+          >
+            <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 11 }}>
+              Parties
+            </Text>
+            <Text
+              style={{
+                color: "#FFFFFF",
+                fontSize: 24,
+                fontWeight: "800",
+                marginTop: 2,
+              }}
+            >
+              {gamesPlayed}
+            </Text>
+          </View>
+          <View
+            style={{
+              flex: 1,
+              borderRadius: 16,
+              backgroundColor: "rgba(0,0,0,0.28)",
+              paddingVertical: 12,
+              paddingHorizontal: 12,
+              alignItems: "flex-start",
+            }}
+          >
+            <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 11 }}>
+              Vies
+            </Text>
+            <Text style={{ fontSize: 18, marginTop: 4 }}>
+              {"❤️".repeat(MINI_GAME_LIVES)}
+            </Text>
+          </View>
+        </View>
+      </View>
+    </Animated.View>
+  );
+}
+
 export default function FlashQuizScreen() {
   const { categoryId } = useLocalSearchParams<{ categoryId: string }>();
   const { data, isLoading, isError, error } = useMiniGameQuestions(
     categoryId ?? "",
   );
+  const { data: summaries } = useMiniGames();
   const submitResult = useSubmitMiniGameResult();
 
   const questions = useMemo(() => data?.questions ?? [], [data]);
   const game = useFlashQuiz(questions);
+  const summary = useMemo(
+    () => summaries?.find((g) => g.categoryId === categoryId),
+    [summaries, categoryId],
+  );
 
   const [customInput, setCustomInput] = useState("60");
+  const [showCustom, setShowCustom] = useState(false);
   const [result, setResult] = useState<MiniGameResult | null>(null);
   const submittedRef = useRef(false);
 
   const color = data?.color ?? "#7CFFB2";
+  const isCustomDuration = !DURATION_MODES.some(
+    (m) => m.sec === game.durationSec,
+  );
 
   useEffect(() => {
     if (game.phase !== "finished") {
@@ -74,17 +235,10 @@ export default function FlashQuizScreen() {
 
   return (
     <Screen>
-      <View className="mb-4 flex-row items-center justify-between">
+      <View className="mb-4 flex-row items-center">
         <Pressable onPress={() => router.replace("/(app)/mini-games")}>
           <Text className="text-sm text-muted">← Mini-jeux</Text>
         </Pressable>
-        <Text
-          className="text-xs uppercase tracking-[3px]"
-          style={{ color }}
-        >
-          Quiz éclair
-        </Text>
-        <View style={{ width: 66 }} />
       </View>
 
       {isLoading && <Text className="text-muted">Préparation des questions…</Text>}
@@ -108,57 +262,111 @@ export default function FlashQuizScreen() {
 
       {data && questions.length > 0 && game.phase === "setup" && (
         <ScrollView showsVerticalScrollIndicator={false}>
-          <Text className="text-3xl font-semibold text-white">{data.name}</Text>
-
-          <Text className="mb-3 mt-8 text-lg font-semibold text-white">
-            Durée de la partie
-          </Text>
-          <View className="flex-row gap-3">
-            {PRESETS.map((sec) => {
-              const active = game.durationSec === sec;
-              return (
-                <Pressable
-                  key={sec}
-                  onPress={() => {
-                    game.setDurationSec(sec);
-                    setCustomInput(String(sec));
-                  }}
-                  className="flex-1 rounded-2xl border py-4"
-                  style={{
-                    borderColor: active ? color : "#2A3344",
-                    backgroundColor: active ? color + "22" : "#1C2230",
-                  }}
-                >
-                  <Text
-                    className="text-center font-semibold"
-                    style={{ color: active ? color : "#FFFFFF" }}
-                  >
-                    {sec}s
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <TextInput
-            className="mt-4 rounded-2xl border border-border bg-surface px-4 py-4 text-white"
-            placeholder={`Secondes (min. ${MINI_GAME_MIN_DURATION_SEC})`}
-            placeholderTextColor="#8B95A8"
-            keyboardType="number-pad"
-            value={customInput}
-            onChangeText={(t) => {
-              setCustomInput(t);
-              const n = parseInt(t, 10);
-              if (!Number.isNaN(n)) game.setDurationSec(clampDuration(n));
-            }}
+          <SetupHero
+            name={data.name}
+            color={color}
+            bestScore={summary?.bestScore ?? 0}
+            gamesPlayed={summary?.gamesPlayed ?? 0}
           />
 
-          <View className="mb-10 mt-8">
-            <PrimaryButton
-              label="Commencer"
-              onPress={() => startNewGame(game.durationSec)}
-            />
-          </View>
+          <Animated.View entering={FadeInDown.duration(380).delay(80)}>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              {DURATION_MODES.map((mode) => {
+                const active = game.durationSec === mode.sec;
+                return (
+                  <Pressable
+                    key={mode.sec}
+                    onPress={() => {
+                      game.setDurationSec(mode.sec);
+                      setCustomInput(String(mode.sec));
+                      setShowCustom(false);
+                    }}
+                    style={{
+                      flex: 1,
+                      alignItems: "center",
+                      borderRadius: 20,
+                      borderWidth: 2,
+                      borderColor: active ? color : "#2A3344",
+                      backgroundColor: active ? color + "1A" : "#141820",
+                      paddingVertical: 16,
+                      paddingHorizontal: 8,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: active ? color : "#FFFFFF",
+                        fontSize: 18,
+                        fontWeight: "900",
+                      }}
+                    >
+                      {mode.sec}s
+                    </Text>
+                    <Text
+                      style={{
+                        color: "#FFFFFF",
+                        fontSize: 13,
+                        fontWeight: "800",
+                        marginTop: 8,
+                        textAlign: "center",
+                      }}
+                    >
+                      {mode.label}
+                    </Text>
+                    <Text
+                      style={{
+                        color: active ? color : "rgba(255,255,255,0.45)",
+                        fontSize: 11,
+                        fontWeight: "600",
+                        marginTop: 3,
+                        textAlign: "center",
+                      }}
+                    >
+                      {mode.hint}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <Pressable
+              onPress={() => setShowCustom((v) => !v)}
+              style={{ marginTop: 14, paddingVertical: 6 }}
+            >
+              <Text
+                style={{
+                  color: isCustomDuration || showCustom ? color : "#8B95A8",
+                  fontSize: 13,
+                  fontWeight: "700",
+                }}
+              >
+                {showCustom || isCustomDuration
+                  ? "Durée perso"
+                  : "Personnaliser la durée…"}
+              </Text>
+            </Pressable>
+
+            {(showCustom || isCustomDuration) && (
+              <TextInput
+                className="mt-2 rounded-2xl border border-border bg-surface px-4 py-4 text-white"
+                placeholder={`Secondes (min. ${MINI_GAME_MIN_DURATION_SEC})`}
+                placeholderTextColor="#8B95A8"
+                keyboardType="number-pad"
+                value={customInput}
+                onChangeText={(t) => {
+                  setCustomInput(t);
+                  const n = parseInt(t, 10);
+                  if (!Number.isNaN(n)) game.setDurationSec(clampDuration(n));
+                }}
+              />
+            )}
+
+            <View className="mb-10 mt-6">
+              <PrimaryButton
+                label={`C’est parti · ${game.durationSec}s`}
+                onPress={() => startNewGame(game.durationSec)}
+              />
+            </View>
+          </Animated.View>
         </ScrollView>
       )}
 
@@ -166,9 +374,6 @@ export default function FlashQuizScreen() {
         <View className="flex-1 items-center justify-center">
           <Text
             key={game.countdown}
-            
-            
-            
             style={{
               color,
               fontSize: 96,
@@ -205,8 +410,6 @@ export default function FlashQuizScreen() {
 
           {game.combo >= 3 && (
             <View
-              
-              
               className="mb-3 self-center rounded-full px-4 py-1"
               style={{ backgroundColor: color + "22" }}
             >

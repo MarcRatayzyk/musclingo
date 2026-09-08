@@ -98,6 +98,11 @@ function me() {
     waterBottles: state.waterBottles,
     waterBottlesMax: 15,
     waterBottleCost: 4,
+    quizHints: 0,
+    extraTimeCharges: 0,
+    streakFreezes: 0,
+    claimedLevels: [],
+    levelRoadmap: [{ level: 1, rewards: [], claimed: true }],
     xpProgress: {
       level: state.level,
       currentLevelXp: state.xpTotal % nextLevelXp,
@@ -265,7 +270,7 @@ const OFFLINE_QUIZ_POOL: Array<{
   };
 });
 
-function quizPayload() {
+function quizPayload(useExtraTime = false) {
   state.quizQuestionIds = OFFLINE_QUIZ_POOL.map((q) => q.id);
   const answerKeys = Object.fromEntries(
     OFFLINE_QUIZ_POOL.map((q) => [q.id, q.correctId]),
@@ -278,8 +283,11 @@ function quizPayload() {
     xpReward: 15,
     perfectBonusXp: 5,
     questionCount: 10,
-    quizTimeSec: 60,
+    quizTimeSec: useExtraTime ? 70 : 60,
     wrongPenaltySec: 1,
+    extraTimeUsed: useExtraTime,
+    quizHints: 1,
+    extraTimeCharges: useExtraTime ? 0 : 1,
     questions: OFFLINE_QUIZ_POOL.map(({ id, prompt, choices }) => ({
       id,
       prompt,
@@ -446,9 +454,23 @@ export async function offlineFetch<T>(
     return { quizId: null, nextLessonId: null } as T;
   }
 
-  const quizByLesson = path.match(/^\/quizzes\/by-lesson\/([^/]+)$/);
+  const quizByLesson = path.match(/^\/quizzes\/by-lesson\/([^/?]+)/);
   if (quizByLesson && method === "GET") {
-    return quizPayload() as T;
+    const useExtra =
+      path.includes("useExtraTime=true") || path.includes("useExtraTime=1");
+    return quizPayload(useExtra) as T;
+  }
+
+  const quizHint = path.match(/^\/quizzes\/([^/]+)\/hint$/);
+  if (quizHint && method === "POST") {
+    const questionId = String(body.questionId ?? "");
+    const q = OFFLINE_QUIZ_POOL.find((item) => item.id === questionId);
+    const wrong = q?.choices.find((c) => c.id !== q.correctId);
+    return {
+      kind: "eliminate",
+      eliminatedChoiceIds: wrong ? [wrong.id] : [],
+      quizHints: 0,
+    } as T;
   }
 
   const quizCheck = path.match(/^\/quizzes\/([^/]+)\/check-answer$/);
@@ -540,6 +562,8 @@ export async function offlineFetch<T>(
       categorySlug: "anatomie",
       categoryName: "Anatomie",
       timeLimitSec: 60,
+      extraTimeBonusSec: 10,
+      extraTimeCharges: 0,
       passThreshold: 70,
       questionCount: 1,
       xpReward: 30,

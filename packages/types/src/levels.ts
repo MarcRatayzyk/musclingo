@@ -10,17 +10,47 @@ export const LESSON_QUIZ_STAR_THRESHOLDS_SEC = {
   two: 52.5,
   one: 60,
 } as const;
+/** Bonus temps consommé (décale chrono + seuils ★). */
+export const EXTRA_QUIZ_TIME_SEC = 10;
 export const LESSON_QUIZ_SESSION_TTL_MIN = 30;
+
+export type LessonQuizStarThresholds = {
+  three: number;
+  two: number;
+  one: number;
+};
+
+export type LessonQuizTiming = {
+  totalSec: number;
+  starThresholds: LessonQuizStarThresholds;
+};
+
+/** Timing quiz leçon (base ou +10 s sur total et seuils ★). */
+export function getLessonQuizTiming(extraTime = false): LessonQuizTiming {
+  const offset = extraTime ? EXTRA_QUIZ_TIME_SEC : 0;
+  return {
+    totalSec: LESSON_QUIZ_TOTAL_TIME_SEC + offset,
+    starThresholds: {
+      three: LESSON_QUIZ_STAR_THRESHOLDS_SEC.three + offset,
+      two: LESSON_QUIZ_STAR_THRESHOLDS_SEC.two + offset,
+      one: LESSON_QUIZ_STAR_THRESHOLDS_SEC.one + offset,
+    },
+  };
+}
 
 /** Minimum quiz score (0–1) required to unlock the next lesson on a category path. */
 export const QUIZ_PASS_THRESHOLD = 0.7;
 
 /** Étoiles globales selon le temps total du quiz (en secondes). */
-export function computeLessonQuizStars(totalTimeSec: number): 0 | 1 | 2 | 3 {
+export function computeLessonQuizStars(
+  totalTimeSec: number,
+  extraTime = false,
+): 0 | 1 | 2 | 3 {
   if (totalTimeSec <= 0) return 0;
-  if (totalTimeSec <= LESSON_QUIZ_STAR_THRESHOLDS_SEC.three) return 3;
-  if (totalTimeSec <= LESSON_QUIZ_STAR_THRESHOLDS_SEC.two) return 2;
-  if (totalTimeSec <= LESSON_QUIZ_STAR_THRESHOLDS_SEC.one) return 1;
+  const { starThresholds } = getLessonQuizTiming(extraTime);
+  if (totalTimeSec <= starThresholds.three) return 3;
+  if (totalTimeSec <= starThresholds.two) return 2;
+  if (totalTimeSec <= starThresholds.one) return 1;
   return 0;
 }
 
@@ -133,4 +163,81 @@ export function getXpProgress(xp: number): {
   const span = nextLevelXp - currentLevelXp;
   const progress = span <= 0 ? 1 : Math.min(1, (xp - currentLevelXp) / span);
   return { level, currentLevelXp, nextLevelXp, progress };
+}
+
+/** Types de récompenses de montée de niveau. */
+export type LevelRewardKind =
+  | "neuroCoins"
+  | "waterBottles"
+  | "quizHint"
+  | "extraTime"
+  | "streakFreeze";
+
+export type LevelRewardItem = {
+  kind: LevelRewardKind;
+  amount: number;
+};
+
+/** Récompenses par niveau atteint (niveau 1 = départ, pas de gift). */
+export const LEVEL_REWARDS: Readonly<Record<number, readonly LevelRewardItem[]>> =
+  {
+    2: [{ kind: "neuroCoins", amount: 25 }],
+    3: [{ kind: "quizHint", amount: 1 }],
+    4: [{ kind: "extraTime", amount: 1 }],
+    5: [{ kind: "streakFreeze", amount: 1 }],
+    6: [{ kind: "waterBottles", amount: 3 }],
+    7: [{ kind: "neuroCoins", amount: 40 }],
+    8: [{ kind: "quizHint", amount: 2 }],
+    9: [{ kind: "extraTime", amount: 1 }],
+    10: [
+      { kind: "streakFreeze", amount: 1 },
+      { kind: "neuroCoins", amount: 50 },
+    ],
+    11: [{ kind: "neuroCoins", amount: 35 }],
+    12: [{ kind: "quizHint", amount: 1 }],
+    13: [{ kind: "extraTime", amount: 1 }],
+    14: [{ kind: "waterBottles", amount: 5 }],
+    15: [
+      { kind: "streakFreeze", amount: 2 },
+      { kind: "neuroCoins", amount: 75 },
+    ],
+    16: [
+      { kind: "quizHint", amount: 2 },
+      { kind: "neuroCoins", amount: 40 },
+    ],
+    17: [
+      { kind: "extraTime", amount: 1 },
+      { kind: "waterBottles", amount: 4 },
+    ],
+    18: [
+      { kind: "streakFreeze", amount: 1 },
+      { kind: "quizHint", amount: 1 },
+    ],
+    19: [
+      { kind: "neuroCoins", amount: 60 },
+      { kind: "extraTime", amount: 1 },
+    ],
+    20: [
+      { kind: "quizHint", amount: 3 },
+      { kind: "extraTime", amount: 2 },
+      { kind: "neuroCoins", amount: 100 },
+    ],
+  } as const;
+
+export function getRewardsForLevel(level: number): readonly LevelRewardItem[] {
+  return LEVEL_REWARDS[level] ?? [];
+}
+
+/** Niveaux 2..max pour lesquels un catalogue existe. */
+export function listLevelRewardEntries(): {
+  level: number;
+  rewards: readonly LevelRewardItem[];
+}[] {
+  return Object.keys(LEVEL_REWARDS)
+    .map(Number)
+    .sort((a, b) => a - b)
+    .map((level) => ({
+      level,
+      rewards: LEVEL_REWARDS[level] ?? [],
+    }));
 }

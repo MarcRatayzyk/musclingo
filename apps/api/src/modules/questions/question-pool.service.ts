@@ -176,6 +176,7 @@ export class QuestionPoolService {
     userId: string,
     theme: LessonQuizTheme,
     count = LESSON_QUIZ_QUESTION_COUNT,
+    extraTimeUsed = false,
   ): Promise<DrawSessionResult> {
     const excludeIds = await this.getRecentlyUsedQuestionIds(
       userId,
@@ -210,6 +211,8 @@ export class QuestionPoolService {
         quizId,
         questionIds,
         expiresAt,
+        extraTimeUsed,
+        hintedQuestionIds: [],
       },
     });
 

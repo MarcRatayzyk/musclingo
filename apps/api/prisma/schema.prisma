@@ -59,6 +59,12 @@ model User {
   starBalanceSeeded    Boolean          @default(false)
   /** NeuroCoins dépensables (boutique). */
   neuroCoinBalance     Int              @default(0)
+  /** Indices quiz restants (récompenses de niveau). */
+  quizHints            Int              @default(0)
+  /** Charges +10 s quiz/checkpoint. */
+  extraTimeCharges     Int              @default(0)
+  /** Gels de série (1 jour manqué max par gel). */
+  streakFreezes        Int              @default(0)
   preferredCategoryId  String?
   preferredCategory    Category?        @relation("PreferredCategory", fields: [preferredCategoryId], references: [id])
   createdAt            DateTime         @default(now())
@@ -69,11 +75,24 @@ model User {
   checkpointGateResults  CheckpointGateResult[]
   miniGameResults        MiniGameResult[]
   xpTransactions         XpTransaction[]
+  levelRewardClaims    LevelRewardClaim[]
   streak               Streak?
   badges               UserBadge[]
   notifications        Notification[]
 
   @@index([xpTotal])
+}
+
+/** Récompense de niveau déjà attribuée (idempotent). */
+model LevelRewardClaim {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  level     Int
+  claimedAt DateTime @default(now())
+
+  @@unique([userId, level])
+  @@index([userId])
 }
 
 model Category {
@@ -196,14 +215,18 @@ model QuizResult {
 }
 
 model QuizSession {
-  id          String   @id @default(cuid())
-  userId      String
-  quizId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  questionIds Json
-  expiresAt   DateTime
-  createdAt   DateTime @default(now())
+  id            String   @id @default(cuid())
+  userId        String
+  quizId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quiz          Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  questionIds   Json
+  /** +10 s consommé pour cette session (seuils ★ décalés). */
+  extraTimeUsed Boolean  @default(false)
+  /** questionIds ayant déjà reçu un indice. */
+  hintedQuestionIds Json?
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
 
   @@index([userId, quizId])
 }

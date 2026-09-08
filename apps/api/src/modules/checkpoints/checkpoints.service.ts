@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import {
-  GATE_PASS_THRESHOLD,
+  EXTRA_QUIZ_TIME_SEC,
   SubmitCheckpointGateInput,
   isGateScorePassing,
 } from "@muscle-mind/types";
@@ -43,12 +43,19 @@ export class CheckpointsService {
 
     if (!gate) throw new NotFoundException("Checkpoint gate not found");
 
+    const inv = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { extraTimeCharges: true },
+    });
+
     return {
       id: gate.id,
       title: gate.title,
       categorySlug: gate.category.slug,
       categoryName: gate.category.name,
       timeLimitSec: gate.timeLimitSec,
+      extraTimeBonusSec: EXTRA_QUIZ_TIME_SEC,
+      extraTimeCharges: inv.extraTimeCharges,
       passThreshold: gate.passThreshold,
       questionCount: gate.questionCount,
       xpReward: gate.xpReward,
@@ -145,8 +152,25 @@ export class CheckpointsService {
       };
     });
 
+    const useExtraTime = !!input.useExtraTime;
+    let effectiveLimit = gate.timeLimitSec;
+    if (useExtraTime) {
+      const inv = await this.prisma.user.findUniqueOrThrow({
+        where: { id: userId },
+        select: { extraTimeCharges: true },
+      });
+      if (inv.extraTimeCharges <= 0) {
+        throw new ForbiddenException("Aucune charge +10 s disponible");
+      }
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { extraTimeCharges: { decrement: 1 } },
+      });
+      effectiveLimit = gate.timeLimitSec + EXTRA_QUIZ_TIME_SEC;
+    }
+
     const score = correctCount / gate.questions.length;
-    const timedOut = input.timeSpentSec >= gate.timeLimitSec;
+    const timedOut = input.timeSpentSec >= effectiveLimit;
     const passed =
       !timedOut &&
       isGateScorePassing(

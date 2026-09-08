@@ -25,6 +25,23 @@ export type Me = {
   waterBottles: number;
   waterBottlesMax: number;
   waterBottleCost: number;
+  quizHints: number;
+  extraTimeCharges: number;
+  streakFreezes: number;
+  claimedLevels?: number[];
+  levelRoadmap?: Array<{
+    level: number;
+    rewards: Array<{
+      kind:
+        | "neuroCoins"
+        | "waterBottles"
+        | "quizHint"
+        | "extraTime"
+        | "streakFreeze";
+      amount: number;
+    }>;
+    claimed: boolean;
+  }>;
   xpProgress: {
     level: number;
     currentLevelXp: number;

@@ -3,8 +3,12 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { getXpProgress } from "@muscle-mind/types";
+import {
+  getXpProgress,
+  listLevelRewardEntries,
+} from "@muscle-mind/types";
 import { PrismaService } from "../../prisma/prisma.service";
+import { GamificationService } from "../gamification/gamification.service";
 
 export const WATER_BOTTLES_MAX = 15;
 export const WATER_BOTTLE_COST = 4;
@@ -21,7 +25,10 @@ function sameUtcDay(a: Date | null | undefined, b: Date) {
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly gamification: GamificationService,
+  ) {}
 
   async getStarsTotal(userId: string) {
     const rows = await this.prisma.quizResult.groupBy({
@@ -198,6 +205,8 @@ export class UsersService {
   }
 
   async getMe(userId: string) {
+    await this.gamification.ensureLevelRewards(userId);
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -208,6 +217,7 @@ export class UsersService {
           take: 5,
         },
         preferredCategory: true,
+        levelRewardClaims: { select: { level: true } },
       },
     });
 
@@ -217,6 +227,8 @@ export class UsersService {
     const starsTotal = await this.getStarsTotal(userId);
     const starBalance = await this.ensureStarBalanceSeeded(userId);
     const xp = getXpProgress(user.xpTotal);
+    const claimedLevels = user.levelRewardClaims.map((c) => c.level);
+    const claimedSet = new Set(claimedLevels);
 
     return {
       id: user.id,
@@ -234,6 +246,18 @@ export class UsersService {
       waterBottles: water.waterBottles,
       waterBottlesMax: water.waterBottlesMax,
       waterBottleCost: water.waterBottleCost,
+      quizHints: user.quizHints,
+      extraTimeCharges: user.extraTimeCharges,
+      streakFreezes: user.streakFreezes,
+      claimedLevels,
+      levelRoadmap: [
+        { level: 1, rewards: [] as const, claimed: user.level >= 1 },
+        ...listLevelRewardEntries().map((entry) => ({
+          level: entry.level,
+          rewards: entry.rewards,
+          claimed: claimedSet.has(entry.level),
+        })),
+      ],
       xpProgress: xp,
       streak: user.streak
         ? {

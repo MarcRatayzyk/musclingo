@@ -1,16 +1,19 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
 import {
+  EXTRA_QUIZ_TIME_SEC,
   LESSON_QUIZ_QUESTION_COUNT,
-  LESSON_QUIZ_TOTAL_TIME_SEC,
   LESSON_QUIZ_WRONG_PENALTY_SEC,
   SubmitQuizInput,
   UpsertQuizInput,
+  UseQuizHintInput,
   WATER_BOTTLE_QUIZ_RETRY_COST,
   computeLessonQuizStars,
+  getLessonQuizTiming,
   getLessonQuizXpMultiplier,
   getNeuroCoinsForStarsGained,
   isLessonQuizPassed,
@@ -33,7 +36,11 @@ export class QuizzesService {
     private readonly users: UsersService,
   ) {}
 
-  async getByLessonId(lessonId: string, userId: string) {
+  async getByLessonId(
+    lessonId: string,
+    userId: string,
+    useExtraTime = false,
+  ) {
     await this.path.assertLessonUnlocked(lessonId, userId);
 
     const quiz = await this.prisma.quiz.findUnique({
@@ -73,6 +80,28 @@ export class QuizzesService {
       waterBottles = water.waterBottles;
     }
 
+    const inv = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: {
+        extraTimeCharges: true,
+        quizHints: true,
+      },
+    });
+    let extraTimeUsed = false;
+    let extraTimeChargesLeft = inv.extraTimeCharges;
+
+    if (useExtraTime) {
+      if (inv.extraTimeCharges <= 0) {
+        throw new ForbiddenException("Aucune charge +10 s disponible");
+      }
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { extraTimeCharges: { decrement: 1 } },
+      });
+      extraTimeUsed = true;
+      extraTimeChargesLeft = inv.extraTimeCharges - 1;
+    }
+
     const draw = await this.questionPool.drawForQuiz(
       quiz.id,
       quiz.lesson.categoryId,
@@ -81,7 +110,11 @@ export class QuizzesService {
         checkpointKey: quiz.lesson.checkpointKey,
         themeTags: quiz.lesson.tags,
       },
+      LESSON_QUIZ_QUESTION_COUNT,
+      extraTimeUsed,
     );
+
+    const timing = getLessonQuizTiming(extraTimeUsed);
 
     return {
       id: quiz.id,
@@ -92,13 +125,115 @@ export class QuizzesService {
       xpReward: quiz.xpReward,
       perfectBonusXp: quiz.perfectBonusXp,
       questionCount: LESSON_QUIZ_QUESTION_COUNT,
-      quizTimeSec: LESSON_QUIZ_TOTAL_TIME_SEC,
+      quizTimeSec: timing.totalSec,
+      starThresholds: timing.starThresholds,
       wrongPenaltySec: LESSON_QUIZ_WRONG_PENALTY_SEC,
+      extraTimeUsed,
+      extraTimeCharges: extraTimeChargesLeft,
+      quizHints: inv.quizHints,
       questions: draw.questions,
       answerKeys: draw.answerKeys,
       isRetry,
       waterBottleRetryCost: isRetry ? WATER_BOTTLE_QUIZ_RETRY_COST : 0,
       waterBottles,
+    };
+  }
+
+  async useHint(quizId: string, userId: string, input: UseQuizHintInput) {
+    const session = await this.prisma.quizSession.findFirst({
+      where: { id: input.sessionId, userId, quizId },
+    });
+    if (!session || session.expiresAt < new Date()) {
+      throw new BadRequestException("Invalid or expired quiz session");
+    }
+
+    const hinted = Array.isArray(session.hintedQuestionIds)
+      ? (session.hintedQuestionIds as string[])
+      : [];
+    if (hinted.includes(input.questionId)) {
+      throw new BadRequestException("Indice déjà utilisé sur cette question");
+    }
+
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { quizHints: true },
+    });
+    if (user.quizHints <= 0) {
+      throw new ForbiddenException("Aucun indice disponible");
+    }
+
+    const questions = await this.questionPool.resolveSessionQuestions(
+      input.sessionId,
+      userId,
+      quizId,
+    );
+    const question = questions.find((q) => q.id === input.questionId);
+    if (!question) {
+      throw new BadRequestException("Question introuvable dans la session");
+    }
+
+    const hint = this.buildHint(question);
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: userId },
+        data: { quizHints: { decrement: 1 } },
+      }),
+      this.prisma.quizSession.update({
+        where: { id: session.id },
+        data: { hintedQuestionIds: [...hinted, input.questionId] },
+      }),
+    ]);
+
+    return {
+      ...hint,
+      quizHints: user.quizHints - 1,
+    };
+  }
+
+  private buildHint(question: {
+    type: string;
+    choices: Array<{ id: string; label: string; matchKey?: string | null }>;
+    correctChoiceId: string;
+  }) {
+    const correctIds = question.correctChoiceId.split("|").filter(Boolean);
+
+    if (question.type === "ORDER") {
+      const firstCorrect = correctIds[0];
+      if (!firstCorrect) {
+        throw new BadRequestException("Indice indisponible pour cette question");
+      }
+      return {
+        kind: "orderReveal" as const,
+        revealedAnswerId: firstCorrect,
+        revealedOrderIndex: 0,
+        eliminatedChoiceIds: [] as string[],
+      };
+    }
+
+    if (question.type === "MATCH") {
+      const firstRight = correctIds[0];
+      if (!firstRight) {
+        throw new BadRequestException("Indice indisponible pour cette question");
+      }
+      return {
+        kind: "matchReveal" as const,
+        revealedRightId: firstRight,
+        revealedOrderIndex: 0,
+        eliminatedChoiceIds: [] as string[],
+      };
+    }
+
+    const wrong = question.choices
+      .map((c) => c.id)
+      .filter((id) => !correctIds.includes(id));
+    if (wrong.length === 0) {
+      throw new BadRequestException("Indice indisponible pour cette question");
+    }
+    const eliminatedChoiceId = wrong[Math.floor(Math.random() * wrong.length)]!;
+    return {
+      kind: "eliminate" as const,
+      eliminatedChoiceIds: [eliminatedChoiceId],
     };
   }
 
@@ -140,6 +275,15 @@ export class QuizzesService {
 
     await this.path.assertLessonUnlocked(quiz.lessonId, userId);
 
+    const session = await this.prisma.quizSession.findFirst({
+      where: { id: input.sessionId, userId, quizId },
+    });
+    if (!session || session.expiresAt < new Date()) {
+      throw new BadRequestException("Invalid or expired quiz session");
+    }
+    const extraTimeUsed = session.extraTimeUsed;
+    const timing = getLessonQuizTiming(extraTimeUsed);
+
     const sessionQuestions = await this.questionPool.resolveSessionQuestions(
       input.sessionId,
       userId,
@@ -164,6 +308,9 @@ export class QuizzesService {
     if (Math.abs(sumTime - input.totalTimeSpentSec) > 2) {
       throw new BadRequestException("Inconsistent timing data");
     }
+    if (input.totalTimeSpentSec > timing.totalSec) {
+      throw new BadRequestException("Quiz time exceeded limit");
+    }
 
     let correctCount = 0;
     const feedback = sessionQuestions.map((question) => {
@@ -171,7 +318,7 @@ export class QuizzesService {
       if (!submission) {
         throw new BadRequestException(`Missing answer for ${question.id}`);
       }
-      if (submission.timeSpentSec > LESSON_QUIZ_TOTAL_TIME_SEC) {
+      if (submission.timeSpentSec > timing.totalSec) {
         throw new BadRequestException("Question time exceeded limit");
       }
 
@@ -194,7 +341,7 @@ export class QuizzesService {
 
     const allCorrect = correctCount === sessionQuestions.length;
     const stars = allCorrect
-      ? computeLessonQuizStars(input.totalTimeSpentSec)
+      ? computeLessonQuizStars(input.totalTimeSpentSec, extraTimeUsed)
       : 0;
     const passed = allCorrect && isLessonQuizPassed(stars);
     const score = correctCount / sessionQuestions.length;
@@ -305,6 +452,8 @@ export class QuizzesService {
       starsGained,
       neuroCoinsEarned,
       timeSpentSec: input.totalTimeSpentSec,
+      extraTimeUsed,
+      extraTimeBonusSec: extraTimeUsed ? EXTRA_QUIZ_TIME_SEC : 0,
       nextLessonId,
       categoryId: quiz.lesson.categoryId,
       correctCount,

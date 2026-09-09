@@ -28,7 +28,7 @@ export function RewardsHud({
         alignItems: "center",
         justifyContent: fullWidth ? "space-between" : "center",
         width: fullWidth ? "100%" : undefined,
-        gap: fullWidth ? undefined : 30,
+        gap: fullWidth ? undefined : 24,
       }}
     >
       <StreakAmount amount={streak} size={size} />

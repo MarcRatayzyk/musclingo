@@ -14,6 +14,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
 } from "react-native-reanimated";
+import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { useShopCatalog, useShopPurchase, type ShopOffer } from "@/features/shop/api";
 import { ApiError } from "@/shared/api/client";
 import { Screen } from "@/shared/ui/primitives";
@@ -132,13 +133,29 @@ function GeniusCard({
         borderRadius: 24,
         borderWidth: 2,
         borderColor: "#7CFFB2",
-        backgroundColor: "#121A16",
+        backgroundColor: "#0B1410",
         paddingHorizontal: 20,
         paddingTop: 18,
         paddingBottom: 16,
         overflow: "hidden",
       }}
     >
+      <Svg
+        pointerEvents="none"
+        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+        width="100%"
+        height="100%"
+        preserveAspectRatio="none"
+      >
+        <Defs>
+          <LinearGradient id="geniusBg" x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor="#1E3A2E" />
+            <Stop offset="0.45" stopColor="#14241C" />
+            <Stop offset="1" stopColor="#0B1410" />
+          </LinearGradient>
+        </Defs>
+        <Rect x="0" y="0" width="100%" height="100%" fill="url(#geniusBg)" />
+      </Svg>
       <View
         style={{
           position: "absolute",
@@ -147,7 +164,7 @@ function GeniusCard({
           width: 140,
           height: 140,
           borderRadius: 70,
-          backgroundColor: "rgba(124,255,178,0.08)",
+          backgroundColor: "rgba(124,255,178,0.12)",
         }}
       />
       <View

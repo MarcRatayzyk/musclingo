@@ -1,5 +1,6 @@
 import {
   computeLessonQuizStars,
+  getLessonQuizTiming,
   getLessonQuizXpMultiplier,
   isLessonQuizPassed,
 } from "@muscle-mind/types";
@@ -19,6 +20,19 @@ describe("lesson quiz stars", () => {
 
   it("returns 0 stars when total time exceeds 60s", () => {
     expect(computeLessonQuizStars(65)).toBe(0);
+  });
+
+  it("shifts thresholds by +10s when extra time is active", () => {
+    const timing = getLessonQuizTiming(true);
+    expect(timing.totalSec).toBe(70);
+    expect(timing.starThresholds.three).toBe(55);
+    expect(timing.starThresholds.two).toBe(62.5);
+    expect(timing.starThresholds.one).toBe(70);
+
+    expect(computeLessonQuizStars(50, true)).toBe(3);
+    expect(computeLessonQuizStars(58, true)).toBe(2);
+    expect(computeLessonQuizStars(68, true)).toBe(1);
+    expect(computeLessonQuizStars(71, true)).toBe(0);
   });
 
   it("passes with at least 1 star", () => {

@@ -60,6 +60,10 @@ export type QuizPayload = {
   questionCount: number;
   quizTimeSec: number;
   wrongPenaltySec: number;
+  extraTimeUsed?: boolean;
+  extraTimeCharges?: number;
+  quizHints?: number;
+  starThresholds?: { three: number; two: number; one: number };
   questions: Array<{
     id: string;
     prompt: string;
@@ -209,27 +213,73 @@ export function useStartLesson() {
   });
 }
 
-export function useQuizByLesson(lessonId: string) {
+export function useQuizByLesson(
+  lessonId: string,
+  opts?: { enabled?: boolean; useExtraTime?: boolean },
+) {
   const qc = useQueryClient();
+  const enabled = opts?.enabled !== false && !!lessonId;
+  const useExtraTime = !!opts?.useExtraTime;
   return useQuery({
-    queryKey: ["quiz", lessonId],
+    queryKey: ["quiz", lessonId, useExtraTime ? "extra" : "base"],
     queryFn: async () => {
       analytics.capture(analytics.events.QUIZ_STARTED, { lessonId });
+      const qs = useExtraTime ? "?useExtraTime=true" : "";
       const raw = await apiFetch<QuizPayload & { questionTimeSec?: number }>(
-        `/quizzes/by-lesson/${lessonId}`,
+        `/quizzes/by-lesson/${lessonId}${qs}`,
       );
       const normalized = normalizeQuizPayload(raw);
-      if (typeof normalized.waterBottles === "number") {
-        qc.setQueryData(["me"], (prev: unknown) => {
-          if (!prev || typeof prev !== "object") return prev;
-          return { ...prev, waterBottles: normalized.waterBottles };
-        });
-      }
+      qc.setQueryData(["me"], (prev: unknown) => {
+        if (!prev || typeof prev !== "object") return prev;
+        return {
+          ...prev,
+          ...(typeof normalized.waterBottles === "number"
+            ? { waterBottles: normalized.waterBottles }
+            : {}),
+          ...(typeof normalized.extraTimeCharges === "number"
+            ? { extraTimeCharges: normalized.extraTimeCharges }
+            : {}),
+          ...(typeof normalized.quizHints === "number"
+            ? { quizHints: normalized.quizHints }
+            : {}),
+        };
+      });
       void qc.invalidateQueries({ queryKey: ["me"] });
       return normalized;
     },
-    enabled: !!lessonId,
+    enabled,
     retry: false,
+  });
+}
+
+export function useQuizHint() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      quizId: string;
+      sessionId: string;
+      questionId: string;
+    }) =>
+      apiFetch<{
+        kind: "eliminate" | "orderReveal" | "matchReveal";
+        eliminatedChoiceIds: string[];
+        revealedAnswerId?: string;
+        revealedOrderIndex?: number;
+        revealedRightId?: string;
+        quizHints: number;
+      }>(`/quizzes/${input.quizId}/hint`, {
+        method: "POST",
+        body: JSON.stringify({
+          sessionId: input.sessionId,
+          questionId: input.questionId,
+        }),
+      }),
+    onSuccess: (data) => {
+      qc.setQueryData(["me"], (prev: unknown) => {
+        if (!prev || typeof prev !== "object") return prev;
+        return { ...prev, quizHints: data.quizHints };
+      });
+    },
   });
 }
 

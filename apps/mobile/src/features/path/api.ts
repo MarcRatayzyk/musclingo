@@ -63,6 +63,8 @@ export type CheckpointGatePayload = {
   categorySlug: string;
   categoryName: string;
   timeLimitSec: number;
+  extraTimeBonusSec?: number;
+  extraTimeCharges?: number;
   passThreshold: number;
   questionCount: number;
   xpReward: number;
@@ -96,6 +98,7 @@ export function useSubmitCheckpointGate() {
       gateId: string;
       answers: Array<{ questionId: string; selectedAnswerIds: string[] }>;
       timeSpentSec: number;
+      useExtraTime?: boolean;
     }) =>
       apiFetch<{
         gateId: string;
@@ -122,6 +125,7 @@ export function useSubmitCheckpointGate() {
         body: JSON.stringify({
           answers: input.answers,
           timeSpentSec: input.timeSpentSec,
+          useExtraTime: !!input.useExtraTime,
         }),
       }),
     onSuccess: () => {

@@ -50,32 +50,40 @@ export default function ProfileScreen() {
                 </View>
               </View>
 
-              <View className="mt-5 flex-row justify-between">
-                <Stat label="Niveau" value={String(me.level)} />
-                <View className="items-center">
-                  <NeuroliftIcon size={28} />
-                  <Text className="mt-1 text-lg font-semibold text-white">
-                    {me.xpTotal}
-                  </Text>
-                  <Text className="text-[11px] text-muted">Neurolift</Text>
+              <Pressable
+                onPress={() => router.push("/(app)/level-roadmap")}
+                className="mt-5 active:opacity-80"
+              >
+                <View className="flex-row justify-between">
+                  <Stat label="Niveau" value={String(me.level)} />
+                  <View className="items-center">
+                    <NeuroliftIcon size={28} />
+                    <Text className="mt-1 text-lg font-semibold text-white">
+                      {me.xpTotal}
+                    </Text>
+                    <Text className="text-[11px] text-muted">Neurolift</Text>
+                  </View>
+                  <Stat label="Streak" value={`${me.streak.current}j`} />
+                  <Stat label="Global" value={`${overallPct}%`} accent />
                 </View>
-                <Stat label="Streak" value={`${me.streak.current}j`} />
-                <Stat label="Global" value={`${overallPct}%`} accent />
-              </View>
 
-              <View className="mt-4">
-                <XpBar progress={me.xpProgress.progress} />
-                <View className="mt-2 flex-row flex-wrap items-center gap-1.5">
-                  <NeuroliftAmount
-                    amount={me.xpTotal}
-                    size="sm"
-                    color="#8B95A8"
-                  />
-                  <Text className="text-xs text-muted">
-                    / {me.xpProgress.nextLevelXp} vers le niveau {me.level + 1}
+                <View className="mt-4">
+                  <XpBar progress={me.xpProgress.progress} />
+                  <View className="mt-2 flex-row flex-wrap items-center gap-1.5">
+                    <NeuroliftAmount
+                      amount={me.xpTotal}
+                      size="sm"
+                      color="#8B95A8"
+                    />
+                    <Text className="text-xs text-muted">
+                      / {me.xpProgress.nextLevelXp} vers le niveau {me.level + 1}
+                    </Text>
+                  </View>
+                  <Text className="mt-2 text-xs text-accent">
+                    Voir la roadmap des récompenses →
                   </Text>
                 </View>
-              </View>
+              </Pressable>
             </View>
 
             <View className="mt-4 flex-row gap-3">
@@ -94,21 +102,12 @@ export default function ProfileScreen() {
                   NeuroCoins
                 </Text>
               </View>
-            </View>
-
-            <View className="mt-3 flex-row gap-3">
               <View className="flex-1 items-center rounded-3xl border border-border bg-surface p-4">
                 <WaterBottleAmount
                   amount={me.waterBottles ?? 15}
                   max={me.waterBottlesMax ?? 15}
                   size="lg"
                 />
-                <Text className="mt-1 text-center text-[11px] text-muted">
-                  Bouteilles du jour
-                </Text>
-                <Text className="mt-0.5 text-center text-[10px] text-muted">
-                  −{me.waterBottleCost ?? 4} / nouvelle leçon
-                </Text>
               </View>
             </View>
           </>

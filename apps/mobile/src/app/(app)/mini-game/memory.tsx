@@ -1,12 +1,138 @@
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from "react-native";
+import {
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from "react-native";
+import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
+import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { useMe } from "@/features/auth/api";
 import { useSubmitMemoryGameScore } from "@/features/memory-game/api";
 import { useMemoryGame } from "@/features/memory-game/useMemoryGame";
 import { PrimaryButton, Screen } from "@/shared/ui/primitives";
 
-const PRESETS = [60, 90, 120];
+const COLOR = "#7CFFB2";
+
+const REST_MODES = [
+  { sec: 60, label: "Court", hint: "Intense" },
+  { sec: 90, label: "Classique", hint: "Équilibré" },
+  { sec: 120, label: "Long", hint: "Tranquille" },
+] as const;
+
+function SetupHero({ bestScore }: { bestScore: number }) {
+  return (
+    <Animated.View
+      entering={FadeIn.duration(420)}
+      style={{
+        borderRadius: 28,
+        borderWidth: 1,
+        borderColor: COLOR + "55",
+        overflow: "hidden",
+        marginBottom: 22,
+      }}
+    >
+      <Svg
+        pointerEvents="none"
+        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+        width="100%"
+        height="100%"
+        preserveAspectRatio="none"
+      >
+        <Defs>
+          <LinearGradient id="memorySetupBg" x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor={COLOR} stopOpacity="0.28" />
+            <Stop offset="0.55" stopColor="#121820" stopOpacity="1" />
+            <Stop offset="1" stopColor="#0B0F14" stopOpacity="1" />
+          </LinearGradient>
+        </Defs>
+        <Rect x="0" y="0" width="100%" height="100%" fill="url(#memorySetupBg)" />
+      </Svg>
+      <View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          top: -36,
+          right: -24,
+          width: 120,
+          height: 120,
+          borderRadius: 60,
+          backgroundColor: COLOR + "22",
+        }}
+      />
+      <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 18 }}>
+        <Text
+          style={{
+            color: "#FFFFFF",
+            fontSize: 34,
+            fontWeight: "900",
+            letterSpacing: 0.3,
+          }}
+        >
+          Mémoire
+        </Text>
+
+        <View
+          style={{
+            marginTop: 16,
+            flexDirection: "row",
+            gap: 10,
+          }}
+        >
+          <View
+            style={{
+              flex: 1,
+              borderRadius: 16,
+              backgroundColor: "rgba(0,0,0,0.28)",
+              paddingVertical: 12,
+              paddingHorizontal: 12,
+            }}
+          >
+            <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 11 }}>
+              Record
+            </Text>
+            <Text
+              style={{
+                color: "#FFFFFF",
+                fontSize: 24,
+                fontWeight: "800",
+                marginTop: 2,
+              }}
+            >
+              {bestScore}
+            </Text>
+          </View>
+          <View
+            style={{
+              flex: 1,
+              borderRadius: 16,
+              backgroundColor: "rgba(0,0,0,0.28)",
+              paddingVertical: 12,
+              paddingHorizontal: 12,
+            }}
+          >
+            <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 11 }}>
+              Objectif
+            </Text>
+            <Text
+              style={{
+                color: "#FFFFFF",
+                fontSize: 15,
+                fontWeight: "700",
+                marginTop: 6,
+              }}
+            >
+              Grilles max
+            </Text>
+          </View>
+        </View>
+      </View>
+    </Animated.View>
+  );
+}
 
 export default function MemoryGameScreen() {
   const { data: me } = useMe();
@@ -14,11 +140,13 @@ export default function MemoryGameScreen() {
   const game = useMemoryGame();
   const { width } = useWindowDimensions();
   const [customInput, setCustomInput] = useState("90");
+  const [showCustom, setShowCustom] = useState(false);
   const [resultBest, setResultBest] = useState(me?.memoryGameBestScore ?? 0);
   const [isNewRecord, setIsNewRecord] = useState(false);
   const submittedRef = useRef(false);
 
   const bestKnown = me?.memoryGameBestScore ?? 0;
+  const isCustomRest = !REST_MODES.some((m) => m.sec === game.restSeconds);
 
   useEffect(() => {
     if (game.phase !== "finished") {
@@ -49,84 +177,114 @@ export default function MemoryGameScreen() {
 
   return (
     <Screen>
-      <View className="mb-4 flex-row items-center justify-between">
+      <View className="mb-4 flex-row items-center">
         <Pressable onPress={() => router.replace("/(app)/mini-games")}>
           <Text className="text-sm text-muted">← Mini-jeux</Text>
         </Pressable>
-        <Text className="text-xs uppercase tracking-[3px] text-accent">
-          Mémoire
-        </Text>
-        <View style={{ width: 66 }} />
       </View>
 
       {game.phase === "setup" && (
         <ScrollView showsVerticalScrollIndicator={false}>
-          <Text className="text-3xl font-semibold text-white">Mémoire</Text>
-          <Text className="mt-2 text-base text-muted">
-            Choisis ton temps de repos. Complète le plus de grilles possible
-            avant la fin du chrono.
-          </Text>
+          <SetupHero bestScore={bestKnown} />
 
-          <View className="mt-6 rounded-3xl border border-border bg-surface p-5">
-            <Text className="text-sm text-muted">Meilleur score</Text>
-            <Text className="mt-1 text-4xl font-semibold text-accent">
-              {bestKnown}
-            </Text>
-            <Text className="mt-1 text-xs text-muted">
-              grilles réussies
-            </Text>
-          </View>
-
-          <Text className="mt-8 mb-3 text-lg font-semibold text-white">
-            Temps de repos
-          </Text>
-          <View className="flex-row gap-3">
-            {PRESETS.map((sec) => {
-              const active = game.restSeconds === sec;
-              return (
-                <Pressable
-                  key={sec}
-                  onPress={() => {
-                    game.setRestSeconds(sec);
-                    setCustomInput(String(sec));
-                  }}
-                  className={`flex-1 rounded-2xl border py-4 ${
-                    active
-                      ? "border-accent bg-accent/20"
-                      : "border-border bg-elevated"
-                  }`}
-                >
-                  <Text
-                    className={`text-center font-semibold ${
-                      active ? "text-accent" : "text-white"
-                    }`}
+          <Animated.View entering={FadeInDown.duration(380).delay(80)}>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              {REST_MODES.map((mode) => {
+                const active = game.restSeconds === mode.sec;
+                return (
+                  <Pressable
+                    key={mode.sec}
+                    onPress={() => {
+                      game.setRestSeconds(mode.sec);
+                      setCustomInput(String(mode.sec));
+                      setShowCustom(false);
+                    }}
+                    style={{
+                      flex: 1,
+                      alignItems: "center",
+                      borderRadius: 20,
+                      borderWidth: 2,
+                      borderColor: active ? COLOR : "#2A3344",
+                      backgroundColor: active ? COLOR + "1A" : "#141820",
+                      paddingVertical: 16,
+                      paddingHorizontal: 8,
+                    }}
                   >
-                    {sec}s
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+                    <Text
+                      style={{
+                        color: active ? COLOR : "#FFFFFF",
+                        fontSize: 18,
+                        fontWeight: "900",
+                      }}
+                    >
+                      {mode.sec}s
+                    </Text>
+                    <Text
+                      style={{
+                        color: "#FFFFFF",
+                        fontSize: 13,
+                        fontWeight: "800",
+                        marginTop: 8,
+                        textAlign: "center",
+                      }}
+                    >
+                      {mode.label}
+                    </Text>
+                    <Text
+                      style={{
+                        color: active ? COLOR : "rgba(255,255,255,0.45)",
+                        fontSize: 11,
+                        fontWeight: "600",
+                        marginTop: 3,
+                        textAlign: "center",
+                      }}
+                    >
+                      {mode.hint}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
 
-          <TextInput
-            className="mt-4 rounded-2xl border border-border bg-surface px-4 py-4 text-white"
-            placeholder="Secondes (ex. 75)"
-            placeholderTextColor="#8B95A8"
-            keyboardType="number-pad"
-            value={customInput}
-            onChangeText={(t) => {
-              setCustomInput(t);
-              const n = parseInt(t, 10);
-              if (!Number.isNaN(n) && n > 0) game.setRestSeconds(n);
-            }}
-          />
+            <Pressable
+              onPress={() => setShowCustom((v) => !v)}
+              style={{ marginTop: 14, paddingVertical: 6 }}
+            >
+              <Text
+                style={{
+                  color: isCustomRest || showCustom ? COLOR : "#8B95A8",
+                  fontSize: 13,
+                  fontWeight: "700",
+                }}
+              >
+                {showCustom || isCustomRest
+                  ? "Durée perso"
+                  : "Personnaliser la durée…"}
+              </Text>
+            </Pressable>
 
-          <View className="mt-8 mb-10">
-            <PrimaryButton
-              label="Commencer"
-              onPress={() => game.startGame(game.restSeconds)}
-            />
-          </View>
+            {(showCustom || isCustomRest) && (
+              <TextInput
+                className="mt-2 rounded-2xl border border-border bg-surface px-4 py-4 text-white"
+                placeholder="Secondes (ex. 75)"
+                placeholderTextColor="#8B95A8"
+                keyboardType="number-pad"
+                value={customInput}
+                onChangeText={(t) => {
+                  setCustomInput(t);
+                  const n = parseInt(t, 10);
+                  if (!Number.isNaN(n) && n > 0) game.setRestSeconds(n);
+                }}
+              />
+            )}
+
+            <View className="mb-10 mt-6">
+              <PrimaryButton
+                label={`C’est parti · ${game.restSeconds}s`}
+                onPress={() => game.startGame(game.restSeconds)}
+              />
+            </View>
+          </Animated.View>
         </ScrollView>
       )}
 
@@ -166,16 +324,11 @@ export default function MemoryGameScreen() {
               gap,
             }}
           >
-            {game.cards.map((card, index) => {
+            {game.cards.map((card) => {
               const faceUp = game.isFaceUp(card.id);
               const matched = game.isMatched(card.id);
               return (
-                <View
-                  key={card.id}
-                  
-                  
-                  
-                >
+                <View key={card.id}>
                   <Pressable
                     onPress={() => game.flipCard(card.id)}
                     disabled={faceUp}

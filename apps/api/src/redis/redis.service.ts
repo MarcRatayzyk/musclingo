@@ -6,6 +6,32 @@ import {
 } from "@nestjs/common";
 import Redis from "ioredis";
 
+function buildUrlFromParts(): string | undefined {
+  const host =
+    process.env.REDISHOST?.trim() ||
+    process.env.REDIS_HOST?.trim() ||
+    process.env.RAILWAY_TCP_PROXY_DOMAIN?.trim();
+  const port =
+    process.env.REDISPORT?.trim() ||
+    process.env.REDIS_PORT?.trim() ||
+    process.env.RAILWAY_TCP_PROXY_PORT?.trim() ||
+    "6379";
+  const password =
+    process.env.REDISPASSWORD?.trim() ||
+    process.env.REDIS_PASSWORD?.trim() ||
+    process.env.REDIS_USER_PASSWORD?.trim();
+  const user =
+    process.env.REDISUSER?.trim() ||
+    process.env.REDIS_USER?.trim() ||
+    "default";
+
+  if (!host) return undefined;
+  if (password) {
+    return `redis://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}`;
+  }
+  return `redis://${host}:${port}`;
+}
+
 function resolveRedisUrl(): string | undefined {
   const candidates = [
     process.env.REDIS_URL,
@@ -14,9 +40,11 @@ function resolveRedisUrl(): string | undefined {
   ];
   for (const raw of candidates) {
     const value = raw?.trim();
-    if (value) return value;
+    // Unresolved Railway template leftovers
+    if (!value || value.includes("${{")) continue;
+    return value;
   }
-  return undefined;
+  return buildUrlFromParts();
 }
 
 function isLocalhostRedisUrl(url: string | undefined): boolean {
@@ -41,9 +69,15 @@ function withRailwayFamily(url: string): string {
   return url.includes("?") ? `${url}&family=0` : `${url}?family=0`;
 }
 
+function allowInMemoryInProd(): boolean {
+  const flag = process.env.ALLOW_INMEMORY_REDIS?.trim().toLowerCase();
+  return flag === "1" || flag === "true" || flag === "yes";
+}
+
 /**
  * Redis for refresh-token storage.
- * Production: fail-closed (no in-memory fallback).
+ * Production: prefer Redis; fall back to memory if REDIS_URL is missing
+ * (single-instance Railway boot) unless STRICT_REDIS=1.
  * Development: in-memory fallback when Redis is unavailable.
  */
 @Injectable()
@@ -56,18 +90,32 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   >();
   private useMemory = false;
   private readonly isProd = process.env.NODE_ENV === "production";
+  private readonly strictRedis =
+    process.env.STRICT_REDIS?.trim() === "1" ||
+    process.env.STRICT_REDIS?.trim()?.toLowerCase() === "true";
 
   constructor() {
     const redisUrl = resolveRedisUrl();
     const isLocalhostRedis = isLocalhostRedisUrl(redisUrl);
 
     if (this.isProd && isLocalhostRedis) {
-      this.logger.error(
-        "FATAL: REDIS_URL is missing or points to localhost. " +
-          "On Railway: add a Redis service, then set API env " +
-          'REDIS_URL=${{Redis.REDIS_URL}}?family=0 (use your Redis service name).',
+      if (this.strictRedis && !allowInMemoryInProd()) {
+        this.logger.error(
+          "FATAL: REDIS_URL is missing or points to localhost. " +
+            "On Railway: add a Redis service, then set API env " +
+            'REDIS_URL=${{Redis.REDIS_URL}}?family=0 (use your Redis service name). ' +
+            "Or set ALLOW_INMEMORY_REDIS=1 to boot without Redis (single instance only).",
+        );
+        process.exit(1);
+      }
+
+      this.useMemory = true;
+      this.client = null;
+      this.logger.warn(
+        "REDIS_URL missing/localhost in production — using in-memory token store. " +
+          "Add a Railway Redis and set REDIS_URL=${{Redis.REDIS_URL}}?family=0 for durable sessions.",
       );
-      process.exit(1);
+      return;
     }
 
     if (!this.isProd && isLocalhostRedis && !redisUrl) {
@@ -89,7 +137,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         retryStrategy: this.isProd ? () => 500 : () => null,
       });
       this.client.on("error", (err) => {
-        if (this.isProd) {
+        if (this.isProd && this.strictRedis) {
           this.logger.error(`Redis error: ${err.message}`);
           return;
         }
@@ -99,18 +147,19 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         }
       });
     } catch (err) {
-      if (this.isProd) {
+      if (this.isProd && this.strictRedis) {
         this.logger.error(`FATAL: Redis init failed: ${String(err)}`);
         process.exit(1);
       }
       this.useMemory = true;
       this.client = null;
+      this.logger.warn(`Redis init failed — memory fallback: ${String(err)}`);
     }
   }
 
   async onModuleInit() {
     if (this.useMemory || !this.client) {
-      if (this.isProd) {
+      if (this.isProd && this.strictRedis && !allowInMemoryInProd()) {
         this.logger.error("FATAL: Redis client not configured in production");
         process.exit(1);
       }
@@ -124,20 +173,22 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       await this.client.ping();
       this.logger.log("Redis connected");
     } catch (err) {
-      if (this.isProd) {
+      if (this.isProd && this.strictRedis) {
         this.logger.error(
           `FATAL: Redis connect failed in production: ${String(err)}`,
         );
         process.exit(1);
       }
       this.useMemory = true;
-      this.logger.warn("Redis connect failed — using in-memory token store");
+      this.logger.warn(
+        `Redis connect failed — using in-memory token store: ${String(err)}`,
+      );
     }
   }
 
   private async ensure() {
     if (this.useMemory || !this.client) {
-      if (this.isProd) {
+      if (this.isProd && this.strictRedis) {
         throw new Error("Redis unavailable in production");
       }
       return;
@@ -147,7 +198,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         await this.client.connect();
       }
     } catch (err) {
-      if (this.isProd) {
+      if (this.isProd && this.strictRedis) {
         throw new Error(`Redis connect failed: ${String(err)}`);
       }
       this.useMemory = true;

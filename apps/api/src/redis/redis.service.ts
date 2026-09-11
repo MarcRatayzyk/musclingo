@@ -6,6 +6,41 @@ import {
 } from "@nestjs/common";
 import Redis from "ioredis";
 
+function resolveRedisUrl(): string | undefined {
+  const candidates = [
+    process.env.REDIS_URL,
+    process.env.REDIS_PRIVATE_URL,
+    process.env.REDIS_PUBLIC_URL,
+  ];
+  for (const raw of candidates) {
+    const value = raw?.trim();
+    if (value) return value;
+  }
+  return undefined;
+}
+
+function isLocalhostRedisUrl(url: string | undefined): boolean {
+  if (!url) return true;
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    return host === "localhost" || host === "127.0.0.1" || host === "::1";
+  } catch {
+    return (
+      url.includes("localhost") ||
+      url.includes("127.0.0.1") ||
+      url.includes("::1")
+    );
+  }
+}
+
+/** ioredis needs dual-stack DNS for Railway private Redis hostnames. */
+function withRailwayFamily(url: string): string {
+  if (!url.includes("railway.internal")) return url;
+  if (/[?&]family=/.test(url)) return url;
+  return url.includes("?") ? `${url}&family=0` : `${url}?family=0`;
+}
+
 /**
  * Redis for refresh-token storage.
  * Production: fail-closed (no in-memory fallback).
@@ -23,15 +58,14 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   private readonly isProd = process.env.NODE_ENV === "production";
 
   constructor() {
-    const redisUrl = process.env.REDIS_URL?.trim();
-    const isLocalhostRedis =
-      !redisUrl ||
-      redisUrl.includes("localhost") ||
-      redisUrl.includes("127.0.0.1");
+    const redisUrl = resolveRedisUrl();
+    const isLocalhostRedis = isLocalhostRedisUrl(redisUrl);
 
     if (this.isProd && isLocalhostRedis) {
       this.logger.error(
-        "FATAL: REDIS_URL must point to a non-localhost Redis in production",
+        "FATAL: REDIS_URL is missing or points to localhost. " +
+          "On Railway: add a Redis service, then set API env " +
+          'REDIS_URL=${{Redis.REDIS_URL}}?family=0 (use your Redis service name).',
       );
       process.exit(1);
     }
@@ -44,10 +78,14 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
-      this.client = new Redis(redisUrl ?? "redis://localhost:6379", {
+      const connectionUrl = withRailwayFamily(
+        redisUrl ?? "redis://localhost:6379",
+      );
+      this.client = new Redis(connectionUrl, {
         maxRetriesPerRequest: 1,
         lazyConnect: true,
-        connectTimeout: 3000,
+        connectTimeout: 8000,
+        family: connectionUrl.includes("railway.internal") ? 0 : undefined,
         retryStrategy: this.isProd ? () => 500 : () => null,
       });
       this.client.on("error", (err) => {

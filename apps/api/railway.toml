@@ -12,6 +12,9 @@ watchPatterns = [
 [deploy]
 startCommand = "pnpm --filter @muscle-mind/api start"
 # Requis: DATABASE_URL (ref Postgres), JWT_ACCESS_SECRET, JWT_REFRESH_SECRET (min 32 chars)
-# Requis en prod: REDIS_URL (non-localhost; fail-closed)
+# Requis en prod: REDIS_URL non-localhost — sur Railway:
+#   1) Add Redis plugin/service
+#   2) Sur le service API: REDIS_URL=${{Redis.REDIS_URL}}?family=0
+#      (remplace Redis par le nom exact du service Redis)
 # Optionnel: CORS_ORIGINS, RUN_SEED=1 (opt-in seed), SEED_DEMO_USER=1, DEMO_PAYMENTS=true
 # Networking: Generate Domain (public) pour que l'APK puisse joindre l'API

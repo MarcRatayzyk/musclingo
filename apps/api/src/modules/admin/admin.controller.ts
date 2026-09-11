@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -171,5 +172,32 @@ export class AdminController {
   uploadImage(@UploadedFile() file?: Express.Multer.File) {
     if (!file) throw new BadRequestException("Fichier requis");
     return { url: `/uploads/${file.filename}` };
+  }
+
+  /** Fixe le solde de bouteilles d'un utilisateur (tests / support). */
+  @Post("users/water-bottles")
+  async setWaterBottles(
+    @Body()
+    body: {
+      email?: string;
+      waterBottles?: number;
+    },
+  ) {
+    const email = (body.email ?? "demo@musclemind.app").trim().toLowerCase();
+    const waterBottles = Number(body.waterBottles);
+    if (!Number.isInteger(waterBottles) || waterBottles < 0 || waterBottles > 9999) {
+      throw new BadRequestException("waterBottles doit être un entier 0–9999");
+    }
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) throw new NotFoundException("Utilisateur introuvable");
+    const updated = await this.prisma.user.update({
+      where: { email },
+      data: {
+        waterBottles,
+        waterBottlesDate: new Date(),
+      },
+      select: { email: true, waterBottles: true },
+    });
+    return updated;
   }
 }

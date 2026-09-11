@@ -56,13 +56,20 @@ type EvaluatedLesson = Omit<PathLessonNode, "state">;
 
 type GateEval = PathGateNode;
 
+const DEMO_UNLOCK_EMAIL = "demo@musclemind.app";
+
 @Injectable()
 export class PathService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Opt-in only: progressive locking is the default. */
-  private isUnlockAllLessons(): boolean {
-    return process.env.UNLOCK_ALL_LESSONS === "true";
+  /** Global flag or compte démo — pour tester tout le parcours. */
+  private async shouldUnlockAll(userId: string): Promise<boolean> {
+    if (process.env.UNLOCK_ALL_LESSONS === "true") return true;
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+    return user?.email === DEMO_UNLOCK_EMAIL;
   }
 
   async getCategoryPath(categoryId: string, userId: string) {
@@ -307,6 +314,7 @@ export class PathService {
   }
 
   private async buildPathForCategory(categoryId: string, userId: string) {
+    const unlockAll = await this.shouldUnlockAll(userId);
     const [lessons, gatesRaw] = await Promise.all([
       this.prisma.lesson.findMany({
         where: { categoryId, status: "PUBLISHED" },
@@ -392,7 +400,7 @@ export class PathService {
       const isFirstInUnit =
         !prev || prev.checkpointOrder !== lesson.checkpointOrder;
 
-      let unlocked = this.isUnlockAllLessons();
+      let unlocked = unlockAll;
       if (!unlocked) {
         if (index === 0) {
           unlocked = true;
@@ -428,9 +436,10 @@ export class PathService {
       const themeStarsMax = maxStarsForTheme(quizLessons.length);
       const themeStarsRequired = requiredStarsForTheme(quizLessons.length);
       const starsUnlocked =
-        themeStarsRequired === 0
+        unlockAll ||
+        (themeStarsRequired === 0
           ? unitLessons.length > 0 && unitLessons.every((l) => l.passed)
-          : themeStars >= themeStarsRequired;
+          : themeStars >= themeStarsRequired);
       const bestScore = gate.results[0]?.score ?? null;
       const passed =
         bestScore !== null &&

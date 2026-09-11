@@ -1,5 +1,6 @@
 import { router } from "expo-router";
 import { Pressable, ScrollView, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import type { LevelRewardItem } from "@muscle-mind/types";
 import { listLevelRewardEntries } from "@muscle-mind/types";
 import { useMe } from "@/features/auth/api";
@@ -7,8 +8,10 @@ import { GorillaAvatar } from "@/features/mascot/components/GorillaAvatar";
 import { BoostIcon } from "@/shared/ui/BoostIcons";
 import { Screen, XpBar } from "@/shared/ui/primitives";
 import { NeuroliftAmount } from "@/shared/ui/Neurolift";
+import { LevelRoadmapSkeleton } from "@/shared/ui/Skeleton";
 
 export default function LevelRoadmapScreen() {
+  const { t } = useTranslation("home");
   const { data: me, isLoading } = useMe();
   const level = me?.level ?? 1;
   const roadmap =
@@ -33,18 +36,18 @@ export default function LevelRoadmapScreen() {
           onPress={() => router.back()}
           hitSlop={12}
           accessibilityRole="button"
-          accessibilityLabel="Retour"
+          accessibilityLabel={t("backA11y")}
           className="h-10 w-10 items-center justify-center rounded-full border border-border active:opacity-70"
         >
           <Text className="text-xl text-white">←</Text>
         </Pressable>
         <Text className="flex-1 text-2xl font-semibold text-white">
-          Roadmap niveaux
+          {t("levelRoadmapTitle")}
         </Text>
       </View>
 
       {isLoading || !me ? (
-        <Text className="text-muted">Chargement…</Text>
+        <LevelRoadmapSkeleton />
       ) : (
         <>
           <View
@@ -72,7 +75,7 @@ export default function LevelRoadmapScreen() {
                   textTransform: "uppercase",
                 }}
               >
-                Niveau {me.level}
+                {t("levelLabel", { level: me.level })}
               </Text>
               <View style={{ marginTop: 8 }}>
                 <XpBar progress={me.xpProgress.progress} />
@@ -92,7 +95,7 @@ export default function LevelRoadmapScreen() {
                   color="#8B95A8"
                 />
                 <Text style={{ color: "#8B95A8", fontSize: 11 }}>
-                  · encore {nextXp} XP
+                  {t("xpRemaining", { xp: nextXp })}
                 </Text>
               </View>
             </View>

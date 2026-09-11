@@ -1,29 +1,45 @@
-import { Injectable, OnModuleDestroy, Logger } from "@nestjs/common";
+import {
+  Injectable,
+  OnModuleDestroy,
+  OnModuleInit,
+  Logger,
+} from "@nestjs/common";
 import Redis from "ioredis";
 
 /**
- * Redis with in-memory fallback for local dev without Docker.
+ * Redis for refresh-token storage.
+ * Production: fail-closed (no in-memory fallback).
+ * Development: in-memory fallback when Redis is unavailable.
  */
 @Injectable()
-export class RedisService implements OnModuleDestroy {
+export class RedisService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RedisService.name);
   private client: Redis | null = null;
-  private readonly memory = new Map<string, { value: string; expiresAt?: number }>();
+  private readonly memory = new Map<
+    string,
+    { value: string; expiresAt?: number }
+  >();
   private useMemory = false;
+  private readonly isProd = process.env.NODE_ENV === "production";
 
   constructor() {
     const redisUrl = process.env.REDIS_URL?.trim();
-    const isProd = process.env.NODE_ENV === "production";
     const isLocalhostRedis =
       !redisUrl ||
       redisUrl.includes("localhost") ||
       redisUrl.includes("127.0.0.1");
 
-    // En prod sans Redis Railway, ne pas tenter localhost (ça bloque/spam les logs).
-    if (isProd && isLocalhostRedis) {
+    if (this.isProd && isLocalhostRedis) {
+      this.logger.error(
+        "FATAL: REDIS_URL must point to a non-localhost Redis in production",
+      );
+      process.exit(1);
+    }
+
+    if (!this.isProd && isLocalhostRedis && !redisUrl) {
       this.useMemory = true;
       this.client = null;
-      this.logger.warn("REDIS_URL absent — store de tokens en mémoire");
+      this.logger.warn("REDIS_URL absent — store de tokens en mémoire (dev)");
       return;
     }
 
@@ -31,28 +47,71 @@ export class RedisService implements OnModuleDestroy {
       this.client = new Redis(redisUrl ?? "redis://localhost:6379", {
         maxRetriesPerRequest: 1,
         lazyConnect: true,
-        connectTimeout: 1500,
-        retryStrategy: () => null,
+        connectTimeout: 3000,
+        retryStrategy: this.isProd ? () => 500 : () => null,
       });
-      this.client.on("error", () => {
+      this.client.on("error", (err) => {
+        if (this.isProd) {
+          this.logger.error(`Redis error: ${err.message}`);
+          return;
+        }
         if (!this.useMemory) {
           this.useMemory = true;
           this.logger.warn("Redis unavailable — using in-memory token store");
         }
       });
-    } catch {
+    } catch (err) {
+      if (this.isProd) {
+        this.logger.error(`FATAL: Redis init failed: ${String(err)}`);
+        process.exit(1);
+      }
       this.useMemory = true;
       this.client = null;
     }
   }
 
-  private async ensure() {
-    if (this.useMemory || !this.client) return;
+  async onModuleInit() {
+    if (this.useMemory || !this.client) {
+      if (this.isProd) {
+        this.logger.error("FATAL: Redis client not configured in production");
+        process.exit(1);
+      }
+      return;
+    }
+
     try {
       if (this.client.status === "wait") {
         await this.client.connect();
       }
-    } catch {
+      await this.client.ping();
+      this.logger.log("Redis connected");
+    } catch (err) {
+      if (this.isProd) {
+        this.logger.error(
+          `FATAL: Redis connect failed in production: ${String(err)}`,
+        );
+        process.exit(1);
+      }
+      this.useMemory = true;
+      this.logger.warn("Redis connect failed — using in-memory token store");
+    }
+  }
+
+  private async ensure() {
+    if (this.useMemory || !this.client) {
+      if (this.isProd) {
+        throw new Error("Redis unavailable in production");
+      }
+      return;
+    }
+    try {
+      if (this.client.status === "wait") {
+        await this.client.connect();
+      }
+    } catch (err) {
+      if (this.isProd) {
+        throw new Error(`Redis connect failed: ${String(err)}`);
+      }
       this.useMemory = true;
       this.logger.warn("Redis connect failed — using in-memory token store");
     }

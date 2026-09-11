@@ -1,5 +1,6 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
+import { getAppLocale } from "@/i18n";
 import { invalidateSession } from "../auth/session";
 import { tokenStorage } from "../storage/mmkv";
 import { OFFLINE, offlineFetch } from "./offline";
@@ -89,6 +90,7 @@ export async function apiFetch<T>(
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    "X-Locale": getAppLocale(),
     ...(options.headers as Record<string, string> | undefined),
   };
 

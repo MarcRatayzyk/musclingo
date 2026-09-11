@@ -65,6 +65,10 @@ export type UpdatePreferredCategoryInput = z.infer<
   typeof UpdatePreferredCategorySchema
 >;
 
+export const UpdateLocaleSchema = z.object({
+  locale: z.enum(["fr", "en"]),
+});
+export type UpdateLocaleInput = z.infer<typeof UpdateLocaleSchema>;
 
 export const SubmitQuizAnswerSchema = z.object({
   questionId: z.string().min(1),

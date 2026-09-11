@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from "@nestjs/common";
+import { Body, Controller, Get, Headers, Param, Post } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { SubmitMiniGameResultSchema } from "@muscle-mind/types";
 import { AuthUser, CurrentUser } from "../../common/decorators";
@@ -12,16 +12,17 @@ export class MiniGamesController {
   constructor(private readonly miniGames: MiniGamesService) {}
 
   @Get()
-  list(@CurrentUser() user: AuthUser) {
-    return this.miniGames.list(user.userId);
+  list(@CurrentUser() user: AuthUser, @Headers("x-locale") locale?: string) {
+    return this.miniGames.list(user.userId, locale);
   }
 
   @Get(":categoryId/questions")
   questions(
     @Param("categoryId") categoryId: string,
     @CurrentUser() user: AuthUser,
+    @Headers("x-locale") locale?: string,
   ) {
-    return this.miniGames.getQuestions(categoryId, user.userId);
+    return this.miniGames.getQuestions(categoryId, user.userId, locale);
   }
 
   @Post(":categoryId/results")

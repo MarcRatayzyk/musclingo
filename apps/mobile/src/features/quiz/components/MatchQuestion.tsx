@@ -65,7 +65,7 @@ export function MatchQuestion({
   disabled = false,
   onDraggingChange,
 }: Props) {
-  const { height: screenH } = useWindowDimensions();
+  const { height: screenH, width: screenW } = useWindowDimensions();
   const imageUri = resolveMediaUrl(question.payload?.imageUrl ?? null);
   const { lefts, rights } = useMemo(
     () => splitMatchColumns(question.answers),
@@ -84,6 +84,15 @@ export function MatchQuestion({
     orderedRights.length * (MATCH_ROW_H + MATCH_ROW_GAP) - MATCH_ROW_GAP;
   // Image takes remaining space but stays capped so 4 rows + bouton restent visibles.
   const imgMax = Math.min(Math.max(screenH * 0.32, 140), 220);
+  const longestLeft = lefts.reduce(
+    (max, left) => Math.max(max, left.label.trim().length),
+    1,
+  );
+  // ~9px/char + padding ; court pour « 1 », large pour « Protéines ».
+  const leftColW = Math.min(
+    Math.max(longestLeft * 9 + 12, 40),
+    Math.round(screenW * 0.4),
+  );
 
   return (
     <View className="flex-1" style={{ minHeight: 0 }}>
@@ -110,7 +119,7 @@ export function MatchQuestion({
         className="flex-row gap-2"
         style={{ height: listH, flexShrink: 0 }}
       >
-        <View className="w-7">
+        <View style={{ width: leftColW, flexShrink: 0 }}>
           {lefts.map((left) => (
             <View
               key={left.id}
@@ -118,9 +127,13 @@ export function MatchQuestion({
                 height: MATCH_ROW_H,
                 marginBottom: MATCH_ROW_GAP,
                 justifyContent: "center",
+                paddingRight: 4,
               }}
             >
-              <Text className="text-center text-lg font-semibold text-white">
+              <Text
+                className="text-right text-base font-semibold text-white"
+                numberOfLines={2}
+              >
                 {left.label}
               </Text>
             </View>

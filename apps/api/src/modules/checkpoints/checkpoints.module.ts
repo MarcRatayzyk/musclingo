@@ -1,11 +1,12 @@
 import { Module } from "@nestjs/common";
 import { CategoriesModule } from "../categories/categories.module";
 import { GamificationModule } from "../gamification/gamification.module";
+import { UsersModule } from "../users/users.module";
 import { CheckpointsController } from "./checkpoints.controller";
 import { CheckpointsService } from "./checkpoints.service";
 
 @Module({
-  imports: [GamificationModule, CategoriesModule],
+  imports: [GamificationModule, CategoriesModule, UsersModule],
   controllers: [CheckpointsController],
   providers: [CheckpointsService],
   exports: [CheckpointsService],

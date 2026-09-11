@@ -23,6 +23,11 @@ type MascotSpeechBubbleProps = {
    * Utile pour pointer le centre du Gorille placé en dessous.
    */
   tailTipX?: number;
+  /** Overrides responsives (écran leçon). */
+  fontSize?: number;
+  lineHeight?: number;
+  paddingHorizontal?: number;
+  paddingVertical?: number;
 };
 
 function BubbleTail({
@@ -81,8 +86,16 @@ export function MascotSpeechBubble({
   showName = true,
   tail = "bottom",
   tailTipX = 37,
+  fontSize,
+  lineHeight,
+  paddingHorizontal,
+  paddingVertical,
 }: MascotSpeechBubbleProps) {
   const avatarSize = compact ? "sm" : "md";
+  const resolvedFontSize = fontSize ?? (compact ? 14 : 16);
+  const resolvedLineHeight = lineHeight ?? (compact ? 22 : 26);
+  const resolvedPadH = paddingHorizontal ?? (compact ? 12 : 16);
+  const resolvedPadV = paddingVertical ?? (compact ? 10 : 14);
 
   return (
     <View
@@ -117,17 +130,17 @@ export function MascotSpeechBubble({
             backgroundColor: BUBBLE_FILL,
             borderColor: BUBBLE_STROKE,
             borderWidth: 2,
-            borderRadius: 28,
-            paddingHorizontal: 16,
-            paddingVertical: 14,
+            borderRadius: compact ? 22 : 28,
+            paddingHorizontal: resolvedPadH,
+            paddingVertical: resolvedPadV,
           }}
         >
           {children ?? (
             <Text
               style={{
                 color: "#FFFFFF",
-                fontSize: 16,
-                lineHeight: 26,
+                fontSize: resolvedFontSize,
+                lineHeight: resolvedLineHeight,
               }}
             >
               {text}

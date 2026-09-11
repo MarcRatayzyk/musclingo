@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -13,6 +12,13 @@ import { PrismaService } from "../../prisma/prisma.service";
 import { PathService } from "../categories/path.service";
 import { GamificationService } from "../gamification/gamification.service";
 import { isMatchSelectionCorrect } from "../questions/match-score";
+import { UsersService } from "../users/users.service";
+import {
+  AppLocale,
+  pickLocalized,
+  resolveRequestLocale,
+} from "../../common/locale";
+import { pickCheckpointTitle } from "../../common/content-l10n";
 
 @Injectable()
 export class CheckpointsService {
@@ -20,21 +26,29 @@ export class CheckpointsService {
     private readonly prisma: PrismaService,
     private readonly gamification: GamificationService,
     private readonly path: PathService,
+    private readonly users: UsersService,
   ) {}
 
-  async getById(gateId: string, userId: string) {
+  async getById(gateId: string, userId: string, localeHeader?: string) {
+    const locale = await this.resolveLocale(userId, localeHeader);
     await this.path.assertGateUnlocked(gateId, userId);
 
     const gate = await this.prisma.checkpointGate.findUnique({
       where: { id: gateId },
       include: {
-        category: { select: { slug: true, name: true } },
+        category: { select: { slug: true, name: true, nameEn: true } },
         questions: {
           orderBy: { order: "asc" },
           include: {
             answers: {
               orderBy: { order: "asc" },
-              select: { id: true, label: true, order: true, matchKey: true },
+              select: {
+                id: true,
+                label: true,
+                labelEn: true,
+                order: true,
+                matchKey: true,
+              },
             },
           },
         },
@@ -50,9 +64,9 @@ export class CheckpointsService {
 
     return {
       id: gate.id,
-      title: gate.title,
+      title: pickCheckpointTitle(gate.title, gate.titleEn, locale),
       categorySlug: gate.category.slug,
-      categoryName: gate.category.name,
+      categoryName: pickLocalized(gate.category.name, gate.category.nameEn, locale),
       timeLimitSec: gate.timeLimitSec,
       extraTimeBonusSec: EXTRA_QUIZ_TIME_SEC,
       extraTimeCharges: inv.extraTimeCharges,
@@ -62,12 +76,17 @@ export class CheckpointsService {
       questions: gate.questions.map((q) => ({
         id: q.id,
         type: q.type,
-        prompt: q.prompt,
+        prompt: pickLocalized(q.prompt, q.promptEn, locale),
+        explanation: pickLocalized(
+          q.explanation,
+          q.explanationEn,
+          locale,
+        ),
         order: q.order,
         payload: q.payload,
         answers: q.answers.map((a) => ({
           id: a.id,
-          label: a.label,
+          label: pickLocalized(a.label, a.labelEn, locale),
           order: a.order,
           matchKey: a.matchKey,
         })),
@@ -75,7 +94,13 @@ export class CheckpointsService {
     };
   }
 
-  async submit(gateId: string, userId: string, input: SubmitCheckpointGateInput) {
+  async submit(
+    gateId: string,
+    userId: string,
+    input: SubmitCheckpointGateInput,
+    localeHeader?: string,
+  ) {
+    const locale = await this.resolveLocale(userId, localeHeader);
     const gate = await this.prisma.checkpointGate.findUnique({
       where: { id: gateId },
       include: {
@@ -147,7 +172,11 @@ export class CheckpointsService {
       return {
         questionId: question.id,
         isCorrect,
-        explanation: question.explanation,
+        explanation: pickLocalized(
+          question.explanation,
+          question.explanationEn,
+          locale,
+        ),
         correctAnswerIds,
       };
     });
@@ -155,17 +184,7 @@ export class CheckpointsService {
     const useExtraTime = !!input.useExtraTime;
     let effectiveLimit = gate.timeLimitSec;
     if (useExtraTime) {
-      const inv = await this.prisma.user.findUniqueOrThrow({
-        where: { id: userId },
-        select: { extraTimeCharges: true },
-      });
-      if (inv.extraTimeCharges <= 0) {
-        throw new ForbiddenException("Aucune charge +10 s disponible");
-      }
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { extraTimeCharges: { decrement: 1 } },
-      });
+      await this.users.consumeExtraTimeCharge(userId);
       effectiveLimit = gate.timeLimitSec + EXTRA_QUIZ_TIME_SEC;
     }
 
@@ -246,5 +265,16 @@ export class CheckpointsService {
       categoryId: gate.categoryId,
       timedOut,
     };
+  }
+
+  private async resolveLocale(
+    userId: string,
+    localeHeader?: string,
+  ): Promise<AppLocale> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { locale: true },
+    });
+    return resolveRequestLocale({ "x-locale": localeHeader }, user?.locale);
   }
 }

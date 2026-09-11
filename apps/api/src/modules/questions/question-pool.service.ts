@@ -7,6 +7,7 @@ import { Prisma, QuestionType } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { matchRightIdsInLeftOrder, withPairedMatchKeys } from "./match-score";
 import type { PoolAnswerType } from "./pool-score";
+import { AppLocale, pickLocalized } from "../../common/locale";
 
 export type PoolChoice = {
   id: string;
@@ -177,6 +178,7 @@ export class QuestionPoolService {
     theme: LessonQuizTheme,
     count = LESSON_QUIZ_QUESTION_COUNT,
     extraTimeUsed = false,
+    locale: AppLocale = "fr",
   ): Promise<DrawSessionResult> {
     const excludeIds = await this.getRecentlyUsedQuestionIds(
       userId,
@@ -186,11 +188,12 @@ export class QuestionPoolService {
       quizId,
       excludeIds,
       count,
+      locale,
     );
     const internal =
       fromLesson.length >= count
         ? fromLesson
-        : await this.buildPool(categoryId, theme, excludeIds, count);
+        : await this.buildPool(categoryId, theme, excludeIds, count, locale);
     if (internal.length < count) {
       throw new NotFoundException(
         `Not enough themed quiz questions (need ${count}, got ${internal.length})`,
@@ -233,6 +236,7 @@ export class QuestionPoolService {
     sessionId: string,
     userId: string,
     quizId: string,
+    locale: AppLocale = "fr",
   ): Promise<PoolQuestionInternal[]> {
     const session = await this.prisma.quizSession.findFirst({
       where: { id: sessionId, userId, quizId },
@@ -270,10 +274,12 @@ export class QuestionPoolService {
     return ids
       .map((poolId) => {
         const miniId = parsePoolQuestionId(poolId);
-        if (miniId) return this.toInternalQuestion(poolId, byMiniId.get(miniId));
+        if (miniId) {
+          return this.toInternalQuestion(poolId, byMiniId.get(miniId), locale);
+        }
         const lessonId = parseLessonPoolQuestionId(poolId);
         if (lessonId) {
-          return this.toInternalQuestion(poolId, byLessonId.get(lessonId));
+          return this.toInternalQuestion(poolId, byLessonId.get(lessonId), locale);
         }
         return null;
       })
@@ -290,16 +296,20 @@ export class QuestionPoolService {
       id: string;
       type?: QuestionType;
       prompt: string;
+      promptEn?: string | null;
       explanation: string;
+      explanationEn?: string | null;
       payload?: Prisma.JsonValue | null;
       answers: Array<{
         id: string;
         label: string;
+        labelEn?: string | null;
         isCorrect: boolean;
         matchKey?: string | null;
         order: number;
       }>;
     },
+    locale: AppLocale = "fr",
   ): PoolQuestionInternal | null {
     if (!row) return null;
     const imageUrl = readImageUrl(row.payload ?? null);
@@ -312,13 +322,13 @@ export class QuestionPoolService {
       return {
         id: poolId,
         type: "MATCH",
-        prompt: row.prompt,
+        prompt: pickLocalized(row.prompt, row.promptEn, locale),
         imageUrl,
-        explanation: row.explanation,
+        explanation: pickLocalized(row.explanation, row.explanationEn, locale),
         correctChoiceId: rightIds.join("|"),
         choices: answers.map((a) => ({
           id: a.id,
-          label: a.label,
+          label: pickLocalized(a.label, a.labelEn, locale),
           matchKey: a.matchKey,
           order: a.order,
         })),
@@ -334,12 +344,16 @@ export class QuestionPoolService {
       return {
         id: poolId,
         type: "MULTI",
-        prompt: row.prompt,
+        prompt: pickLocalized(row.prompt, row.promptEn, locale),
         imageUrl,
-        explanation: row.explanation,
+        explanation: pickLocalized(row.explanation, row.explanationEn, locale),
         correctChoiceId: correctIds.join("|"),
         choices: shuffle(
-          row.answers.map((a) => ({ id: a.id, label: a.label, order: a.order })),
+          row.answers.map((a) => ({
+            id: a.id,
+            label: pickLocalized(a.label, a.labelEn, locale),
+            order: a.order,
+          })),
         ),
       };
     }
@@ -352,12 +366,16 @@ export class QuestionPoolService {
       return {
         id: poolId,
         type: "ORDER",
-        prompt: row.prompt,
+        prompt: pickLocalized(row.prompt, row.promptEn, locale),
         imageUrl,
-        explanation: row.explanation,
+        explanation: pickLocalized(row.explanation, row.explanationEn, locale),
         correctChoiceId: orderedIds.join("|"),
         choices: shuffle(
-          row.answers.map((a) => ({ id: a.id, label: a.label, order: a.order })),
+          row.answers.map((a) => ({
+            id: a.id,
+            label: pickLocalized(a.label, a.labelEn, locale),
+            order: a.order,
+          })),
         ),
       };
     }
@@ -368,12 +386,16 @@ export class QuestionPoolService {
     return {
       id: poolId,
       type: type === QuestionType.TRUE_FALSE ? "TRUE_FALSE" : "SINGLE",
-      prompt: row.prompt,
+      prompt: pickLocalized(row.prompt, row.promptEn, locale),
       imageUrl,
-      explanation: row.explanation,
+      explanation: pickLocalized(row.explanation, row.explanationEn, locale),
       correctChoiceId: correct.id,
       choices: shuffle(
-        row.answers.map((a) => ({ id: a.id, label: a.label, order: a.order })),
+        row.answers.map((a) => ({
+          id: a.id,
+          label: pickLocalized(a.label, a.labelEn, locale),
+          order: a.order,
+        })),
       ),
     };
   }
@@ -382,6 +404,7 @@ export class QuestionPoolService {
     quizId: string,
     excludeIds: Set<string>,
     count: number,
+    locale: AppLocale,
   ): Promise<PoolQuestionInternal[]> {
     const rows = await this.prisma.question.findMany({
       where: {
@@ -396,7 +419,11 @@ export class QuestionPoolService {
     const rest: PoolQuestionInternal[] = [];
 
     for (const row of rows) {
-      const built = this.toInternalQuestion(lessonPoolQuestionId(row.id), row);
+      const built = this.toInternalQuestion(
+        lessonPoolQuestionId(row.id),
+        row,
+        locale,
+      );
       if (!built) continue;
       if (built.type === "MATCH" && built.imageUrl) {
         imageMatches.push(built);
@@ -458,6 +485,7 @@ export class QuestionPoolService {
     theme: LessonQuizTheme,
     excludeIds: Set<string>,
     count: number,
+    locale: AppLocale,
   ): Promise<PoolQuestionInternal[]> {
     const rows = await this.prisma.miniGameQuestion.findMany({
       where: {
@@ -472,7 +500,7 @@ export class QuestionPoolService {
     const unit: PoolQuestionInternal[] = [];
 
     for (const row of rows) {
-      const built = this.toInternalQuestion(poolQuestionId(row.id), row);
+      const built = this.toInternalQuestion(poolQuestionId(row.id), row, locale);
       if (!built) continue;
       const questionTags = readThemeTags(row.payload);
       if (tagsOverlap(theme.themeTags, questionTags)) {

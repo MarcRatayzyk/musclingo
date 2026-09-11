@@ -1,15 +1,27 @@
 import { Image, Pressable, Text, View } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import { router } from "expo-router";
+import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { MASCOT_IMAGES } from "@/features/mascot/assets";
 import { MascotSpeechBubble } from "@/features/mascot";
+import { MASCOT_COPY } from "../content";
+import {
+  motion,
+  onboardingColors,
+  onboardingType,
+  radius,
+  space,
+} from "../theme";
+import { useReducedMotion } from "../useReducedMotion";
 
 type Props = {
   onContinue: () => void;
 };
 
-const GORILLA_SIZE = 168;
+const GORILLA_SIZE = 176;
 
 export function WelcomeStep({ onContinue }: Props) {
+  const reduced = useReducedMotion();
+
   return (
     <View style={{ flex: 1 }}>
       <View
@@ -20,73 +32,113 @@ export function WelcomeStep({ onContinue }: Props) {
           alignItems: "flex-start",
         }}
       >
-        <Animated.View entering={FadeInDown.duration(280)} style={{ width: "100%" }}>
+        <Animated.View
+          entering={reduced ? undefined : FadeIn.duration(400)}
+          style={{ marginBottom: space.lg }}
+        >
+          <Text style={onboardingType.brand}>Muscle Mind</Text>
+          <Text
+            style={{
+              ...onboardingType.bodyMuted,
+              marginTop: space.sm,
+              maxWidth: 300,
+            }}
+          >
+            {MASCOT_COPY.welcomeTagline}
+          </Text>
+          <Text
+            style={{
+              ...onboardingType.bodyMuted,
+              marginTop: space.sm,
+              maxWidth: 320,
+              fontSize: 13,
+              opacity: 0.85,
+            }}
+          >
+            {MASCOT_COPY.welcomeTrust}
+          </Text>
+        </Animated.View>
+
+        <Animated.View
+          entering={
+            reduced ? undefined : FadeInDown.delay(120).duration(motion.enter)
+          }
+          style={{ width: "100%" }}
+        >
           <MascotSpeechBubble
             pose="present"
             showAvatar={false}
             showName={false}
             tail="bottom"
             tailTipX={GORILLA_SIZE / 2}
-            accentColor="#7CFFB2"
+            accentColor={onboardingColors.pulse}
             compact={false}
           >
+            <Text style={onboardingType.hero}>{MASCOT_COPY.welcomeHero}</Text>
             <Text
               style={{
-                color: "#FFFFFF",
-                fontSize: 26,
-                lineHeight: 34,
-                fontWeight: "700",
+                ...onboardingType.body,
+                marginTop: space.md,
               }}
             >
-              Bienvenue !
-            </Text>
-            <Text
-              style={{
-                color: "#FFFFFF",
-                fontSize: 19,
-                lineHeight: 28,
-                marginTop: 10,
-              }}
-            >
-              Je suis Gorille. Ensemble, on découvre l’anatomie, la nutrition et
-              l’entraînement.
+              {MASCOT_COPY.welcomeBody}
             </Text>
           </MascotSpeechBubble>
         </Animated.View>
 
-        <View style={{ marginTop: 4 }}>
+        <Animated.View
+          entering={
+            reduced ? undefined : FadeInDown.delay(220).duration(motion.enter)
+          }
+          style={{ marginTop: 4 }}
+        >
           <Image
             source={MASCOT_IMAGES.present}
             accessibilityLabel="Gorille"
             resizeMode="contain"
             style={{ width: GORILLA_SIZE, height: GORILLA_SIZE }}
           />
-        </View>
+        </Animated.View>
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Commencer"
-        onPress={onContinue}
-        style={({ pressed }) => ({
-          backgroundColor: "#7CFFB2",
-          borderRadius: 16,
-          paddingVertical: 16,
-          opacity: pressed ? 0.88 : 1,
-          transform: [{ scale: pressed ? 0.98 : 1 }],
-        })}
+      <Animated.View
+        entering={
+          reduced ? undefined : FadeInDown.delay(320).duration(motion.enter)
+        }
       >
-        <Text
-          style={{
-            textAlign: "center",
-            fontSize: 16,
-            fontWeight: "700",
-            color: "#0B0D10",
-          }}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Créer mon parcours"
+          onPress={onContinue}
+          style={({ pressed }) => ({
+            backgroundColor: onboardingColors.pulse,
+            borderRadius: radius.control,
+            paddingVertical: 17,
+            opacity: pressed ? 0.9 : 1,
+            transform: [{ scale: pressed ? 0.985 : 1 }],
+          })}
         >
-          Commencer
-        </Text>
-      </Pressable>
+          <Text style={{ ...onboardingType.cta, textAlign: "center" }}>
+            Créer mon parcours
+          </Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel="J’ai déjà un compte"
+          onPress={() => router.push("/(auth)/login")}
+          style={{ marginTop: space.md, paddingVertical: 8 }}
+        >
+          <Text
+            style={{
+              ...onboardingType.bodyMuted,
+              textAlign: "center",
+              textDecorationLine: "underline",
+            }}
+          >
+            J’ai déjà un compte
+          </Text>
+        </Pressable>
+      </Animated.View>
     </View>
   );
 }

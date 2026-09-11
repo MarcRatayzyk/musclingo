@@ -16,6 +16,7 @@ import {
   type PathSlug,
   type StreakGoalDays,
 } from "./types";
+import type { AppLocale } from "@/i18n/localeStorage";
 
 type OnboardingStore = {
   stepIndex: number;
@@ -23,7 +24,9 @@ type OnboardingStore = {
   setStepIndex: (index: number) => void;
   goNext: () => void;
   goBack: () => void;
+  setLocale: (locale: AppLocale) => void;
   toggleMotivation: (id: MotivationId) => void;
+  setPrimaryBlocker: (id: MotivationId) => void;
   setLevel: (id: LevelId) => void;
   setPreferredPath: (slug: PathSlug) => void;
   setStreakGoalDays: (days: StreakGoalDays) => void;
@@ -37,70 +40,88 @@ type OnboardingStore = {
 export const useOnboardingStore = create<OnboardingStore>((set, get) => {
   const loaded = loadOnboardingAnswers();
   return {
-  stepIndex: 0,
-  answers: loaded,
+    stepIndex: 0,
+    answers: loaded,
 
-  setStepIndex: (index) =>
-    set({
-      stepIndex: Math.max(0, Math.min(index, ONBOARDING_STEPS.length - 1)),
-    }),
+    setStepIndex: (index) =>
+      set({
+        stepIndex: Math.max(0, Math.min(index, ONBOARDING_STEPS.length - 1)),
+      }),
 
-  goNext: () => {
-    const { stepIndex } = get();
-    const last = ONBOARDING_STEPS.length - 1;
-    if (stepIndex < last) {
-      set({ stepIndex: stepIndex + 1 });
-    }
-  },
+    goNext: () => {
+      const { stepIndex } = get();
+      const last = ONBOARDING_STEPS.length - 1;
+      if (stepIndex < last) {
+        set({ stepIndex: stepIndex + 1 });
+      }
+    },
 
-  goBack: () => {
-    const { stepIndex } = get();
-    if (stepIndex > 0) set({ stepIndex: stepIndex - 1 });
-  },
+    goBack: () => {
+      const { stepIndex } = get();
+      if (stepIndex > 0) set({ stepIndex: stepIndex - 1 });
+    },
 
-  toggleMotivation: (id) => {
-    const current = get().answers.motivations;
-    const next = current.includes(id)
-      ? current.filter((m) => m !== id)
-      : [...current, id];
-    set({ answers: { ...get().answers, motivations: next } });
-  },
+    setLocale: (locale) =>
+      set({ answers: { ...get().answers, locale } }),
 
-  setLevel: (id) => set({ answers: { ...get().answers, level: id } }),
+    toggleMotivation: (id) => {
+      const current = get().answers.motivations;
+      const next = current.includes(id)
+        ? current.filter((m) => m !== id)
+        : [...current, id];
+      set({ answers: { ...get().answers, motivations: next } });
+    },
 
-  setPreferredPath: (slug) =>
-    set({ answers: { ...get().answers, preferredPath: slug } }),
+    setPrimaryBlocker: (id) => {
+      set({
+        answers: {
+          ...get().answers,
+          motivations: [id],
+          preferredPath: null,
+        },
+      });
+    },
 
-  setStreakGoalDays: (days) =>
-    set({ answers: { ...get().answers, streakGoalDays: days } }),
+    setLevel: (id) => set({ answers: { ...get().answers, level: id } }),
 
-  applyRecommendation: () => {
-    const answers = get().answers;
-    if (answers.preferredPath) return;
-    set({
-      answers: { ...answers, preferredPath: recommendPath(answers) },
-    });
-  },
+    setPreferredPath: (slug) =>
+      set({ answers: { ...get().answers, preferredPath: slug } }),
 
-  persist: () => {
-    saveOnboardingAnswers(get().answers);
-  },
+    setStreakGoalDays: (days) =>
+      set({ answers: { ...get().answers, streakGoalDays: days } }),
 
-  complete: () => {
-    const answers = get().answers;
-    saveOnboardingAnswers(answers);
-    markOnboardingCompleted();
-    if (answers.streakGoalDays) {
-      startStreakGoalChallenge(answers.streakGoalDays);
-    }
-  },
+    applyRecommendation: () => {
+      const answers = get().answers;
+      set({
+        answers: { ...answers, preferredPath: recommendPath(answers) },
+      });
+    },
 
-  reset: () =>
-    set({
-      stepIndex: 0,
-      answers: { ...INITIAL_ANSWERS, motivations: [] },
-    }),
+    persist: () => {
+      saveOnboardingAnswers(get().answers);
+    },
 
-  stepId: () => ONBOARDING_STEPS[get().stepIndex] ?? "welcome",
+    complete: () => {
+      const answers = get().answers;
+      const withGoal: OnboardingAnswers = {
+        ...answers,
+        streakGoalDays: answers.streakGoalDays ?? 20,
+      };
+      saveOnboardingAnswers(withGoal);
+      markOnboardingCompleted();
+      if (withGoal.streakGoalDays) {
+        startStreakGoalChallenge(withGoal.streakGoalDays);
+      }
+      set({ answers: withGoal });
+    },
+
+    reset: () => {
+      set({
+        stepIndex: 0,
+        answers: { ...INITIAL_ANSWERS, motivations: [], locale: null },
+      });
+    },
+
+    stepId: () => ONBOARDING_STEPS[get().stepIndex] ?? "language",
   };
 });

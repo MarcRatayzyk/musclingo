@@ -1,17 +1,23 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import type { AppLocale } from "../../common/locale";
 import { UsersService } from "../users/users.service";
-import { SHOP_CATALOG, getShopOffer } from "./shop.catalog";
+import { getShopCatalog, getShopOffer } from "./shop.catalog";
 
 @Injectable()
 export class ShopService {
   constructor(private readonly users: UsersService) {}
 
-  getCatalog() {
-    return { offers: SHOP_CATALOG };
+  getCatalog(locale: AppLocale = "fr") {
+    return { offers: getShopCatalog(locale) };
+  }
+
+  private demoPaymentsEnabled() {
+    return process.env.DEMO_PAYMENTS === "true";
   }
 
   async purchase(userId: string, offerId: string) {
@@ -36,7 +42,13 @@ export class ShopService {
       };
     }
 
-    // Abonnement / argent fictif — aucun paiement réel.
+    if (!this.demoPaymentsEnabled()) {
+      throw new ForbiddenException(
+        "Paiements démo désactivés. Activez DEMO_PAYMENTS=true uniquement hors production réelle.",
+      );
+    }
+
+    // Abonnement / argent fictif — aucun paiement réel (opt-in DEMO_PAYMENTS).
     const meBefore = await this.users.getMe(userId);
     let waterBottles = meBefore.waterBottles;
     if (offer.rewardBottles > 0) {

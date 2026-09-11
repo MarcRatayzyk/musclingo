@@ -1,4 +1,4 @@
-import { AVAILABLE_PATH_SLUGS, PATH_OPTIONS } from "./content";
+import { AVAILABLE_PATH_SLUGS, getPathLabel } from "./content";
 import type { MotivationId, OnboardingAnswers, PathSlug } from "./types";
 
 const MOTIVATION_WEIGHTS: Record<MotivationId, Partial<Record<PathSlug, number>>> = {
@@ -60,5 +60,5 @@ export function recommendPath(answers: OnboardingAnswers): PathSlug {
 }
 
 export function pathLabel(slug: PathSlug): string {
-  return PATH_OPTIONS.find((p) => p.slug === slug)?.label ?? slug;
+  return getPathLabel(slug);
 }

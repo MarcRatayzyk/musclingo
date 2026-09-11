@@ -25,6 +25,11 @@ import { GamificationService } from "../gamification/gamification.service";
 import { isPoolAnswerCorrect } from "../questions/pool-score";
 import { QuestionPoolService } from "../questions/question-pool.service";
 import { UsersService } from "../users/users.service";
+import {
+  AppLocale,
+  resolveRequestLocale,
+} from "../../common/locale";
+import { pickLessonTitle } from "../../common/content-l10n";
 
 @Injectable()
 export class QuizzesService {
@@ -40,7 +45,9 @@ export class QuizzesService {
     lessonId: string,
     userId: string,
     useExtraTime = false,
+    localeHeader?: string,
   ) {
+    const locale = await this.resolveLocale(userId, localeHeader);
     await this.path.assertLessonUnlocked(lessonId, userId);
 
     const quiz = await this.prisma.quiz.findUnique({
@@ -50,6 +57,7 @@ export class QuizzesService {
           select: {
             id: true,
             title: true,
+            titleEn: true,
             status: true,
             categoryId: true,
             checkpointKey: true,
@@ -91,15 +99,8 @@ export class QuizzesService {
     let extraTimeChargesLeft = inv.extraTimeCharges;
 
     if (useExtraTime) {
-      if (inv.extraTimeCharges <= 0) {
-        throw new ForbiddenException("Aucune charge +10 s disponible");
-      }
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { extraTimeCharges: { decrement: 1 } },
-      });
+      extraTimeChargesLeft = await this.users.consumeExtraTimeCharge(userId);
       extraTimeUsed = true;
-      extraTimeChargesLeft = inv.extraTimeCharges - 1;
     }
 
     const draw = await this.questionPool.drawForQuiz(
@@ -112,6 +113,7 @@ export class QuizzesService {
       },
       LESSON_QUIZ_QUESTION_COUNT,
       extraTimeUsed,
+      locale,
     );
 
     const timing = getLessonQuizTiming(extraTimeUsed);
@@ -119,7 +121,7 @@ export class QuizzesService {
     return {
       id: quiz.id,
       lessonId: quiz.lessonId,
-      lessonTitle: quiz.lesson.title,
+      lessonTitle: pickLessonTitle(quiz.lesson.title, quiz.lesson.titleEn, locale),
       categorySlug: quiz.lesson.category.slug,
       sessionId: draw.sessionId,
       xpReward: quiz.xpReward,
@@ -174,20 +176,15 @@ export class QuizzesService {
 
     const hint = this.buildHint(question);
 
-    await this.prisma.$transaction([
-      this.prisma.user.update({
-        where: { id: userId },
-        data: { quizHints: { decrement: 1 } },
-      }),
-      this.prisma.quizSession.update({
-        where: { id: session.id },
-        data: { hintedQuestionIds: [...hinted, input.questionId] },
-      }),
-    ]);
+    const quizHintsLeft = await this.users.consumeQuizHint(userId);
+    await this.prisma.quizSession.update({
+      where: { id: session.id },
+      data: { hintedQuestionIds: [...hinted, input.questionId] },
+    });
 
     return {
       ...hint,
-      quizHints: user.quizHints - 1,
+      quizHints: quizHintsLeft,
     };
   }
 
@@ -263,7 +260,13 @@ export class QuizzesService {
     return { correct: isCorrect };
   }
 
-  async submit(quizId: string, userId: string, input: SubmitQuizInput) {
+  async submit(
+    quizId: string,
+    userId: string,
+    input: SubmitQuizInput,
+    localeHeader?: string,
+  ) {
+    const locale = await this.resolveLocale(userId, localeHeader);
     const quiz = await this.prisma.quiz.findUnique({
       where: { id: quizId },
       include: { lesson: true },
@@ -284,10 +287,26 @@ export class QuizzesService {
     const extraTimeUsed = session.extraTimeUsed;
     const timing = getLessonQuizTiming(extraTimeUsed);
 
+    const NETWORK_TOLERANCE_SEC = 8;
+    const sessionStartedAt = session.startedAt ?? session.createdAt;
+    const rawServerElapsedSec = Math.max(
+      0,
+      Math.ceil((Date.now() - sessionStartedAt.getTime()) / 1000),
+    );
+    if (rawServerElapsedSec - NETWORK_TOLERANCE_SEC > timing.totalSec) {
+      throw new BadRequestException("Quiz time exceeded limit");
+    }
+    /** Chrono serveur pour les étoiles — le client ne peut pas sous-déclarer le temps. */
+    const scoredTimeSpentSec = Math.min(
+      timing.totalSec,
+      Math.max(0, rawServerElapsedSec - NETWORK_TOLERANCE_SEC),
+    );
+
     const sessionQuestions = await this.questionPool.resolveSessionQuestions(
       input.sessionId,
       userId,
       quizId,
+      locale,
     );
 
     if (sessionQuestions.length !== LESSON_QUIZ_QUESTION_COUNT) {
@@ -307,9 +326,6 @@ export class QuizzesService {
     const sumTime = input.answers.reduce((s, a) => s + a.timeSpentSec, 0);
     if (Math.abs(sumTime - input.totalTimeSpentSec) > 2) {
       throw new BadRequestException("Inconsistent timing data");
-    }
-    if (input.totalTimeSpentSec > timing.totalSec) {
-      throw new BadRequestException("Quiz time exceeded limit");
     }
 
     let correctCount = 0;
@@ -341,7 +357,7 @@ export class QuizzesService {
 
     const allCorrect = correctCount === sessionQuestions.length;
     const stars = allCorrect
-      ? computeLessonQuizStars(input.totalTimeSpentSec, extraTimeUsed)
+      ? computeLessonQuizStars(scoredTimeSpentSec, extraTimeUsed)
       : 0;
     const passed = allCorrect && isLessonQuizPassed(stars);
     const score = correctCount / sessionQuestions.length;
@@ -371,7 +387,7 @@ export class QuizzesService {
         perfect,
         xpEarned,
         stars,
-        timeSpentSec: input.totalTimeSpentSec,
+        timeSpentSec: scoredTimeSpentSec,
         passed,
         questionIds: expectedIds,
         answers: input.answers,
@@ -451,7 +467,7 @@ export class QuizzesService {
       stars,
       starsGained,
       neuroCoinsEarned,
-      timeSpentSec: input.totalTimeSpentSec,
+      timeSpentSec: scoredTimeSpentSec,
       extraTimeUsed,
       extraTimeBonusSec: extraTimeUsed ? EXTRA_QUIZ_TIME_SEC : 0,
       nextLessonId,
@@ -543,5 +559,16 @@ export class QuizzesService {
         questions: { include: { answers: true }, orderBy: { order: "asc" } },
       },
     });
+  }
+
+  private async resolveLocale(
+    userId: string,
+    localeHeader?: string,
+  ): Promise<AppLocale> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { locale: true },
+    });
+    return resolveRequestLocale({ "x-locale": localeHeader }, user?.locale);
   }
 }

@@ -19,6 +19,13 @@ import { NUTRITION_MINI_GAME_QUESTIONS } from "./mini-games/nutrition-questions"
 import { PROGRAMMATION_MINI_GAME_QUESTIONS } from "./mini-games/programmation-questions";
 import { RECUPERATION_MINI_GAME_QUESTIONS } from "./mini-games/recuperation-questions";
 import type { MiniGameQuestionSeed } from "./mini-games/types";
+import { BADGE_EN, CATEGORY_NAME_EN, translateCheckpointTitle } from "./i18n/en";
+import { enOrTranslate } from "./i18n/auto-en";
+import {
+  enrichGateWithEnglish,
+  enrichLessonWithEnglish,
+  enrichMiniGameQuestionWithEnglish,
+} from "./i18n/lesson-en";
 
 const prisma = new PrismaClient();
 
@@ -32,7 +39,7 @@ function ensureUploadFile(url: string | null | undefined): void {
   const uploadPath = join(UPLOADS_DIR, filename);
   if (!existsSync(assetPath)) return;
   if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true });
-  if (!existsSync(uploadPath)) copyFileSync(assetPath, uploadPath);
+  copyFileSync(assetPath, uploadPath);
 }
 
 function ensureLessonIllustration(
@@ -48,6 +55,7 @@ function ensureLessonIllustration(
 
 type SeedQuestionAnswer = {
   label: string;
+  labelEn?: string;
   isCorrect: boolean;
   order?: number;
   matchKey?: string;
@@ -63,15 +71,20 @@ type SeedQuestion = {
     | "MATCH"
     | "HOTSPOT";
   prompt: string;
+  promptEn?: string;
   explanation: string;
+  explanationEn?: string;
   answers: SeedQuestionAnswer[];
   payload?: Prisma.InputJsonValue;
 };
 
 type SeedLesson = {
   title: string;
+  titleEn?: string;
   subtitle: string;
+  subtitleEn?: string;
   markdown: string;
+  markdownEn?: string;
   durationSec: number;
   difficulty: Difficulty;
   order: number;
@@ -79,16 +92,22 @@ type SeedLesson = {
   tags: string[];
   checkpointKey?: string;
   checkpointTitle?: string;
+  checkpointTitleEn?: string;
   checkpointOrder?: number;
   illustrationUrl?: string | null;
   sources?: string[];
   questions?: SeedQuestion[];
   quizPrompt?: string;
+  quizPromptEn?: string;
   quizCorrect?: string;
+  quizCorrectEn?: string;
   quizWrong?: string[];
+  quizWrongEn?: string[];
   tfPrompt?: string;
+  tfPromptEn?: string;
   tfIsTrue?: boolean;
   tfExplanation?: string;
+  tfExplanationEn?: string;
 };
 
 function payloadImageUrl(payload: Prisma.InputJsonValue | undefined): string | undefined {
@@ -107,12 +126,15 @@ function buildQuizQuestionCreates(lesson: SeedLesson) {
       return {
         type: q.type,
         prompt: q.prompt,
+        promptEn: q.promptEn ?? enOrTranslate(q.prompt),
         explanation: q.explanation,
+        explanationEn: q.explanationEn ?? enOrTranslate(q.explanation),
         order,
         payload: q.payload ? (q.payload as Prisma.InputJsonValue) : undefined,
         answers: {
           create: q.answers.map((a, i) => ({
             label: a.label,
+            labelEn: a.labelEn ?? enOrTranslate(a.label),
             isCorrect: a.isCorrect,
             order: a.order ?? i,
             matchKey: a.matchKey ?? undefined,
@@ -139,13 +161,21 @@ function buildQuizQuestionCreates(lesson: SeedLesson) {
     {
       type: "SINGLE" as const,
       prompt: lesson.quizPrompt,
+      promptEn: lesson.quizPromptEn ?? enOrTranslate(lesson.quizPrompt),
       explanation: `La bonne réponse est : ${lesson.quizCorrect}.`,
+      explanationEn: `The correct answer is: ${lesson.quizCorrectEn ?? enOrTranslate(lesson.quizCorrect)}.`,
       order: 0,
       answers: {
         create: [
-          { label: lesson.quizCorrect, isCorrect: true, order: 0 },
+          {
+            label: lesson.quizCorrect,
+            labelEn: lesson.quizCorrectEn ?? enOrTranslate(lesson.quizCorrect),
+            isCorrect: true,
+            order: 0,
+          },
           ...lesson.quizWrong.map((label, i) => ({
             label,
+            labelEn: lesson.quizWrongEn?.[i] ?? enOrTranslate(label),
             isCorrect: false,
             order: i + 1,
           })),
@@ -155,12 +185,24 @@ function buildQuizQuestionCreates(lesson: SeedLesson) {
     {
       type: "TRUE_FALSE" as const,
       prompt: lesson.tfPrompt,
+      promptEn: lesson.tfPromptEn ?? enOrTranslate(lesson.tfPrompt),
       explanation: lesson.tfExplanation,
+      explanationEn: lesson.tfExplanationEn ?? enOrTranslate(lesson.tfExplanation),
       order: 1,
       answers: {
         create: [
-          { label: "Vrai", isCorrect: lesson.tfIsTrue, order: 0 },
-          { label: "Faux", isCorrect: !lesson.tfIsTrue, order: 1 },
+          {
+            label: "Vrai",
+            labelEn: "True",
+            isCorrect: lesson.tfIsTrue,
+            order: 0,
+          },
+          {
+            label: "Faux",
+            labelEn: "False",
+            isCorrect: !lesson.tfIsTrue,
+            order: 1,
+          },
         ],
       },
     },
@@ -209,33 +251,40 @@ const PATHS: Record<string, SeedLesson[]> = {
 };
 
 async function upsertLessonWithQuiz(categoryId: string, lesson: SeedLesson) {
+  const localized = enrichLessonWithEnglish(lesson);
   const existing = await prisma.lesson.findFirst({
-    where: { categoryId, order: lesson.order },
+    where: { categoryId, order: localized.order },
     include: { quiz: true },
   });
 
-  const checkpoint = resolveCheckpoint(lesson);
+  const checkpoint = resolveCheckpoint(localized);
 
   const baseData = {
-    title: lesson.title,
-    subtitle: lesson.subtitle,
-    markdown: lesson.markdown,
-    durationSec: lesson.durationSec,
-    difficulty: lesson.difficulty,
-    order: lesson.order,
+    title: localized.title,
+    titleEn: localized.titleEn ?? enOrTranslate(localized.title),
+    subtitle: localized.subtitle,
+    subtitleEn: localized.subtitleEn ?? enOrTranslate(localized.subtitle),
+    markdown: localized.markdown,
+    markdownEn: localized.markdownEn ?? enOrTranslate(localized.markdown),
+    durationSec: localized.durationSec,
+    difficulty: localized.difficulty,
+    order: localized.order,
     ...checkpoint,
-    tags: lesson.tags,
-    illustrationUrl: ensureLessonIllustration(lesson.illustrationUrl),
-    sources: lesson.sources?.length
-      ? lesson.sources
+    checkpointTitleEn:
+      localized.checkpointTitleEn ??
+      translateCheckpointTitle(checkpoint.checkpointTitle),
+    tags: localized.tags,
+    illustrationUrl: ensureLessonIllustration(localized.illustrationUrl),
+    sources: localized.sources?.length
+      ? localized.sources
       : ["Contenu démo Muscle Mind : à remplacer via l’admin."],
     recommendedLevel:
-      lesson.difficulty === "BEGINNER"
+      localized.difficulty === "BEGINNER"
         ? 1
-        : lesson.difficulty === "INTERMEDIATE"
+        : localized.difficulty === "INTERMEDIATE"
           ? 3
           : 5,
-    xpReward: lesson.xpReward,
+    xpReward: localized.xpReward,
     status: "PUBLISHED" as const,
   };
 
@@ -258,7 +307,7 @@ async function upsertLessonWithQuiz(categoryId: string, lesson: SeedLesson) {
       lessonId: saved.id,
       xpReward: 40,
       perfectBonusXp: 20,
-      questions: { create: buildQuizQuestionCreates(lesson) },
+      questions: { create: buildQuizQuestionCreates(localized) },
     },
   });
 
@@ -266,13 +315,16 @@ async function upsertLessonWithQuiz(categoryId: string, lesson: SeedLesson) {
 }
 
 function buildGateQuestionCreates(gate: NutritionGateSeed | AnatomieGateSeed) {
-  return gate.questions.map((q, order) => {
+  const localizedGate = enrichGateWithEnglish(gate);
+  return localizedGate.questions.map((q, order) => {
     const imageUrl = payloadImageUrl(q.payload as Prisma.InputJsonValue | undefined);
     if (imageUrl) ensureUploadFile(imageUrl);
     return {
       type: q.type,
       prompt: q.prompt,
+      promptEn: q.promptEn,
       explanation: q.explanation,
+      explanationEn: q.explanationEn,
       order,
       payload: q.payload
         ? (q.payload as Prisma.InputJsonValue)
@@ -280,6 +332,7 @@ function buildGateQuestionCreates(gate: NutritionGateSeed | AnatomieGateSeed) {
       answers: {
         create: q.answers.map((a, i) => ({
           label: a.label,
+          labelEn: a.labelEn,
           isCorrect: a.isCorrect,
           order: a.order ?? i,
           matchKey: a.matchKey ?? undefined,
@@ -293,22 +346,24 @@ async function upsertCheckpointGate(
   categoryId: string,
   gate: NutritionGateSeed | AnatomieGateSeed,
 ) {
+  const localizedGate = enrichGateWithEnglish(gate);
   const existing = await prisma.checkpointGate.findUnique({
     where: {
       categoryId_checkpointKey: {
         categoryId,
-        checkpointKey: gate.checkpointKey,
+        checkpointKey: localizedGate.checkpointKey,
       },
     },
   });
 
   const baseData = {
-    title: gate.title,
-    checkpointOrder: gate.checkpointOrder,
-    timeLimitSec: gate.timeLimitSec,
-    passThreshold: gate.passThreshold,
-    questionCount: gate.questionCount,
-    xpReward: gate.xpReward,
+    title: localizedGate.title,
+    titleEn: localizedGate.titleEn ?? translateCheckpointTitle(localizedGate.title),
+    checkpointOrder: localizedGate.checkpointOrder,
+    timeLimitSec: localizedGate.timeLimitSec,
+    passThreshold: localizedGate.passThreshold,
+    questionCount: localizedGate.questionCount,
+    xpReward: localizedGate.xpReward,
   };
 
   if (existing) {
@@ -319,7 +374,7 @@ async function upsertCheckpointGate(
       where: { id: existing.id },
       data: baseData,
     });
-    for (const q of buildGateQuestionCreates(gate)) {
+    for (const q of buildGateQuestionCreates(localizedGate)) {
       await prisma.checkpointQuestion.create({
         data: { gateId: existing.id, ...q },
       });
@@ -331,8 +386,8 @@ async function upsertCheckpointGate(
     data: {
       ...baseData,
       categoryId,
-      checkpointKey: gate.checkpointKey,
-      questions: { create: buildGateQuestionCreates(gate) },
+      checkpointKey: localizedGate.checkpointKey,
+      questions: { create: buildGateQuestionCreates(localizedGate) },
     },
   });
   return saved.id;
@@ -346,26 +401,30 @@ async function replaceMiniGameQuestions(
   await prisma.miniGameQuestion.deleteMany({ where: { categoryId } });
 
   for (const [order, q] of questions.entries()) {
-    if (q.payload?.imageUrl) ensureUploadFile(q.payload.imageUrl);
+    const localized = enrichMiniGameQuestionWithEnglish(q);
+    if (localized.payload?.imageUrl) ensureUploadFile(localized.payload.imageUrl);
     const payload = {
-      ...(q.payload ?? {}),
-      ...(q.themeTags?.length ? { themeTags: q.themeTags } : {}),
+      ...(localized.payload ?? {}),
+      ...(localized.themeTags?.length ? { themeTags: localized.themeTags } : {}),
     };
     await prisma.miniGameQuestion.create({
       data: {
         categoryId,
-        checkpointKey: q.checkpointKey ?? null,
-        type: q.type,
-        prompt: q.prompt,
-        explanation: q.explanation,
+        checkpointKey: localized.checkpointKey ?? null,
+        type: localized.type,
+        prompt: localized.prompt,
+        promptEn: localized.promptEn,
+        explanation: localized.explanation,
+        explanationEn: localized.explanationEn,
         order,
         payload:
           Object.keys(payload).length > 0
             ? (payload as Prisma.InputJsonValue)
             : undefined,
         answers: {
-          create: q.answers.map((a, i) => ({
+          create: localized.answers.map((a, i) => ({
             label: a.label,
+            labelEn: a.labelEn,
             isCorrect: a.isCorrect,
             order: a.order ?? i,
             matchKey: a.matchKey ?? undefined,
@@ -377,42 +436,67 @@ async function replaceMiniGameQuestions(
 }
 
 async function main() {
-  const adminEmail = process.env.ADMIN_EMAIL ?? "admin@musclemind.app";
-  const adminPassword = process.env.ADMIN_PASSWORD ?? "Admin123!";
+  const adminEmail = (
+    process.env.ADMIN_EMAIL ?? "admin@musclemind.app"
+  ).toLowerCase();
+  const adminPassword = process.env.ADMIN_PASSWORD?.trim();
+  if (!adminPassword || adminPassword.length < 8) {
+    throw new Error(
+      "ADMIN_PASSWORD is required when seeding (min 8 characters). Refusing default Admin123!.",
+    );
+  }
   const adminPasswordHash = await bcrypt.hash(adminPassword, 10);
 
-  await prisma.user.upsert({
+  const existingAdmin = await prisma.user.findUnique({
     where: { email: adminEmail },
-    update: { role: "ADMIN", passwordHash: adminPasswordHash },
-    create: {
-      email: adminEmail,
-      passwordHash: adminPasswordHash,
-      displayName: "Admin",
-      role: "ADMIN",
-      streak: { create: {} },
-    },
   });
+  if (!existingAdmin) {
+    await prisma.user.create({
+      data: {
+        email: adminEmail,
+        passwordHash: adminPasswordHash,
+        displayName: "Admin",
+        role: "ADMIN",
+        streak: { create: {} },
+      },
+    });
+    console.log(`Created admin user ${adminEmail}`);
+  } else {
+    console.log(
+      `Admin user ${adminEmail} already exists — password/role left unchanged`,
+    );
+  }
 
-  const demoEmail = "demo@musclemind.app";
-  const demoPassword = "Demo123!";
-  const demoPasswordHash = await bcrypt.hash(demoPassword, 10);
-
-  await prisma.user.upsert({
-    where: { email: demoEmail },
-    update: { role: "USER", passwordHash: demoPasswordHash },
-    create: {
-      email: demoEmail,
-      passwordHash: demoPasswordHash,
-      displayName: "Démo",
-      role: "USER",
-      streak: { create: {} },
-    },
-  });
+  if (process.env.SEED_DEMO_USER === "1") {
+    const demoEmail = "demo@musclemind.app";
+    const demoPassword = "Demo123!";
+    const demoPasswordHash = await bcrypt.hash(demoPassword, 10);
+    const existingDemo = await prisma.user.findUnique({
+      where: { email: demoEmail },
+    });
+    if (!existingDemo) {
+      await prisma.user.create({
+        data: {
+          email: demoEmail,
+          passwordHash: demoPasswordHash,
+          displayName: "Démo",
+          role: "USER",
+          streak: { create: {} },
+        },
+      });
+      console.log(`Created demo user ${demoEmail}`);
+    } else {
+      console.log(`Demo user ${demoEmail} already exists — left unchanged`);
+    }
+  } else {
+    console.log("SEED_DEMO_USER unset — demo user skipped");
+  }
 
   const categories = [
     {
       slug: "anatomie",
       name: "Anatomie",
+      nameEn: CATEGORY_NAME_EN.anatomie,
       color: "#5B8CFF",
       icon: "body",
       order: 0,
@@ -420,6 +504,7 @@ async function main() {
     {
       slug: "nutrition",
       name: "Nutrition",
+      nameEn: CATEGORY_NAME_EN.nutrition,
       color: "#7CFFB2",
       icon: "nutrition",
       order: 1,
@@ -427,6 +512,7 @@ async function main() {
     {
       slug: "biomecanique",
       name: "Biomécanique",
+      nameEn: CATEGORY_NAME_EN.biomecanique,
       color: "#FF8C5B",
       icon: "mechanics",
       order: 2,
@@ -434,6 +520,7 @@ async function main() {
     {
       slug: "programmation",
       name: "Programmation",
+      nameEn: CATEGORY_NAME_EN.programmation,
       color: "#C77DFF",
       icon: "program",
       order: 3,
@@ -441,6 +528,7 @@ async function main() {
     {
       slug: "recuperation",
       name: "Récupération",
+      nameEn: CATEGORY_NAME_EN.recuperation,
       color: "#5BE0FF",
       icon: "recovery",
       order: 4,
@@ -456,32 +544,66 @@ async function main() {
   }
 
   // Compte démo : skip onboarding mobile (preferredCategory requis).
+  const demoEmail = "demo@musclemind.app";
   const nutritionForDemo = await prisma.category.findUniqueOrThrow({
     where: { slug: "nutrition" },
   });
-  await prisma.user.update({
+  const demoUser = await prisma.user.findUnique({
     where: { email: demoEmail },
-    data: { preferredCategoryId: nutritionForDemo.id },
+    select: { id: true },
   });
+  if (demoUser) {
+    await prisma.user.update({
+      where: { email: demoEmail },
+      data: { preferredCategoryId: nutritionForDemo.id },
+    });
+  }
+
+  // Compte test onboarding : sans preferredCategory pour rejouer le funnel.
+  const onboardEmail = "onboard@musclemind.app";
+  const onboardPasswordHash = await bcrypt.hash("Onboard123!", 10);
+  await prisma.user.upsert({
+    where: { email: onboardEmail },
+    update: { preferredCategoryId: null },
+    create: {
+      email: onboardEmail,
+      passwordHash: onboardPasswordHash,
+      displayName: "Onboard",
+      role: "USER",
+      preferredCategoryId: null,
+      streak: { create: {} },
+    },
+  });
+  console.log(`Onboard test user ready: ${onboardEmail} / Onboard123!`);
 
   await prisma.badge.upsert({
     where: { code: "FIRST_LESSON" },
-    update: {},
+    update: {
+      nameEn: BADGE_EN.FIRST_LESSON.name,
+      descriptionEn: BADGE_EN.FIRST_LESSON.description,
+    },
     create: {
       code: "FIRST_LESSON",
       name: "Première leçon",
+      nameEn: BADGE_EN.FIRST_LESSON.name,
       description: "Tu as terminé ta première micro-leçon.",
+      descriptionEn: BADGE_EN.FIRST_LESSON.description,
       icon: "book",
     },
   });
 
   await prisma.badge.upsert({
     where: { code: "FIRST_QUIZ" },
-    update: {},
+    update: {
+      nameEn: BADGE_EN.FIRST_QUIZ.name,
+      descriptionEn: BADGE_EN.FIRST_QUIZ.description,
+    },
     create: {
       code: "FIRST_QUIZ",
       name: "Premier quiz",
+      nameEn: BADGE_EN.FIRST_QUIZ.name,
       description: "Tu as validé ton premier quiz.",
+      descriptionEn: BADGE_EN.FIRST_QUIZ.description,
       icon: "quiz",
     },
   });
@@ -514,10 +636,18 @@ async function main() {
   ];
 
   for (const badge of miniGameBadges) {
+    const en = BADGE_EN[badge.code];
     await prisma.badge.upsert({
       where: { code: badge.code },
-      update: {},
-      create: badge,
+      update: {
+        nameEn: en?.name,
+        descriptionEn: en?.description,
+      },
+      create: {
+        ...badge,
+        nameEn: en?.name,
+        descriptionEn: en?.description,
+      },
     });
   }
 
@@ -603,7 +733,8 @@ async function main() {
 
   console.log("Seed complete");
   console.log(`Admin: ${adminEmail} / ${adminPassword}`);
-  console.log(`Demo user (mobile): ${demoEmail} / ${demoPassword}`);
+  console.log(`Demo user (mobile): ${demoEmail} / Demo123! (si SEED_DEMO_USER=1)`);
+  console.log(`Onboard test: ${onboardEmail} / Onboard123!`);
   console.log(`Lessons seeded: ${total}`);
   console.log(`Nutrition gates seeded: ${NUTRITION_GATES.length}`);
   console.log(`Anatomie gates seeded: ${ANATOMIE_GATES.length}`);

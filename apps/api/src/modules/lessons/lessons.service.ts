@@ -17,6 +17,17 @@ import {
   WATER_BOTTLE_COST,
   WATER_BOTTLES_MAX,
 } from "../users/users.service";
+import {
+  resolveRequestLocale,
+  pickLocalized,
+  pickLocalizedNullable,
+} from "../../common/locale";
+import {
+  pickCategoryName,
+  pickLessonMarkdown,
+  pickLessonSubtitle,
+  pickLessonTitle,
+} from "../../common/content-l10n";
 
 @Injectable()
 export class LessonsService {
@@ -27,8 +38,16 @@ export class LessonsService {
     private readonly users: UsersService,
   ) {}
 
-  async getById(lessonId: string, userId: string) {
+  async getById(lessonId: string, userId: string, localeHeader?: string) {
     await this.path.assertLessonUnlocked(lessonId, userId);
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { locale: true },
+    });
+    const locale = resolveRequestLocale(
+      { "x-locale": localeHeader },
+      user?.locale,
+    );
 
     const lesson = await this.prisma.lesson.findUnique({
       where: { id: lessonId },
@@ -45,9 +64,18 @@ export class LessonsService {
 
     return {
       id: lesson.id,
-      title: lesson.title,
-      subtitle: lesson.subtitle,
-      markdown: lesson.markdown,
+      title: pickLessonTitle(lesson.title, lesson.titleEn, locale),
+      subtitle: pickLessonSubtitle(
+        lesson.subtitle,
+        lesson.subtitleEn,
+        locale,
+      ),
+      markdown: pickLessonMarkdown(
+        lesson.markdown,
+        lesson.markdownEn,
+        locale,
+        lesson.title,
+      ),
       durationSec: lesson.durationSec,
       difficulty: lesson.difficulty,
       illustrationUrl: lesson.illustrationUrl,
@@ -58,7 +86,7 @@ export class LessonsService {
       order: lesson.order,
       category: {
         id: lesson.category.id,
-        name: lesson.category.name,
+        name: pickCategoryName(lesson.category.name, lesson.category.nameEn, locale, lesson.category.slug),
         color: lesson.category.color,
         slug: lesson.category.slug,
         icon: lesson.category.icon,
@@ -124,9 +152,13 @@ export class LessonsService {
   /**
    * Prefer the first unlocked, incomplete path node (preferred category first).
    */
-  async recommend(userId: string) {
+  async recommend(userId: string, localeHeader?: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException("User not found");
+    const locale = resolveRequestLocale(
+      { "x-locale": localeHeader },
+      user.locale,
+    );
 
     const lessonId = await this.path.findFirstAvailableLesson(
       userId,
@@ -142,15 +174,15 @@ export class LessonsService {
 
     return {
       id: best.id,
-      title: best.title,
-      subtitle: best.subtitle,
+      title: pickLessonTitle(best.title, best.titleEn, locale),
+      subtitle: pickLessonSubtitle(best.subtitle, best.subtitleEn, locale),
       durationSec: best.durationSec,
       difficulty: best.difficulty,
       xpReward: best.xpReward,
       illustrationUrl: best.illustrationUrl,
       category: {
         id: best.category.id,
-        name: best.category.name,
+        name: pickCategoryName(best.category.name, best.category.nameEn, locale, best.category.slug),
         color: best.category.color,
         slug: best.category.slug,
         icon: best.category.icon,

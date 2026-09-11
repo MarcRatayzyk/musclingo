@@ -37,8 +37,8 @@ export function mascotKindFromCategorySlug(
 export const MASCOT_SIZES = {
   sm: 72,
   md: 112,
-  /** Leçon : un peu plus grand, avec marge bas pour le footer. */
-  lesson: 180,
+  /** Fallback leçon si pas de `dimension` responsive. */
+  lesson: 140,
   lg: 220,
 } as const;
 

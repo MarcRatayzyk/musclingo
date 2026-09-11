@@ -6,7 +6,7 @@ export type {
   PathSlug,
   StreakGoalDays,
 } from "./types";
-export { ONBOARDING_STEPS, MOOD_TO_POSE } from "./types";
+export { ONBOARDING_STEPS, ONBOARDING_SCREEN_IDS, MOOD_TO_POSE } from "./types";
 export { useOnboardingStore } from "./store";
 export {
   loadOnboardingAnswers,
@@ -27,3 +27,9 @@ export { MascotMessage } from "./components/MascotMessage";
 export { OnboardingPrimaryButton as PrimaryButton } from "./components/OnboardingPrimaryButton";
 export { PathPreview } from "./components/PathPreview";
 export { LessonPreview } from "./components/LessonPreview";
+export {
+  OnboardingLoadingState,
+  OnboardingEmptyState,
+  OnboardingErrorState,
+} from "./components/OnboardingStates";
+export { onboardingColors, onboardingType, space, radius } from "./theme";

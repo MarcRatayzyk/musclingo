@@ -1,7 +1,15 @@
 import { Pressable, Text, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
-import { Screen } from "@/shared/ui/primitives";
+import { LinearAtmosphere } from "./LinearAtmosphere";
+import { BackChevronIcon } from "./OnboardingIcons";
 import { OnboardingProgress } from "./OnboardingProgress";
+import {
+  motion,
+  onboardingColors,
+  onboardingType,
+  space,
+} from "../theme";
+import { useReducedMotion } from "../useReducedMotion";
 
 type Props = {
   children: React.ReactNode;
@@ -20,42 +28,75 @@ export function OnboardingContainer({
   showProgress = true,
   footer,
 }: Props) {
+  const reduced = useReducedMotion();
+
   return (
-    <Screen className="pt-12">
-      <View style={{ flex: 1, paddingBottom: 24 }}>
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: onboardingColors.ink,
+        paddingHorizontal: space.lg + 4,
+        paddingTop: 48,
+      }}
+    >
+      <LinearAtmosphere />
+      <View style={{ flex: 1, paddingBottom: space.xl, zIndex: 1 }}>
         {showProgress ? (
-          <View className="mb-4 flex-row items-center justify-between">
+          <View
+            style={{
+              marginBottom: space.lg,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
             {onBack && stepIndex > 0 ? (
               <Pressable
                 onPress={onBack}
                 hitSlop={12}
                 accessibilityRole="button"
                 accessibilityLabel="Retour"
-                className="rounded-xl px-2 py-1"
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 2,
+                  minWidth: 64,
+                  paddingVertical: space.xs,
+                }}
               >
-                <Text className="text-base text-muted">← Retour</Text>
+                <BackChevronIcon />
+                <Text style={{ ...onboardingType.meta, color: onboardingColors.mist }}>
+                  Retour
+                </Text>
               </Pressable>
             ) : (
-              <View className="w-16" />
+              <View style={{ width: 64 }} />
             )}
-            <View className="flex-1 px-4">
+            <View style={{ flex: 1, paddingHorizontal: space.md }}>
               <OnboardingProgress
                 stepIndex={stepIndex}
                 totalSteps={totalSteps}
               />
             </View>
-            <View className="w-16" />
+            <View style={{ width: 64 }} />
           </View>
         ) : null}
 
         <View style={{ flex: 1 }} key={stepIndex}>
-          <Animated.View entering={FadeIn.duration(220)} style={{ flex: 1 }}>
+          <Animated.View
+            entering={
+              reduced ? undefined : FadeIn.duration(motion.enter)
+            }
+            style={{ flex: 1 }}
+          >
             {children}
           </Animated.View>
         </View>
 
-        {footer ? <View style={{ paddingTop: 12 }}>{footer}</View> : null}
+        {footer ? (
+          <View style={{ paddingTop: space.md }}>{footer}</View>
+        ) : null}
       </View>
-    </Screen>
+    </View>
   );
 }

@@ -1,0 +1,122 @@
+{
+  "language": {
+    "headline": "Choose your language",
+    "headlineFr": "Choisis ta langue",
+    "hint": "You can change this later in your profile.",
+    "hintFr": "Tu pourras changer ça plus tard dans ton profil.",
+    "cta": "Continue / Continuer"
+  },
+  "pain": {
+    "headline": "You train.\nBut you don’t really know why.",
+    "body": "Scrolled feeds. Random tips. Workouts you copy without understanding.",
+    "cta": "That’s exactly my problem",
+    "login": "I already have an account"
+  },
+  "amplify": {
+    "headline": "It’s not a lack of willpower.",
+    "body": "It’s a system: without knowing what to target, you repeat effort — not progress.",
+    "bullets": [
+      "Feeds wasted on your phone",
+      "Copied programs with no logic",
+      "Plateaus you can’t read"
+    ],
+    "cta": "See what’s holding me back"
+  },
+  "positioning": {
+    "headline": "The problem isn’t doing more.",
+    "insight": "It’s knowing exactly what to do — and why — while you rest.",
+    "solution": "Muscle Mind gives you body science in 2-minute micro-lessons, between sets.",
+    "cta": "Personalize my diagnosis"
+  },
+  "personalize": {
+    "headline": "What’s holding you back most?",
+    "hint": "One answer is enough. We build your diagnosis from it.",
+    "cta": "Analyze my profile",
+    "emptyTitle": "Pick what’s blocking you",
+    "emptyHint": "One answer is enough to build your diagnosis."
+  },
+  "value": {
+    "loading": "Analyzing your profile…",
+    "cta": "See my path"
+  },
+  "preview": {
+    "headline": "Here’s how we’ll get you there",
+    "freeLabel": "Free — your first lesson",
+    "lockedLabel": "Full path",
+    "body": "You leave with a first win already. Depth continues behind it.",
+    "cta": "Unlock my plan",
+    "loadingLesson": "Loading your lesson…",
+    "fallbackLesson": "How does a muscle work?",
+    "loadLessonError": "Couldn’t load your first lesson."
+  },
+  "paywall": {
+    "headline": "Go all the way on your plan",
+    "sub": "You’ve started. Genius removes the brakes so the science doesn’t stop between sets.",
+    "benefits": [
+      "Personalized full path",
+      "Unlimited lessons — never run out",
+      "Zero ads between lessons",
+      "Rest timer built into your session"
+    ],
+    "price": "€5.99 / month",
+    "billing": "Monthly renewal. Cancel anytime.",
+    "cta": "Unlock Genius — €5.99 / month",
+    "skip": "Continue free with my 1st lesson"
+  },
+  "briefing": "Preparing your briefing…",
+  "pathsError": "Couldn’t load paths.",
+  "savePathError": "Couldn’t save your path.",
+  "blockers": {
+    "understand_training": "I don’t know why I do an exercise",
+    "progress": "I plateau despite the effort",
+    "anatomy": "I don’t understand my body",
+    "build_workouts": "My sessions are poorly built",
+    "autonomy": "I rely too much on a coach / TikTok",
+    "nutrition": "I want to eat better to progress"
+  },
+  "insights": {
+    "understand_training": {
+      "echo": "You want to know why you do each exercise.",
+      "diagnosis": "Without the “why”, you copy programs. The stimulus misses — and you plateau without seeing it.",
+      "firstStep": "First lesson: understand what a muscle really does. 2 minutes, between sets.",
+      "premiumHook": "The full path links each exercise to its muscle, role, and progression."
+    },
+    "progress": {
+      "echo": "You train — but results don’t follow.",
+      "diagnosis": "Plateaus often come from missing scientific structure, not missing willpower.",
+      "firstStep": "We start with body basics: without that, clean progress is impossible.",
+      "premiumHook": "Genius unlocks continuous follow-through so you’re never stuck between lessons."
+    },
+    "anatomy": {
+      "echo": "You finally want to understand your body.",
+      "diagnosis": "Without a mental map of the body, every session stays fuzzy. You move — you don’t learn.",
+      "firstStep": "Anatomy micro-lesson: one puzzle piece, during a rest.",
+      "premiumHook": "The full Anatomy path gives you the complete map, theme after theme."
+    },
+    "build_workouts": {
+      "echo": "You want sessions that actually hold up.",
+      "diagnosis": "Stacking exercises by feel creates volume without logic. The body adapts poorly.",
+      "firstStep": "We lay the anatomy base first: you’ll know what each movement targets.",
+      "premiumHook": "Next: programming, volume, progression — the full plan behind the first lesson."
+    },
+    "autonomy": {
+      "echo": "You want to decide without depending on a feed.",
+      "diagnosis": "Short tips tell you what to do, rarely why. You stay dependent.",
+      "firstStep": "One clear, sourced lesson — yours — during rest. Not a scroll.",
+      "premiumHook": "The path trains you to judge alone: real autonomy, not another coach in your pocket."
+    },
+    "nutrition": {
+      "echo": "You want to eat to progress.",
+      "diagnosis": "Without nutrition basics, gym effort is wasted. Fuel matters as much as load.",
+      "firstStep": "First nutrition lesson: energy and needs, in 2 minutes.",
+      "premiumHook": "The full Nutrition path structures protein, timing, and your plate."
+    }
+  },
+  "paths": {
+    "anatomie": { "label": "Anatomy", "hint": "Know what you’re training" },
+    "nutrition": { "label": "Nutrition", "hint": "Eat to progress" },
+    "biomecanique": { "label": "Biomechanics" },
+    "recuperation": { "label": "Recovery" },
+    "programmation": { "label": "Training" }
+  }
+}

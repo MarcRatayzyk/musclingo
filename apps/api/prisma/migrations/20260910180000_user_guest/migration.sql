@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE "User" ALTER COLUMN "email" DROP NOT NULL;
+ALTER TABLE "User" ALTER COLUMN "passwordHash" DROP NOT NULL;
+
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN "isGuest" BOOLEAN NOT NULL DEFAULT false;

@@ -149,7 +149,19 @@ export class AdminController {
           ensureUploadDir();
           cb(null, UPLOAD_DIR);
         },
-        filename: (_req, file, cb) => {
+        filename: (req, file, cb) => {
+          const requested = String(
+            (req.body as { filename?: string } | undefined)?.filename ?? "",
+          )
+            .trim()
+            .replace(/^.*[\\/]/, "");
+          if (
+            requested &&
+            /^[a-zA-Z0-9._-]+\.(png|jpe?g|webp|gif)$/i.test(requested)
+          ) {
+            cb(null, requested);
+            return;
+          }
           const ext = extname(file.originalname).toLowerCase() || ".jpg";
           cb(null, `${randomUUID()}${ext}`);
         },

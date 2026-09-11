@@ -3,6 +3,7 @@ import { apiFetch } from "@/shared/api/client";
 import { invalidateSession } from "@/shared/auth/session";
 import { tokenStorage } from "@/shared/storage/mmkv";
 import { analytics } from "@/shared/analytics/posthog";
+import type { AppLocale } from "@/i18n/localeStorage";
 
 export type AuthTokens = {
   accessToken: string;
@@ -11,10 +12,12 @@ export type AuthTokens = {
 
 export type Me = {
   id: string;
-  email: string;
+  email: string | null;
+  isGuest?: boolean;
   displayName: string;
   avatarUrl: string | null;
   role: string;
+  locale?: "fr" | "en";
   xpTotal: number;
   level: number;
   memoryGameBestScore: number;
@@ -69,10 +72,29 @@ export type Me = {
   }>;
 };
 
+function identifyFromMe(me: Me) {
+  if (!me?.id) return;
+  analytics.identify(me.id, {
+    email: me.email,
+    displayName: me.displayName,
+    isGuest: me.isGuest ?? false,
+  });
+}
+
 export function useMe(enabled = true) {
   return useQuery({
     queryKey: ["me"],
-    queryFn: () => apiFetch<Me>("/me"),
+    queryFn: async () => {
+      const me = await apiFetch<Me>("/me");
+      identifyFromMe(me);
+      if (me.locale === "en" || me.locale === "fr") {
+        const { setAppLocale, getAppLocale } = await import("@/i18n");
+        if (getAppLocale() !== me.locale) {
+          await setAppLocale(me.locale);
+        }
+      }
+      return me;
+    },
     enabled: enabled && !!tokenStorage.getAccess(),
   });
 }
@@ -94,6 +116,41 @@ export function useUpdatePreferredCategory() {
         });
       }
       qc.invalidateQueries({ queryKey: ["categories"] });
+    },
+  });
+}
+
+/** Efface preferredCategory pour rejouer l’onboarding. */
+export function useClearPreferredCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<Me>("/me/preferred-category", {
+        method: "DELETE",
+      }),
+    onSuccess: (data) => {
+      qc.setQueryData(["me"], data);
+      qc.invalidateQueries({ queryKey: ["me"] });
+      qc.invalidateQueries({ queryKey: ["categories"] });
+    },
+  });
+}
+
+export function useUpdateLocale() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (locale: AppLocale) =>
+      apiFetch<Me>("/me/locale", {
+        method: "PATCH",
+        body: JSON.stringify({ locale }),
+      }),
+    onSuccess: (data) => {
+      qc.setQueryData(["me"], data);
+      qc.invalidateQueries({ queryKey: ["me"] });
+      qc.invalidateQueries({ queryKey: ["categories"] });
+      qc.invalidateQueries({ queryKey: ["shop"] });
+      qc.invalidateQueries({ queryKey: ["mini-games"] });
+      qc.invalidateQueries({ queryKey: ["lessons"] });
     },
   });
 }
@@ -128,6 +185,28 @@ export function useRegister() {
       }),
     onSuccess: (data: AuthTokens) => {
       tokenStorage.setTokens(data.accessToken, data.refreshToken);
+      analytics.capture(analytics.events.SIGNUP);
+      qc.invalidateQueries({ queryKey: ["me"] });
+    },
+  });
+}
+
+/** Upgrade guest session → full account (keeps server progress). */
+export function useClaimAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      email: string;
+      password: string;
+      displayName: string;
+    }) =>
+      apiFetch<AuthTokens>("/auth/claim", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: (data: AuthTokens) => {
+      tokenStorage.setTokens(data.accessToken, data.refreshToken);
+      analytics.capture(analytics.events.CLAIM_COMPLETED);
       analytics.capture(analytics.events.SIGNUP);
       qc.invalidateQueries({ queryKey: ["me"] });
     },

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from "@nestjs/common";
+import { Body, Controller, Get, Headers, Param, Post } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { CompleteLessonSchema } from "@muscle-mind/types";
 import { AuthUser, CurrentUser } from "../../common/decorators";
@@ -12,13 +12,20 @@ export class LessonsController {
   constructor(private readonly lessons: LessonsService) {}
 
   @Get("recommended")
-  recommend(@CurrentUser() user: AuthUser) {
-    return this.lessons.recommend(user.userId);
+  recommend(
+    @CurrentUser() user: AuthUser,
+    @Headers("x-locale") locale?: string,
+  ) {
+    return this.lessons.recommend(user.userId, locale);
   }
 
   @Get(":id")
-  get(@Param("id") id: string, @CurrentUser() user: AuthUser) {
-    return this.lessons.getById(id, user.userId);
+  get(
+    @Param("id") id: string,
+    @CurrentUser() user: AuthUser,
+    @Headers("x-locale") locale?: string,
+  ) {
+    return this.lessons.getById(id, user.userId, locale);
   }
 
   @Post(":id/start")

@@ -18,6 +18,7 @@ import type { QuizQuestion } from "@/features/quiz/types";
 import { ApiError } from "@/shared/api/client";
 import { ExtraTimeIcon } from "@/shared/ui/BoostIcons";
 import { PrimaryButton, Screen } from "@/shared/ui/primitives";
+import { QuizSkeleton } from "@/shared/ui/Skeleton";
 import { NeuroliftAmount } from "@/shared/ui/Neurolift";
 
 type SubmitResult = {
@@ -190,7 +191,7 @@ export default function CheckpointGateScreen() {
   if (isLoading || !gate) {
     return (
       <Screen>
-        <Text className="text-muted">Préparation du checkpoint…</Text>
+        <QuizSkeleton />
       </Screen>
     );
   }

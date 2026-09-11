@@ -49,11 +49,11 @@ export function NeuroCoinAmount({
         gap: config.gap,
       }}
     >
+      <NeuroCoinIcon size={config.icon} />
       <Text style={valueStyle}>
         {prefix}
         {amount}
       </Text>
-      <NeuroCoinIcon size={config.icon} />
     </View>
   );
 }

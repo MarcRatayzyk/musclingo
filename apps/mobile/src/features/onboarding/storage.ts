@@ -33,6 +33,8 @@ export function loadOnboardingAnswers(): OnboardingAnswers {
       weeklyGoalDays?: number;
     };
     return {
+      locale:
+        parsed.locale === "en" || parsed.locale === "fr" ? parsed.locale : null,
       motivations: parsed.motivations ?? [],
       level: parsed.level ?? null,
       preferredPath: parsed.preferredPath ?? null,
@@ -56,6 +58,14 @@ export function markOnboardingCompleted(): void {
 
 export function hasCompletedOnboarding(): boolean {
   return mmkv.getString(COMPLETED_KEY) === "1";
+}
+
+/** Efface le progrès local pour rejouer l’onboarding. */
+export function clearOnboardingProgress(): void {
+  mmkv.delete(KEY);
+  mmkv.delete(COMPLETED_KEY);
+  mmkv.delete(STREAK_GOAL_KEY);
+  mmkv.delete("claim_prompt_dismissed_v1");
 }
 
 /** Enregistre le défi streak : récompenses seulement à la réussite. */

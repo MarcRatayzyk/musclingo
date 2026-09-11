@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Post, Body } from "@nestjs/common";
+import { Controller, Get, Param, Post, Body, Headers } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { SubmitCheckpointGateSchema } from "@muscle-mind/types";
 import { AuthUser, CurrentUser } from "../../common/decorators";
@@ -12,8 +12,12 @@ export class CheckpointsController {
   constructor(private readonly checkpoints: CheckpointsService) {}
 
   @Get(":id")
-  get(@Param("id") id: string, @CurrentUser() user: AuthUser) {
-    return this.checkpoints.getById(id, user.userId);
+  get(
+    @Param("id") id: string,
+    @CurrentUser() user: AuthUser,
+    @Headers("x-locale") locale?: string,
+  ) {
+    return this.checkpoints.getById(id, user.userId, locale);
   }
 
   @Post(":id/submit")
@@ -21,7 +25,8 @@ export class CheckpointsController {
     @Param("id") id: string,
     @CurrentUser() user: AuthUser,
     @Body(new ZodValidationPipe(SubmitCheckpointGateSchema)) body: unknown,
+    @Headers("x-locale") locale?: string,
   ) {
-    return this.checkpoints.submit(id, user.userId, body as never);
+    return this.checkpoints.submit(id, user.userId, body as never, locale);
   }
 }

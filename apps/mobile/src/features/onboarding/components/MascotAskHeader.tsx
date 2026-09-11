@@ -4,6 +4,8 @@ import { GorillaAvatar } from "@/features/mascot";
 import { MascotSpeechBubble } from "@/features/mascot";
 import type { MascotPose } from "@/features/mascot";
 import { MASCOT_SIZES } from "@/features/mascot/assets";
+import { motion, onboardingColors, onboardingType, space } from "../theme";
+import { useReducedMotion } from "../useReducedMotion";
 
 type Props = {
   text: string;
@@ -17,12 +19,14 @@ const GORILLA_SIZE = MASCOT_SIZES.md;
 export function MascotAskHeader({
   text,
   pose = "present",
-  accentColor = "#7CFFB2",
+  accentColor = onboardingColors.pulse,
 }: Props) {
+  const reduced = useReducedMotion();
+
   return (
     <Animated.View
-      entering={FadeInDown.duration(280)}
-      style={{ marginBottom: 16, alignItems: "flex-start", width: "100%" }}
+      entering={reduced ? undefined : FadeInDown.duration(motion.enter)}
+      style={{ marginBottom: space.lg, alignItems: "flex-start", width: "100%" }}
     >
       <View style={{ width: "100%" }}>
         <MascotSpeechBubble
@@ -34,16 +38,7 @@ export function MascotAskHeader({
           accentColor={accentColor}
           compact
         >
-          <Text
-            style={{
-              color: "#FFFFFF",
-              fontSize: 20,
-              lineHeight: 28,
-              fontWeight: "700",
-            }}
-          >
-            {text}
-          </Text>
+          <Text style={onboardingType.title}>{text}</Text>
         </MascotSpeechBubble>
       </View>
       <View style={{ marginTop: 2 }}>

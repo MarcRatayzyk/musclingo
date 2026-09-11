@@ -14,14 +14,17 @@ export function GorillaAvatar({
   size = "md",
   kind = "gorilla",
   sourceOverride,
+  dimension,
 }: {
   pose?: MascotPose;
   size?: Size;
   kind?: MascotKind;
   /** Remplace l’image (ex. bravo / triste au résultat de quiz Nutrition). */
   sourceOverride?: ImageSourcePropType;
+  /** Taille pixel explicite (responsive leçon). Prioritaire sur `size`. */
+  dimension?: number;
 }) {
-  const dim = MASCOT_SIZES[size];
+  const dim = dimension ?? MASCOT_SIZES[size];
   const source = sourceOverride ?? getMascotImages(kind)[pose];
   const label =
     kind === "turtle" ? "Tortue, guide nutrition" : "Gorille, guide anatomie";

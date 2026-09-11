@@ -1,0 +1,128 @@
+{
+  "saveTitle": "Avant de partir…",
+  "saveBody": "On a une offre pour toi.",
+  "accept": "Accepter",
+  "decline": "Non merci",
+  "pause": "Mettre en pause",
+  "cancelSub": "Résilier",
+  "nudgeStreak": "Ne casse pas ta série",
+  "nudgeWater": "Tes bouteilles sont basses",
+  "nudgeReturn": "Reprends où tu t’étais arrêté",
+  "nudges": {
+    "pauseEnding": {
+      "message": "Ta pause se termine bientôt — gère ton abonnement.",
+      "cta": "Gérer l’abonnement"
+    },
+    "winback": {
+      "message": "Envie de revenir ? Réactive en 1 tap.",
+      "cta": "Réactiver"
+    },
+    "premiumIdle": {
+      "message": "Ton {{plan}} est actif — reprends où tu en étais.",
+      "cta": "Reprendre"
+    },
+    "lowEngagement": {
+      "message": "On a remarqué moins d’activité — une leçon rapide ?",
+      "cta": "Une leçon"
+    }
+  },
+  "reasons": {
+    "too_expensive": "Trop cher",
+    "not_using": "Pas assez utilisé",
+    "missing_feature": "Il me manque une fonctionnalité",
+    "competitor": "Je passe à un autre outil",
+    "bugs": "Problèmes techniques / bugs",
+    "temporary": "Besoin temporaire / pause",
+    "other": "Autre"
+  },
+  "offers": {
+    "too_expensive": {
+      "primary": {
+        "title": "−25 % pendant 2 mois",
+        "body": "On aimerait te garder. Profite de Genius à prix réduit pendant deux mois — l’offre expire si tu quittes cet écran.",
+        "cta": "Accepter l’offre"
+      },
+      "fallback": {
+        "title": "Passer à Boost",
+        "body": "Garde l’essentiel à 2,99 € avec Boost, sans tout annuler.",
+        "cta": "Passer à Boost"
+      }
+    },
+    "not_using": {
+      "primary": {
+        "title": "Mettre en pause 1 mois",
+        "body": "Pas le moment ? On met ton abonnement en pause. Tes progrès restent intacts.",
+        "cta": "Mettre en pause"
+      },
+      "fallback": {
+        "title": "Une leçon rapide pour reprendre",
+        "body": "Reprends en 2 minutes — une micro-leçon pour remettre le rythme sans pression.",
+        "cta": "Reprendre une leçon"
+      }
+    },
+    "missing_feature": {
+      "primary": {
+        "title": "On construit la suite",
+        "body": "Timer avancé, parcours coach et sync multi-appareils sont sur la roadmap. Dis-nous ce qui te manque le plus — on priorise.",
+        "cta": "Rester et suivre la roadmap"
+      }
+    },
+    "competitor": {
+      "primary": {
+        "title": "Ce que Genius te garde",
+        "body": "Bouteilles illimitées, sans pubs, et le parcours Duolingo de la musculation. Compare avant de partir.",
+        "cta": "Garder Genius"
+      },
+      "fallback": {
+        "title": "−20 % pendant 1 mois",
+        "body": "Un coup de pouce pour rester un mois de plus et juger sur le fond.",
+        "cta": "Accepter −20 %"
+      }
+    },
+    "bugs": {
+      "primary": {
+        "title": "On veut corriger ça",
+        "body": "Écris-nous — on traite les bugs en priorité pour les abonnés. Tu peux aussi continuer l’annulation.",
+        "cta": "Contacter le support"
+      }
+    },
+    "temporary": {
+      "primary": {
+        "title": "Pause 2 mois",
+        "body": "Besoin temporaire ? Pause jusqu’à 2 mois, réactivation auto avec un rappel avant la reprise.",
+        "cta": "Mettre en pause 2 mois"
+      }
+    },
+    "other": {
+      "primary": {
+        "title": "Pause 1 mois",
+        "body": "Si ce n’est pas le bon moment, une pause courte évite de tout perdre.",
+        "cta": "Mettre en pause"
+      }
+    }
+  },
+  "manage": {
+    "currentPlan": "Plan actuel",
+    "noSubscription": "Aucun abonnement",
+    "pausedUntil": "En pause jusqu’au {{date}}",
+    "discountUntil": "−{{percent}} % jusqu’au {{date}}",
+    "cancelledOn": "Annulé le {{date}}",
+    "engagement": "Engagement · {{health}} ({{score}}/100)",
+    "shopCta": "Voir la boutique",
+    "reactivateDemo": "Réactiver Genius (démo)",
+    "cancelSub": "Annuler l’abonnement",
+    "demoDisclaimer": "Démo locale — l’annulation store arrivera avec RevenueCat.",
+    "whyLeaveTitle": "Pourquoi tu veux partir ?",
+    "whyLeaveBody": "Dis-nous la raison principale — on a peut-être une solution.",
+    "otherPlaceholder": "Dis-nous en plus (optionnel)",
+    "viewOffer": "Voir mon offre",
+    "keepSub": "Garder mon abonnement",
+    "offerTitle": "Et si on pouvait t’aider ?",
+    "offerBody": "Voici une proposition adaptée à ta situation.",
+    "continueCancel": "Non merci, continuer l’annulation",
+    "confirmTitle": "Confirmer l’annulation",
+    "confirmBody": "Ton accès {{planName}} reste actif jusqu’à la fin de la période en cours (démo). Tu pourras réactiver à tout moment.",
+    "doneTitle": "Abonnement annulé",
+    "doneBody": "Merci d’avoir essayé Muscle Mind. Tu peux réactiver en un tap quand tu veux."
+  }
+}

@@ -1,7 +1,17 @@
-import { BadRequestException, Body, Controller, Get, Patch, Post } from "@nestjs/common";
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Headers,
+  Patch,
+  Post,
+} from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import {
   SubmitMemoryGameScoreSchema,
+  UpdateLocaleSchema,
   UpdatePreferredCategorySchema,
 } from "@muscle-mind/types";
 import { CurrentUser, AuthUser } from "../../common/decorators";
@@ -15,8 +25,20 @@ export class UsersController {
   constructor(private readonly users: UsersService) {}
 
   @Get("me")
-  me(@CurrentUser() user: AuthUser) {
-    return this.users.getMe(user.userId);
+  me(
+    @CurrentUser() user: AuthUser,
+    @Headers("x-locale") localeHeader?: string,
+  ) {
+    return this.users.getMe(user.userId, localeHeader);
+  }
+
+  @Patch("me/locale")
+  updateLocale(
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(UpdateLocaleSchema)) body: unknown,
+  ) {
+    const { locale } = body as { locale: "fr" | "en" };
+    return this.users.updateLocale(user.userId, locale);
   }
 
   @Patch("me/preferred-category")
@@ -29,6 +51,11 @@ export class UsersController {
       user.userId,
       preferredCategoryId,
     );
+  }
+
+  @Delete("me/preferred-category")
+  clearPreferredCategory(@CurrentUser() user: AuthUser) {
+    return this.users.clearPreferredCategory(user.userId);
   }
 
   @Post("me/memory-game/score")

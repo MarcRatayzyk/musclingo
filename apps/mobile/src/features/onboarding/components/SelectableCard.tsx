@@ -4,33 +4,55 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
+import {
+  motion,
+  onboardingColors,
+  onboardingType,
+  radius,
+  space,
+} from "../theme";
+import { CheckIcon } from "./OnboardingIcons";
 
 type Props = {
   label: string;
   selected: boolean;
   onPress: () => void;
-  emoji?: string;
+  icon?: React.ReactNode;
   hint?: string;
   badge?: string;
   accentColor?: string;
   disabled?: boolean;
+  /** Tuile grille (motivation / path) vs rangée pleine largeur. */
+  layout?: "tile" | "row";
+  /** Atténue la tuile (ex. bientôt) sans bloquer le press. */
+  dimmed?: boolean;
+  /** Contenu à droite du label (ex. récompenses), même ligne. */
+  endContent?: React.ReactNode;
+  /** Réserve toujours la ligne badge (hauteurs égales en grille). */
+  reserveBadge?: boolean;
 };
 
 export function SelectableCard({
   label,
   selected,
   onPress,
-  emoji,
+  icon,
   hint,
   badge,
-  accentColor = "#7CFFB2",
+  accentColor = onboardingColors.pulse,
   disabled,
+  layout = "row",
+  dimmed,
+  endContent,
+  reserveBadge,
 }: Props) {
   const scale = useSharedValue(1);
-
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
+
+  const isTile = layout === "tile";
+  const showBadgeSlot = Boolean(badge) || reserveBadge;
 
   return (
     <Pressable
@@ -38,66 +60,174 @@ export function SelectableCard({
       accessibilityRole="button"
       accessibilityState={{ selected, disabled: !!disabled }}
       onPressIn={() => {
-        scale.value = withSpring(0.97, { damping: 18, stiffness: 320 });
+        scale.value = withSpring(0.97, motion.press);
       }}
       onPressOut={() => {
-        scale.value = withSpring(1, { damping: 14, stiffness: 260 });
+        scale.value = withSpring(1, motion.release);
       }}
       onPress={onPress}
-      className="mb-3"
+      style={
+        isTile
+          ? { width: "48%", marginBottom: 10 }
+          : { marginBottom: space.md }
+      }
     >
       <Animated.View
         style={[
           animatedStyle,
           {
-            borderColor: selected ? accentColor : "#2A3344",
-            backgroundColor: selected ? accentColor + "18" : "#141820",
+            minHeight: isTile ? (hint ? 148 : 132) : undefined,
+            height: isTile ? (hint ? 148 : 132) : undefined,
+            borderRadius: radius.tile,
+            borderWidth: 1.5,
+            borderColor: selected ? accentColor : onboardingColors.seam,
+            backgroundColor: selected
+              ? accentColor + "18"
+              : onboardingColors.rubber,
+            paddingHorizontal: space.lg,
+            paddingVertical: space.lg,
+            opacity: disabled || dimmed ? 0.55 : 1,
+            overflow: "hidden",
+            justifyContent: isTile ? "space-between" : undefined,
           },
         ]}
-        className="flex-row items-center gap-3 rounded-3xl border-2 px-4 py-4"
       >
-        {emoji ? (
-          <View className="h-12 w-12 items-center justify-center rounded-2xl bg-elevated">
-            <Text className="text-2xl">{emoji}</Text>
-          </View>
-        ) : null}
-
-        <View className="flex-1">
-          <View className="flex-row items-center gap-2">
-            <Text className="flex-1 text-lg font-semibold text-white">
-              {label}
-            </Text>
-            {badge ? (
-              <View
-                className="rounded-full px-2.5 py-1"
-                style={{ backgroundColor: accentColor + "33" }}
-              >
-                <Text
-                  className="text-[10px] font-bold uppercase tracking-wide"
-                  style={{ color: accentColor }}
-                >
-                  {badge}
-                </Text>
-              </View>
-            ) : null}
-          </View>
-          {hint ? (
-            <Text className="mt-1 text-sm leading-5 text-muted">{hint}</Text>
-          ) : null}
-        </View>
-
         <View
-          className="h-7 w-7 items-center justify-center rounded-full border-2"
           style={{
-            borderColor: selected ? accentColor : "#2A3344",
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 3,
             backgroundColor: selected ? accentColor : "transparent",
           }}
-        >
-          {selected ? (
-            <Text className="text-xs font-bold text-background">✓</Text>
-          ) : null}
-        </View>
+        />
+
+        {isTile ? (
+          <>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <IconWell selected={selected} accentColor={accentColor}>
+                {icon}
+              </IconWell>
+              <SelectionDot selected={selected} accentColor={accentColor} />
+            </View>
+            {showBadgeSlot ? (
+              <Text
+                style={{
+                  ...onboardingType.meta,
+                  color: badge ? accentColor : "transparent",
+                  fontFamily: onboardingType.label.fontFamily,
+                  minHeight: 18,
+                }}
+              >
+                {badge ?? " "}
+              </Text>
+            ) : null}
+            <Text style={onboardingType.label} numberOfLines={2}>
+              {label}
+            </Text>
+            {hint ? <Text style={onboardingType.meta}>{hint}</Text> : null}
+          </>
+        ) : (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: space.md,
+            }}
+          >
+            {icon ? (
+              <IconWell selected={selected} accentColor={accentColor}>
+                {icon}
+              </IconWell>
+            ) : null}
+            <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: space.sm,
+                  flexWrap: "wrap",
+                }}
+              >
+                <Text style={onboardingType.label}>{label}</Text>
+                {endContent}
+                {badge ? (
+                  <Text
+                    style={{
+                      ...onboardingType.meta,
+                      color: accentColor,
+                      fontFamily: onboardingType.label.fontFamily,
+                    }}
+                  >
+                    {badge}
+                  </Text>
+                ) : null}
+              </View>
+              {hint ? <Text style={onboardingType.meta}>{hint}</Text> : null}
+            </View>
+            <SelectionDot selected={selected} accentColor={accentColor} />
+          </View>
+        )}
       </Animated.View>
     </Pressable>
+  );
+}
+
+function IconWell({
+  children,
+  selected,
+  accentColor,
+}: {
+  children?: React.ReactNode;
+  selected: boolean;
+  accentColor: string;
+}) {
+  return (
+    <View
+      style={{
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: selected ? accentColor + "28" : onboardingColors.plate,
+      }}
+    >
+      {children}
+    </View>
+  );
+}
+
+function SelectionDot({
+  selected,
+  accentColor,
+}: {
+  selected: boolean;
+  accentColor: string;
+}) {
+  return (
+    <View
+      style={{
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        borderWidth: 2,
+        borderColor: selected ? accentColor : onboardingColors.seam,
+        backgroundColor: selected ? accentColor : "transparent",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {selected ? (
+        <CheckIcon size={12} color={onboardingColors.onPulse} />
+      ) : null}
+    </View>
   );
 }

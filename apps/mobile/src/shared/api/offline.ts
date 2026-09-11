@@ -4,10 +4,15 @@ import {
   getNeuroCoinsForStarsGained,
   isLessonQuizPassed,
 } from "@muscle-mind/types";
+import { getAppLocale } from "@/i18n";
 
 export const OFFLINE =
   process.env.EXPO_PUBLIC_OFFLINE === "1" ||
   process.env.EXPO_PUBLIC_OFFLINE === "true";
+
+function isEn() {
+  return getAppLocale() === "en";
+}
 
 const CAT_ID = "offline_cat_anatomie";
 const LESSON_1 = "offline_lesson_1";
@@ -75,7 +80,7 @@ function categoryMeta() {
   return {
     id: CAT_ID,
     slug: "anatomie",
-    name: "Anatomie",
+    name: isEn() ? "Anatomy" : "Anatomie",
     color: "#3D9CF0",
     icon: "corps",
   };
@@ -86,9 +91,10 @@ function me() {
   return {
     id: "offline_user",
     email: "demo@offline.local",
-    displayName: "Démo Offline",
+    displayName: isEn() ? "Offline Demo" : "Démo Offline",
     avatarUrl: null,
     role: "USER",
+    locale: getAppLocale(),
     xpTotal: state.xpTotal,
     level: state.level,
     memoryGameBestScore: state.memoryBest,
@@ -118,8 +124,10 @@ function me() {
     recentBadges: [
       {
         code: "OFFLINE_DEMO",
-        name: "Mode démo",
-        description: "App native sans réseau",
+        name: isEn() ? "Demo mode" : "Mode démo",
+        description: isEn()
+          ? "Native app without network"
+          : "App native sans réseau",
         icon: "⭐",
         earnedAt: new Date().toISOString(),
       },
@@ -143,13 +151,13 @@ function lessonNode(
   return {
     id,
     title,
-    subtitle: "Contenu local (hors ligne)",
+    subtitle: isEn() ? "Local offline content" : "Contenu local (hors ligne)",
     durationSec: 90,
     xpReward: 20,
     order,
     difficulty: "BEGINNER",
     checkpointKey: "unit_1",
-    checkpointTitle: "Bases",
+    checkpointTitle: isEn() ? "Basics" : "Bases",
     checkpointOrder: 1,
     state: stateNode,
     hasQuiz: extras.hasQuiz ?? true,
@@ -176,7 +184,7 @@ function categoryPath() {
   return {
     id: CAT_ID,
     slug: "anatomie",
-    name: "Anatomie",
+    name: isEn() ? "Anatomy" : "Anatomie",
     color: "#3D9CF0",
     icon: "corps",
     passThreshold: 70,
@@ -185,23 +193,33 @@ function categoryPath() {
       {
         checkpointKey: "unit_1",
         checkpointOrder: 1,
-        label: "Bases du muscle",
+        label: isEn() ? "Muscle basics" : "Bases du muscle",
         difficulty: "BEGINNER",
         lessons: [
-          lessonNode(LESSON_1, "Qu'est-ce qu'un muscle ?", 1, l1State, {
+          lessonNode(
+            LESSON_1,
+            isEn() ? "What is a muscle?" : "Qu'est-ce qu'un muscle ?",
+            1,
+            l1State,
+            {
             readingCompleted: state.lesson1Done,
             passed: state.quiz1Passed,
             bestScore: state.quiz1Passed ? 1 : null,
             bestStars: state.quiz1BestStars || null,
           }),
-          lessonNode(LESSON_2, "Fibres et contraction", 2, l2State, {
+          lessonNode(
+            LESSON_2,
+            isEn() ? "Fibers and contraction" : "Fibres et contraction",
+            2,
+            l2State,
+            {
             hasQuiz: false,
             readingCompleted: state.lesson2Done,
           }),
         ],
         gate: {
           id: GATE_1,
-          title: "Checkpoint Bases",
+          title: isEn() ? "Basics checkpoint" : "Checkpoint Bases",
           checkpointKey: "unit_1",
           checkpointOrder: 1,
           state: gateState,
@@ -219,17 +237,28 @@ function categoryPath() {
 
 function lessonDetail(id: string) {
   const isFirst = id === LESSON_1;
+  const en = isEn();
   return {
     id,
-    title: isFirst ? "Qu'est-ce qu'un muscle ?" : "Fibres et contraction",
-    subtitle: "Leçon démo hors ligne",
+    title: isFirst
+      ? en
+        ? "What is a muscle?"
+        : "Qu'est-ce qu'un muscle ?"
+      : en
+        ? "Fibers and contraction"
+        : "Fibres et contraction",
+    subtitle: en ? "Offline demo lesson" : "Leçon démo hors ligne",
     markdown: isFirst
-      ? `# Muscle Mind (offline)\n\nCette version native **n'appelle aucune URL**.\n\nUn muscle est un tissu capable de se **contracter** pour produire un mouvement.\n\n## À retenir\n- Agoniste / antagoniste\n- Contraction volontaire\n- Rôle des tendons`
-      : `# Fibres musculaires\n\nIl existe des fibres **lentes** (endurance) et **rapides** (puissance).\n\nTout le contenu est embarqué localement — aucun serveur requis.`,
+      ? en
+        ? `# Muscle Mind (offline)\n\nThis native build **calls no URL**.\n\nA muscle is tissue that can **contract** to produce movement.\n\n## Key takeaways\n- Agonist / antagonist\n- Voluntary contraction\n- Role of tendons`
+        : `# Muscle Mind (offline)\n\nCette version native **n'appelle aucune URL**.\n\nUn muscle est un tissu capable de se **contracter** pour produire un mouvement.\n\n## À retenir\n- Agoniste / antagoniste\n- Contraction volontaire\n- Rôle des tendons`
+      : en
+        ? `# Muscle fibers\n\nThere are **slow** fibers (endurance) and **fast** fibers (power).\n\nAll content is embedded locally — no server required.`
+        : `# Fibres musculaires\n\nIl existe des fibres **lentes** (endurance) et **rapides** (puissance).\n\nTout le contenu est embarqué localement — aucun serveur requis.`,
     durationSec: 90,
     difficulty: "BEGINNER",
     illustrationUrl: null,
-    tags: ["offline", "démo"],
+    tags: ["offline", en ? "demo" : "démo"],
     sources: [],
     xpReward: 20,
     category: categoryMeta(),
@@ -323,7 +352,12 @@ export async function offlineFetch<T>(
   const body = parseBody(init);
 
   // Auth
-  if (path === "/auth/login" || path === "/auth/register") {
+  if (
+    path === "/auth/login" ||
+    path === "/auth/register" ||
+    path === "/auth/guest" ||
+    path === "/auth/claim"
+  ) {
     return {
       accessToken: "offline-access",
       refreshToken: "offline-refresh",
@@ -337,12 +371,17 @@ export async function offlineFetch<T>(
   }
 
   if (path === "/me" && method === "GET") {
-    return me() as T;
+    return { ...me(), isGuest: false } as T;
   }
 
   if (path === "/me/preferred-category" && method === "PATCH") {
     state.preferredCategoryId =
       (body.preferredCategoryId as string) ?? CAT_ID;
+    return me() as T;
+  }
+
+  if (path === "/me/preferred-category" && method === "DELETE") {
+    state.preferredCategoryId = null;
     return me() as T;
   }
 
@@ -691,74 +730,93 @@ export async function offlineFetch<T>(
   }
 
   if (path === "/shop/catalog" && method === "GET") {
+    const en = isEn();
     return {
       offers: [
         {
           id: "coins-pack-s",
           kind: "coins",
-          title: "Gourde rapide",
-          description: "",
+          title: en ? "Small thirst" : "Petite soif",
+          description: en
+            ? "Enough to chain a few lessons right away"
+            : "De quoi enchaîner quelques leçons tout de suite",
           priceNeuroCoins: 150,
           rewardBottles: 4,
         },
         {
           id: "coins-pack-m",
           kind: "coins",
-          title: "Pack hydratation",
-          description: "",
+          title: en ? "Hydration pack" : "Pack hydratation",
+          description: en
+            ? "Best coins → bottles value"
+            : "Le meilleur rapport coins → bouteilles",
           priceNeuroCoins: 300,
           rewardBottles: 12,
-          badge: "Populaire",
+          badge: en ? "Most chosen" : "Le plus choisi",
         },
         {
           id: "coins-pack-l",
           kind: "coins",
-          title: "Réserve complète",
-          description: "",
+          title: en ? "Big thirst" : "Grande soif",
+          description: en
+            ? "Stock to last several days in a row"
+            : "Stock pour tenir plusieurs jours d’affilée",
           priceNeuroCoins: 450,
           rewardBottles: 30,
-          badge: "Bonus",
+          badge: en ? "Best value" : "Meilleure valeur",
         },
         {
           id: "sub-genius",
           kind: "money",
           title: "Genius",
-          description: "",
+          description: en
+            ? "Never run out of lessons — progress without interruption"
+            : "Plus jamais à court de leçons — progresse sans interruption",
           priceEuro: 5.99,
           rewardBottles: 0,
-          badge: "Recommandé",
+          badge: en ? "Best value" : "Le plus rentable",
         },
         {
           id: "sub-boost",
           kind: "money",
           title: "Boost",
-          description: "",
+          description: en
+            ? "35 bottles / day, refill every 30 min"
+            : "35 bouteilles / jour, recharge toutes les 30 min",
           priceEuro: 2.99,
           rewardBottles: 0,
         },
         {
           id: "money-pack-s",
           kind: "money",
-          title: "Recharge jour",
-          description: "",
+          title: en ? "Express bottle" : "Gourde express",
+          description: en
+            ? "A day of lessons without waiting"
+            : "Une journée de leçons sans attendre",
           priceEuro: 0.99,
           rewardBottles: 20,
         },
         {
           id: "money-pack-m",
           kind: "money",
-          title: "Pack semaine",
-          description: "",
+          title: en ? "Week pack" : "Pack semaine",
+          description: en
+            ? "A week of smooth progress"
+            : "Une semaine de progression fluide",
           priceEuro: 4.99,
           rewardBottles: 100,
+          badge: en ? "Popular" : "Populaire",
         },
         {
           id: "money-pack-l",
           kind: "money",
-          title: "Pack premium",
-          description: "",
+          title: en ? "Fountain" : "Fontaine",
+          description: en
+            ? "The pack so you never get stuck again"
+            : "Le pack pour ne plus jamais bloquer",
           priceEuro: 9.99,
           rewardBottles: 250,
+          badge: "Max",
         },
       ],
     } as T;

@@ -44,8 +44,8 @@ export function StreakAmount({
         gap: config.gap,
       }}
     >
-      <Text style={valueStyle}>{amount}</Text>
       <StreakFireIcon size={config.icon} />
+      <Text style={valueStyle}>{amount}</Text>
     </View>
   );
 }

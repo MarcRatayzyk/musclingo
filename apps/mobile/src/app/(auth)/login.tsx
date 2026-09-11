@@ -1,17 +1,33 @@
 import { Link, router } from "expo-router";
 import { useState } from "react";
-import { Text, TextInput, View } from "react-native";
+import { Pressable, Text, TextInput, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useLogin } from "@/features/auth/api";
+import { ensureGuestSession } from "@/features/auth/ensureGuestSession";
+import { hasCompletedOnboarding } from "@/features/onboarding/storage";
 import { useSessionStore } from "@/shared/store/session";
 import { PrimaryButton, Screen } from "@/shared/ui/primitives";
 
 export default function LoginScreen() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState(
     __DEV__ ? "demo@musclemind.app" : "",
   );
   const [password, setPassword] = useState(__DEV__ ? "Demo123!" : "");
+  const [guestBusy, setGuestBusy] = useState(false);
   const login = useLogin();
   const setAuthenticated = useSessionStore((s) => s.setAuthenticated);
+
+  async function continueAsGuest() {
+    setGuestBusy(true);
+    const ok = await ensureGuestSession();
+    setGuestBusy(false);
+    if (!ok) return;
+    setAuthenticated(true);
+    router.replace(
+      hasCompletedOnboarding() ? "/(app)/home" : "/(app)/onboarding",
+    );
+  }
 
   return (
     <Screen>
@@ -19,16 +35,18 @@ export default function LoginScreen() {
         Muscle Mind
       </Text>
       <Text className="mt-3 text-4xl font-semibold text-white">
-        Apprends entre{"\n"}deux séries
+        {t("auth:headlineLine1")}
+        {"\n"}
+        {t("auth:headlineLine2")}
       </Text>
       <Text className="mt-3 text-base text-muted">
-        Micro-leçons scientifiques pendant ton repos.
+        {t("auth:headlineBody")}
       </Text>
 
       <View className="mt-10 space-y-3 gap-3">
         <TextInput
           className="rounded-2xl border border-border bg-surface px-4 py-4 text-white"
-          placeholder="Email"
+          placeholder={t("auth:email")}
           placeholderTextColor="#8B95A8"
           autoCapitalize="none"
           keyboardType="email-address"
@@ -37,7 +55,7 @@ export default function LoginScreen() {
         />
         <TextInput
           className="rounded-2xl border border-border bg-surface px-4 py-4 text-white"
-          placeholder="Mot de passe"
+          placeholder={t("auth:password")}
           placeholderTextColor="#8B95A8"
           secureTextEntry
           value={password}
@@ -53,8 +71,8 @@ export default function LoginScreen() {
 
       <View className="mt-6">
         <PrimaryButton
-          label={login.isPending ? "Connexion…" : "Se connecter"}
-          disabled={login.isPending}
+          label={login.isPending ? t("auth:loginLoading") : t("auth:loginCta")}
+          disabled={login.isPending || guestBusy}
           onPress={() => {
             login.mutate(
               { email, password },
@@ -69,8 +87,18 @@ export default function LoginScreen() {
         />
       </View>
 
-      <Link href="/(auth)/register" className="mt-6 text-center text-muted">
-        Créer un compte
+      <Pressable
+        onPress={() => void continueAsGuest()}
+        disabled={guestBusy || login.isPending}
+        className="mt-5 items-center py-2 active:opacity-70"
+      >
+        <Text className="text-accent">
+          {guestBusy ? t("auth:guestPreparing") : t("auth:continueAsGuest")}
+        </Text>
+      </Pressable>
+
+      <Link href="/(auth)/register" className="mt-4 text-center text-muted">
+        {t("auth:goRegister")}
       </Link>
     </Screen>
   );

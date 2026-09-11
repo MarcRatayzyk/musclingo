@@ -1,23 +1,5 @@
 import type { LessonMascotHooks, MascotLine } from "./types";
-
-export const ONBOARDING_STEPS: MascotLine[] = [
-  {
-    text: "Salut ! Moi c'est ton guide pour l'anatomie. On va explorer le corps ensemble.",
-    pose: "default",
-  },
-  {
-    text: "Ici tu vas apprendre os, muscles et articulations — pas à pas, sans te noyer.",
-    pose: "present",
-  },
-  {
-    text: "À chaque leçon je t'explique. Ensuite tu valides avec un petit quiz.",
-    pose: "present",
-  },
-  {
-    text: "Prêt ? Commence par la première leçon sur le chemin. Je suis avec toi.",
-    pose: "default",
-  },
-];
+import { getAppLocale } from "@/i18n";
 
 const GENERIC_INTROS: MascotLine[] = [
   { text: "Aujourd'hui on regarde ça de plus près — suis-moi.", pose: "present" },
@@ -203,16 +185,203 @@ export const LESSON_HOOKS: Record<number, LessonMascotHooks> = {
   },
 };
 
+const GENERIC_INTROS_EN: MascotLine[] = [
+  { text: "Today we look at this up close — follow me.", pose: "present" },
+  { text: "New lesson: I'll walk you through it step by step.", pose: "present" },
+  { text: "New topic ahead. Take your time.", pose: "default" },
+];
+
+const GENERIC_OUTROS_EN: MascotLine[] = [
+  { text: "Nice work — you've got the basics. Ready for the quiz?", pose: "present" },
+  { text: "Locked in. Validate with the quiz when you're ready.", pose: "present" },
+  { text: "You're progressing well. The quiz is waiting!", pose: "default" },
+];
+
+const GENERIC_ASIDES_EN: MascotLine[] = [
+  { text: "Tip: focus on the bold names.", pose: "doubt" },
+  { text: "If you're stuck, reread the previous bit — that's normal.", pose: "doubt" },
+  { text: "The illustration helps a lot here. Watch the colors.", pose: "doubt" },
+];
+
+const LESSON_HOOKS_EN: Record<number, LessonMascotHooks> = {
+  0: {
+    intro: {
+      text: "We start with the arm: humerus, radius, ulna. The base for curls and dips.",
+      pose: "present",
+    },
+    interjections: {
+      1: {
+        text: "Radius and ulna — they handle hand rotation.",
+        pose: "doubt",
+      },
+    },
+    outro: { text: "You now know the arm bones. Quiz time!", pose: "present" },
+  },
+  1: {
+    intro: {
+      text: "The rib cage and scapulae: the foundation of every push and pull.",
+      pose: "present",
+    },
+    interjections: {
+      2: {
+        text: "The scapula moves a lot — it is not a fixed bone.",
+        pose: "doubt",
+      },
+    },
+  },
+  2: {
+    intro: {
+      text: "Pelvis and lumbar spine: the hinge between upper and lower body.",
+      pose: "present",
+    },
+    outro: { text: "Trunk bones locked in. Next up: the legs.", pose: "present" },
+  },
+  3: {
+    intro: {
+      text: "Femur, knee, tibia… the bones that carry your weight in the squat.",
+      pose: "present",
+    },
+    interjections: {
+      1: {
+        text: "The patella protects the knee — key for lifting.",
+        pose: "doubt",
+      },
+    },
+  },
+  6: {
+    intro: {
+      text: "New section: upper-body muscles. Arms first.",
+      pose: "default",
+    },
+  },
+  7: {
+    intro: {
+      text: "Chest and shoulders: everything that presses in front of you.",
+      pose: "present",
+    },
+  },
+  8: {
+    intro: {
+      text: "Core and abs: the belt that stabilizes your moves.",
+      pose: "present",
+    },
+  },
+  9: {
+    intro: {
+      text: "The back — a huge work zone for pulling and posture.",
+      pose: "present",
+    },
+  },
+  13: {
+    intro: {
+      text: "Going lower: lower-body muscles. Quads and front of thigh.",
+      pose: "default",
+    },
+  },
+  14: {
+    intro: {
+      text: "Hamstrings: the posterior chain of the thigh.",
+      pose: "present",
+    },
+  },
+  15: {
+    intro: {
+      text: "Glutes — more than looks: a real hip engine.",
+      pose: "present",
+    },
+  },
+  19: {
+    intro: {
+      text: "Joints section: the shoulder is the most mobile in the body.",
+      pose: "default",
+    },
+    interjections: {
+      1: {
+        text: "Scapular stability = a healthy shoulder. Remember that.",
+        pose: "doubt",
+      },
+    },
+  },
+  20: {
+    intro: {
+      text: "Elbow and wrist: where curls and grips play out.",
+      pose: "present",
+    },
+  },
+  21: {
+    intro: {
+      text: "The hip: deep, stable, and central for squat and deadlift.",
+      pose: "present",
+    },
+  },
+  22: {
+    intro: {
+      text: "The knee: ligaments and menisci — know them before going heavy.",
+      pose: "doubt",
+    },
+  },
+  26: {
+    intro: {
+      text: "Going deeper on the upper body: origins, insertions, actions.",
+      pose: "default",
+    },
+  },
+  34: {
+    intro: {
+      text: "Same logic for the lower body: we detail heads and insertions.",
+      pose: "default",
+    },
+  },
+  41: {
+    intro: {
+      text: "Onto function: fibers, sarcomeres, contraction.",
+      pose: "default",
+    },
+    interjections: {
+      2: {
+        text: "Hypertrophy is mostly more protein inside the fibers.",
+        pose: "doubt",
+      },
+    },
+  },
+  42: {
+    intro: {
+      text: "Tendons vs ligaments: one pulls, the other stabilizes.",
+      pose: "present",
+    },
+  },
+  46: {
+    intro: {
+      text: "Last stretch: movement organization — agonists, planes, levers.",
+      pose: "default",
+    },
+  },
+  49: {
+    intro: {
+      text: "Last lesson: length-tension and insertion angles.",
+      pose: "present",
+    },
+    outro: {
+      text: "You finished the whole anatomy path. Respect — nail this quiz!",
+      pose: "present",
+    },
+  },
+};
+
 function pickFromPool<T>(pool: T[], seed: number): T {
   return pool[Math.abs(seed) % pool.length]!;
 }
 
 export function getLessonHooks(lessonOrder: number): LessonMascotHooks {
-  const custom = LESSON_HOOKS[lessonOrder];
+  const en = getAppLocale() === "en";
+  const custom = (en ? LESSON_HOOKS_EN : LESSON_HOOKS)[lessonOrder]
+    ?? LESSON_HOOKS[lessonOrder];
+  const intros = en ? GENERIC_INTROS_EN : GENERIC_INTROS;
+  const outros = en ? GENERIC_OUTROS_EN : GENERIC_OUTROS;
   const intro =
-    custom?.intro ?? pickFromPool(GENERIC_INTROS, lessonOrder);
+    custom?.intro ?? pickFromPool(intros, lessonOrder);
   const outro =
-    custom?.outro ?? pickFromPool(GENERIC_OUTROS, lessonOrder + 7);
+    custom?.outro ?? pickFromPool(outros, lessonOrder + 7);
   return {
     intro,
     outro,
@@ -228,7 +397,9 @@ export function getInterjectionAfterChunk(
     return hooks.interjections[completedChunkIndex]!;
   }
   if (completedChunkIndex > 0 && completedChunkIndex % 3 === 0) {
-    return pickFromPool(GENERIC_ASIDES, completedChunkIndex + completedChunkIndex);
+    const asides =
+      getAppLocale() === "en" ? GENERIC_ASIDES_EN : GENERIC_ASIDES;
+    return pickFromPool(asides, completedChunkIndex + completedChunkIndex);
   }
   return null;
 }

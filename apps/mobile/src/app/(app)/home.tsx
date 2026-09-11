@@ -1,5 +1,6 @@
 import { Redirect, router } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -15,16 +16,16 @@ import { useCategoryPath } from "@/features/path/api";
 import { SectionBanner } from "@/features/path/SectionBanner";
 import { unitKeyFromLessonScroll } from "@/features/path/scroll-sync";
 import { UnitDetailSheet } from "@/features/path/UnitDetailSheet";
-import {
-  AnatomyPathOnboarding,
-  hasSeenAnatomyOnboarding,
-} from "@/features/mascot";
 import { useStreakGoalClaim } from "@/features/onboarding/useStreakGoalClaim";
+import { clearOnboardingProgress } from "@/features/onboarding/storage";
+import { useOnboardingStore } from "@/features/onboarding/store";
 import { Screen } from "@/shared/ui/primitives";
 import { RewardsTopBar } from "@/shared/ui/RewardsTopBar";
 import { MenuHamburgerIcon } from "@/shared/ui/MenuHamburger";
+import { HomeSkeleton } from "@/shared/ui/Skeleton";
 
 export default function HomeScreen() {
+  const { t } = useTranslation();
   const { data: me, isLoading: meLoading, isError: meError } = useMe();
   const { data: ongoing } = useOngoingPaths();
   const { data: categories, isError: categoriesError } = useCategories();
@@ -38,7 +39,6 @@ export default function HomeScreen() {
 
   const [activeUnitKey, setActiveUnitKey] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [anatomyOnboardingOpen, setAnatomyOnboardingOpen] = useState(false);
 
   const activeCategoryId = useMemo(() => {
     if (me?.preferredCategory?.id) return me.preferredCategory.id;
@@ -115,14 +115,6 @@ export default function HomeScreen() {
     return () => clearTimeout(t);
   }, [scrollToFocus, path]);
 
-  useEffect(() => {
-    if (pathLoading || !path) return;
-    if (path.slug !== "anatomie") return;
-    if (lessonCount === 0) return;
-    if (hasSeenAnatomyOnboarding()) return;
-    setAnatomyOnboardingOpen(true);
-  }, [path, pathLoading, lessonCount]);
-
   const onScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       if (!path) return;
@@ -134,6 +126,8 @@ export default function HomeScreen() {
   );
 
   if (!meLoading && me && !me.preferredCategory) {
+    clearOnboardingProgress();
+    useOnboardingStore.getState().reset();
     return <Redirect href="/(app)/onboarding" />;
   }
 
@@ -156,7 +150,7 @@ export default function HomeScreen() {
             }
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityLabel="Voir les autres parcours"
+            accessibilityLabel={t("home:viewOtherPaths")}
             style={{
               width: 44,
               height: 44,
@@ -192,40 +186,38 @@ export default function HomeScreen() {
         onScroll={onScroll}
         scrollEventThrottle={16}
       >
-        {(meLoading || pathLoading) && !showLoadError && (
-          <Text className="text-muted">Chargement du parcours…</Text>
-        )}
+        {(meLoading || pathLoading) && !showLoadError && <HomeSkeleton />}
 
         {showLoadError && (
           <View className="mt-10 items-center px-6">
             <Text className="text-center text-lg text-white">
-              Impossible de charger l&apos;accueil
+              {t("home:homeLoadErrorTitle")}
             </Text>
             <Text className="mt-2 text-center text-sm text-muted">
-              Vérifie que l&apos;API tourne, puis reconnecte-toi si besoin.
+              {t("home:homeLoadErrorBody")}
             </Text>
             <Pressable
               onPress={() => router.replace("/(auth)/login" as never)}
               className="mt-6 rounded-xl border border-accent px-6 py-3"
             >
-              <Text className="text-accent">Se reconnecter</Text>
+              <Text className="text-accent">{t("home:reconnect")}</Text>
             </Pressable>
           </View>
         )}
 
         {isError && !showLoadError && (
           <Text className="text-muted">
-            {error instanceof Error ? error.message : "Parcours introuvable"}
+            {error instanceof Error ? error.message : t("home:pathNotFound")}
           </Text>
         )}
 
         {path && lessonCount === 0 && (
           <View className="mt-10 items-center px-6">
             <Text className="text-center text-lg text-white">
-              Parcours bientôt disponible
+              {t("home:pathSoonTitle")}
             </Text>
             <Text className="mt-2 text-center text-sm text-muted">
-              Les leçons de cette catégorie arriveront bientôt.
+              {t("home:pathSoonBody")}
             </Text>
           </View>
         )}
@@ -273,11 +265,6 @@ export default function HomeScreen() {
           }}
         />
       )}
-      <AnatomyPathOnboarding
-        visible={anatomyOnboardingOpen}
-        onClose={() => setAnatomyOnboardingOpen(false)}
-        accentColor={pathColor}
-      />
     </Screen>
   );
 }

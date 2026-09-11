@@ -23,6 +23,12 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
+import { useTranslation } from "react-i18next";
+import { getAppLocale } from "@/i18n";
+import {
+  localizeLessonMarkdown,
+  localizeLessonTitle,
+} from "@/i18n/contentL10n";
 import {
   getIllustrationLegend,
   getLessonIllustrations,
@@ -33,6 +39,7 @@ import { useCompleteLesson, useLesson } from "@/features/home/api";
 import {
   getInterjectionAfterChunk,
   getLessonHooks,
+  getLessonLayoutMetrics,
   GorillaAvatar,
   MascotAside,
   nextMascotPose,
@@ -40,11 +47,12 @@ import {
 } from "@/features/mascot";
 import { ApiError, resolveMediaUrl } from "@/shared/api/client";
 import { PrimaryButton, Screen, XpBar } from "@/shared/ui/primitives";
+import { LessonSkeleton } from "@/shared/ui/Skeleton";
 const BG = "#0B0D10";
 const FOCUSED = "#FFFFFF";
 const MUTED = "rgba(255,255,255,0.55)";
-const TYPE_MS = 22;
-const FADE_H = 120;
+const TYPE_MS = 10;
+const FADE_H = 36;
 
 function parseLessonChunks(markdown: string): string[] {
   const normalized = markdown.replace(/\r\n/g, "\n").trim();
@@ -148,9 +156,15 @@ function BlinkingCursor() {
 function ContinueButton({
   isTyping,
   onPress,
+  minWidth = 56,
+  height = 44,
+  fontSize = 18,
 }: {
   isTyping: boolean;
   onPress: () => void;
+  minWidth?: number;
+  height?: number;
+  fontSize?: number;
 }) {
   const scale = useSharedValue(1);
   useEffect(() => {
@@ -179,10 +193,10 @@ function ContinueButton({
         style={{
           alignItems: "center",
           justifyContent: "center",
-          minWidth: 56,
-          height: 44,
-          paddingHorizontal: 18,
-          borderRadius: 22,
+          minWidth,
+          height,
+          paddingHorizontal: Math.round(minWidth * 0.32),
+          borderRadius: Math.round(height / 2),
           backgroundColor: "rgba(124, 255, 178, 0.14)",
           borderWidth: 1.5,
           borderColor: "rgba(124, 255, 178, 0.55)",
@@ -190,7 +204,7 @@ function ContinueButton({
       >
         <Text
           style={{
-            fontSize: 18,
+            fontSize,
             fontWeight: "700",
             color: "#7CFFB2",
           }}
@@ -266,6 +280,7 @@ function IllustrationModal({
   title: string;
   legend: IllustrationLegendItem[];
 }) {
+  const { t } = useTranslation("home");
   const [aspectRatio, setAspectRatio] = useState(1.6);
   const { width: screenW, height: screenH } = useWindowDimensions();
   useEffect(() => {
@@ -284,8 +299,8 @@ function IllustrationModal({
       cancelled = true;
     };
   }, [uri, visible]);
-  const imgW = screenW - 48;
-  const maxImgH = legend.length > 0 ? screenH * 0.55 : screenH * 0.75;
+  const imgW = screenW - 32;
+  const maxImgH = legend.length > 0 ? screenH * 0.68 : screenH * 0.78;
   const imgH = Math.min(imgW / aspectRatio, maxImgH);
   return (
     <Modal
@@ -295,20 +310,20 @@ function IllustrationModal({
       onRequestClose={onClose}
     >
       <Pressable
-        className="flex-1 items-center justify-center bg-black/90 px-6"
+        className="flex-1 items-center justify-center bg-black/92 px-4"
         onPress={onClose}
       >
         <Pressable onPress={(e) => e.stopPropagation()} className="w-full">
           <Image
             source={{ uri }}
-            accessibilityLabel={`Illustration : ${title}`}
+            accessibilityLabel={t("illustrationA11y", { title })}
             style={{ width: imgW, height: imgH, alignSelf: "center" }}
             resizeMode="contain"
           />
           {legend.length > 0 ? (
-            <View className="mt-4 gap-2.5 self-center" style={{ width: imgW }}>
-              <Text className="mb-1 text-xs uppercase tracking-widest text-white/50">
-                Légende
+            <View className="mt-3 gap-2 self-center" style={{ width: imgW }}>
+              <Text className="mb-0.5 text-xs uppercase tracking-widest text-white/50">
+                {t("legend")}
               </Text>
               <IllustrationLegendChips legend={legend} />
             </View>
@@ -316,9 +331,9 @@ function IllustrationModal({
         </Pressable>
         <Pressable
           onPress={onClose}
-          className="mt-5 rounded-full bg-white/10 px-5 py-2"
+          className="mt-4 rounded-full bg-white/10 px-5 py-2"
         >
-          <Text className="text-sm text-white">Fermer</Text>
+          <Text className="text-sm text-white">{t("close")}</Text>
         </Pressable>
       </Pressable>
     </Modal>
@@ -333,6 +348,7 @@ function LessonInlineIllustration({
   title: string;
   legend: IllustrationLegendItem[];
 }) {
+  const { t } = useTranslation("home");
   const [open, setOpen] = useState(false);
   const [aspectRatio, setAspectRatio] = useState(1.6);
   const { width: screenW, height: screenH } = useWindowDimensions();
@@ -351,47 +367,77 @@ function LessonInlineIllustration({
       cancelled = true;
     };
   }, [uri]);
-  const hasLegend = legend.length > 0;
-  // Cap by screen height so lesson text stays readable on short / landscape screens.
-  const maxImgH = Math.min(
-    hasLegend ? 168 : 200,
-    Math.max(88, Math.round(screenH * 0.2)),
+  const layout = useMemo(
+    () => getLessonLayoutMetrics(screenW, screenH),
+    [screenW, screenH],
   );
-  const maxImgW = hasLegend
-    ? Math.min(screenW * 0.46, 176)
-    : Math.min(screenW - 40, 280);
+  const hasLegend = legend.length > 0;
+  const maxImgH = layout.illustrationMaxH(hasLegend);
+  const maxImgW = layout.illustrationMaxW(hasLegend);
   let imgW = maxImgW;
   let imgH = imgW / aspectRatio;
   if (imgH > maxImgH) {
     imgH = maxImgH;
     imgW = imgH * aspectRatio;
   }
+  const stackLegend = layout.narrow && hasLegend && imgW > screenW * 0.55;
   return (
     <>
-      <Animated.View entering={FadeIn.duration(500)} className="mt-2">
-        <Pressable
-          onPress={() => setOpen(true)}
-          className="flex-row items-center gap-3"
-          accessibilityRole="button"
-          accessibilityLabel={`Agrandir l'illustration ${title}`}
+      <Animated.View entering={FadeIn.duration(500)} className="mt-1.5">
+        <View
+          className={
+            stackLegend
+              ? "flex-col items-stretch gap-2"
+              : "flex-row items-center gap-3"
+          }
         >
-          <View className="overflow-hidden rounded-xl border border-border bg-surface/60">
+          <Pressable
+            onPress={() => setOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel={t("enlargeA11y", { title })}
+            className="overflow-hidden rounded-xl border border-border bg-surface/60 active:opacity-90"
+            style={stackLegend ? { alignSelf: "center" } : undefined}
+          >
             <Image
               source={{ uri }}
-              accessibilityLabel={`Illustration : ${title}`}
+              accessibilityLabel={t("illustrationA11y", { title })}
               style={{ width: imgW, height: imgH }}
               resizeMode="contain"
             />
-          </View>
-          {hasLegend ? (
-            <View className="min-w-0 flex-1 gap-1">
-              <Text className="text-[10px] uppercase tracking-widest text-white/40">
-                Légende
+            <View
+              pointerEvents="none"
+              style={{
+                position: "absolute",
+                right: 6,
+                bottom: 6,
+                borderRadius: 999,
+                backgroundColor: "rgba(0,0,0,0.55)",
+                paddingHorizontal: 8,
+                paddingVertical: 3,
+              }}
+            >
+              <Text style={{ color: "#E9E4DA", fontSize: 10, fontWeight: "600" }}>
+                {t("enlarge")}
               </Text>
-              <IllustrationLegendChips legend={legend} compact vertical />
+            </View>
+          </Pressable>
+          {hasLegend ? (
+            <View
+              className={
+                stackLegend ? "w-full gap-1" : "min-w-0 flex-1 gap-1"
+              }
+            >
+              <Text className="text-[10px] uppercase tracking-widest text-white/40">
+                {t("legend")}
+              </Text>
+              <IllustrationLegendChips
+                legend={legend}
+                compact
+                vertical={!stackLegend}
+              />
             </View>
           ) : null}
-        </Pressable>
+        </View>
       </Animated.View>
       <IllustrationModal
         visible={open}
@@ -443,7 +489,7 @@ function TopFade({ width, height = FADE_H }: { width: number; height?: number })
         <Defs>
           <LinearGradient id="lessonTopFade" x1="0" y1="0" x2="0" y2="1">
             <Stop offset="0" stopColor={BG} stopOpacity="1" />
-            <Stop offset="0.4" stopColor={BG} stopOpacity="0.95" />
+            <Stop offset="0.55" stopColor={BG} stopOpacity="0.7" />
             <Stop offset="1" stopColor={BG} stopOpacity="0" />
           </LinearGradient>
         </Defs>
@@ -459,8 +505,27 @@ function TopFade({ width, height = FADE_H }: { width: number; height?: number })
   );
 }
 export default function LessonScreen() {
+  const { i18n } = useTranslation("home");
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { width: screenW, height: screenH } = useWindowDimensions();
+  const layout = useMemo(
+    () => getLessonLayoutMetrics(screenW, screenH),
+    [screenW, screenH],
+  );
+  const bubbleLayoutProps = useMemo(
+    () => ({
+      showName: false as const,
+      tailTipX: layout.bubbleTailTipX,
+      fontSize: layout.bubbleFontSize,
+      lineHeight: layout.bubbleLineHeight,
+      paddingHorizontal: layout.bubblePadH,
+      paddingVertical: layout.bubblePadV,
+    }),
+    [layout],
+  );
   const { data: lesson, isLoading, isError, error } = useLesson(id);
+  void i18n.language;
+  const lessonTitle = lesson ? localizeLessonTitle(lesson.title) : "";
   const complete = useCompleteLesson();
   const startedAt = useRef(Date.now());
   const navigatingRef = useRef(false);
@@ -482,7 +547,12 @@ export default function LessonScreen() {
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [mascotPose, setMascotPose] = useState<MascotPose>("present");
   const chunks = useMemo(
-    () => (lesson ? parseLessonChunks(lesson.markdown) : []),
+    () =>
+      lesson
+        ? parseLessonChunks(
+            localizeLessonMarkdown(lesson.title, lesson.markdown),
+          )
+        : [],
     [lesson],
   );
   const illustrations = useMemo(() => {
@@ -494,7 +564,7 @@ export default function LessonScreen() {
         return {
           uri,
           title: item.title,
-          legend: getIllustrationLegend(item.url),
+          legend: getIllustrationLegend(item.url, getAppLocale()),
         };
       })
       .filter(
@@ -640,7 +710,7 @@ export default function LessonScreen() {
   if (isLoading || !lesson) {
     return (
       <Screen>
-        <Text className="text-muted">Chargement de la leçon…</Text>
+        <LessonSkeleton />
       </Screen>
     );
   }
@@ -660,8 +730,8 @@ export default function LessonScreen() {
       : asidePending && currentAside
         ? (safeIndex + 0.85) / totalChunks
         : (safeIndex + 1) / totalChunks;
-  const topSpacer = Math.max(viewportH * 0.38, 72);
-  const bottomSpacer = Math.max(viewportH * 0.45, 96);
+  const topSpacer = layout.topSpacer(viewportH || screenH * 0.55);
+  const bottomSpacer = layout.bottomSpacer(viewportH || screenH * 0.55);
   const readingDone = lesson.progress?.status === "COMPLETED";
   const showQuizCta = canFinish && readingDone && !!lesson.quizId;
 
@@ -677,7 +747,7 @@ export default function LessonScreen() {
       : isCurrent || focusedIndex === index;
     const color = focused ? FOCUSED : MUTED;
     return (
-      <Text className="text-lg leading-8">
+      <Text className="text-lg leading-8" style={{ fontSize: layout.chunkFontSize, lineHeight: layout.chunkLineHeight }}>
         <MarkdownSpans
           text={text}
           color={color}
@@ -780,11 +850,17 @@ export default function LessonScreen() {
     updateFocusFromScroll();
   }
   return (
-    <Screen className="pt-14">
-      <View className="mb-2">
+    <Screen className="pt-8">
+      <View className="mb-1" style={{ gap: layout.headerGap }}>
         <XpBar progress={progress} color={lesson.category.color} />
-        <Text className="mt-5 text-base font-semibold leading-5 text-white">
-          {lesson.title}
+        <Text
+          className="mt-2 font-semibold text-white"
+          style={{
+            fontSize: layout.titleFontSize,
+            lineHeight: layout.titleLineHeight,
+          }}
+        >
+          {lessonTitle}
         </Text>
         {illustrations.length > 0 ? (
           <View className="gap-2">
@@ -799,7 +875,7 @@ export default function LessonScreen() {
           </View>
         ) : null}
       </View>
-      <View className="mb-4 flex-1 overflow-hidden" onLayout={onViewportLayout}>
+      <View className="mb-2 flex-1 overflow-hidden" onLayout={onViewportLayout}>
         <ScrollView
           ref={scrollRef}
           showsVerticalScrollIndicator={false}
@@ -811,13 +887,14 @@ export default function LessonScreen() {
           <View>
             <View style={{ height: topSpacer }} />
             {hasIntro && mascotHooks.intro ? (
-              <View className="mb-6">
+              <View className="mb-4" style={{ paddingTop: 4 }}>
                 <MascotAside
                   line={mascotHooks.intro}
                   accentColor={lesson.category.color}
                   dimmed={!showingIntro}
-                  compact={false}
+                  compact={layout.short}
                   showAvatar={false}
+                  {...bubbleLayoutProps}
                 />
               </View>
             ) : null}
@@ -845,6 +922,8 @@ export default function LessonScreen() {
                                 accentColor={lesson.category.color}
                                 dimmed
                                 showAvatar={false}
+                                compact={layout.short}
+                                {...bubbleLayoutProps}
                               />
                             </View>
                           ) : null;
@@ -870,6 +949,8 @@ export default function LessonScreen() {
                       accentColor={lesson.category.color}
                       dimmed={false}
                       showAvatar={false}
+                      compact={layout.short}
+                      {...bubbleLayoutProps}
                     />
                   </View>
                 ) : null}
@@ -881,8 +962,9 @@ export default function LessonScreen() {
                     <MascotAside
                       line={mascotHooks.outro}
                       accentColor={lesson.category.color}
-                      compact={false}
+                      compact={layout.short}
                       showAvatar={false}
+                      {...bubbleLayoutProps}
                     />
                   </Animated.View>
                 ) : null}
@@ -911,25 +993,39 @@ export default function LessonScreen() {
         </ScrollView>
         <TopFade width={viewportW} />
       </View>
-      <View className="shrink-0 pb-10">
+      <View className="shrink-0 pb-3">
         {!canFinish ? (
-          <View className="flex-row items-end justify-between px-1 pb-2">
+          <View className="flex-row items-end justify-between px-1 pb-1">
             {mascotEnabled ? (
               <View pointerEvents="none" style={{ marginLeft: -4 }}>
-                <GorillaAvatar pose={mascotPose} size="lesson" />
+                <GorillaAvatar
+                  pose={mascotPose}
+                  size="lesson"
+                  dimension={layout.mascotSize}
+                />
               </View>
             ) : (
               <View />
             )}
-            <View className="mb-4 mr-1">
-              <ContinueButton isTyping={isTyping} onPress={onContinue} />
+            <View className="mb-1 mr-1">
+              <ContinueButton
+                isTyping={isTyping}
+                onPress={onContinue}
+                minWidth={layout.continueMinWidth}
+                height={layout.continueHeight}
+                fontSize={layout.continueFontSize}
+              />
             </View>
           </View>
         ) : (
           <>
             {mascotEnabled ? (
-              <View className="mb-4" pointerEvents="none">
-                <GorillaAvatar pose={mascotPose} size="lesson" />
+              <View className="mb-2" pointerEvents="none">
+                <GorillaAvatar
+                  pose={mascotPose}
+                  size="lesson"
+                  dimension={layout.mascotSize}
+                />
               </View>
             ) : null}
             {showQuizCta ? (

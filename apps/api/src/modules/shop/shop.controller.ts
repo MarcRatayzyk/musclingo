@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Post } from "@nestjs/common";
+import { Body, Controller, Get, Headers, Post } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { z } from "zod";
 import { AuthUser, CurrentUser } from "../../common/decorators";
+import { resolveRequestLocale } from "../../common/locale";
 import { ZodValidationPipe } from "../../common/zod-validation.pipe";
 import { ShopService } from "./shop.service";
 
@@ -16,8 +17,13 @@ export class ShopController {
   constructor(private readonly shop: ShopService) {}
 
   @Get("catalog")
-  catalog() {
-    return this.shop.getCatalog();
+  catalog(
+    @CurrentUser() user: AuthUser,
+    @Headers("x-locale") localeHeader?: string,
+  ) {
+    return this.shop.getCatalog(
+      resolveRequestLocale({ "x-locale": localeHeader }, user.locale),
+    );
   }
 
   @Post("purchase")

@@ -11,7 +11,7 @@ async function collapseAndroidNavBar() {
   try {
     await NavigationBar.setVisibilityAsync("hidden");
     await NavigationBar.setBehaviorAsync("overlay-swipe");
-    await NavigationBar.setBackgroundColorAsync("#0B0D10");
+    await NavigationBar.setBackgroundColorAsync("#0A0F14");
   } catch {
     // Web / Expo Go sans plugin natif : ignorer.
   }
@@ -28,7 +28,7 @@ export default function RootLayout() {
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: "#0B0D10" },
+          contentStyle: { backgroundColor: "#0A0F14" },
           animation: "fade",
         }}
       />

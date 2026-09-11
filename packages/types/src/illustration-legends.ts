@@ -2,6 +2,8 @@ export type IllustrationLegendItem = {
   /** Pastille visible sur l'image. Absent si le muscle est en profondeur. */
   color?: string;
   label: string;
+  /** English display label when different from `label`. */
+  labelEn?: string;
   aliases?: string[];
   /** Ex. « sous les muscles » quand cité en leçon mais non visible en surface. */
   note?: string;
@@ -29,6 +31,50 @@ export function getLessonIllustrations(
     ]
   );
 }
+
+/** Légendes cage thoracique (fichier seed + upload prod temporaire). */
+const CAGE_THORACIQUE_LEGEND: IllustrationLegendItem[] = [
+  {
+    color: "#7B2D8E",
+    label: "sternum",
+    aliases: ["le sternum"],
+  },
+  {
+    color: "#2A9B8F",
+    label: "omoplates",
+    aliases: ["omoplate", "les omoplates", "scapula", "scapulas"],
+  },
+  {
+    color: "#E67E22",
+    label: "cervicales",
+    aliases: [
+      "vertèbres cervicales",
+      "vertebres cervicales",
+      "cervicale",
+      "les cervicales",
+    ],
+  },
+  {
+    color: "#C0392B",
+    label: "vertèbres thoraciques",
+    aliases: [
+      "vertebres thoraciques",
+      "thoraciques",
+      "les thoraciques",
+      "vertèbre thoracique",
+    ],
+  },
+  {
+    color: "#4A90D9",
+    label: "clavicule",
+    aliases: ["clavicules", "la clavicule", "les clavicules"],
+  },
+  {
+    color: "#F5F5F5",
+    label: "côtes",
+    aliases: ["cotes", "les côtes", "les cotes"],
+  },
+];
 
 /** Légendes des illustrations (pastille → structure). */
 export const ILLUSTRATION_LEGENDS: Record<string, IllustrationLegendItem[]> = {
@@ -59,50 +105,9 @@ export const ILLUSTRATION_LEGENDS: Record<string, IllustrationLegendItem[]> = {
       aliases: ["carpe", "métacarpes", "metacarpés", "phalanges", "la main"],
     },
   ],
-  "/uploads/cage-thoracique.png": [
-    {
-      color: "#7B2D8E",
-      label: "sternum",
-      aliases: ["le sternum"],
-    },
-    {
-      color: "#2E8B57",
-      label: "omoplates",
-      aliases: ["omoplate", "les omoplates", "scapula", "scapulas"],
-    },
-    {
-      color: "#E67E22",
-      label: "cervicales",
-      aliases: [
-        "vertèbres cervicales",
-        "vertebres cervicales",
-        "cervicale",
-        "les cervicales",
-      ],
-    },
-    {
-      color: "#C0392B",
-      label: "vertèbres thoraciques",
-      aliases: [
-        "vertebres thoraciques",
-        "thoraciques",
-        "les thoraciques",
-        "vertèbre thoracique",
-      ],
-    },
-    {
-      color: "#F5F5F5",
-      label: "côtes et clavicules",
-      aliases: [
-        "cotes et clavicules",
-        "côtes",
-        "cotes",
-        "clavicules",
-        "clavicule",
-        "côtes et clavicule",
-      ],
-    },
-  ],
+  "/uploads/cage-thoracique.png": CAGE_THORACIQUE_LEGEND,
+  /** Prod upload (remplace cage-thoracique.png jusqu'au prochain sync assets). */
+  "/uploads/7010246a-d48b-4545-8255-6a468ffab264.png": CAGE_THORACIQUE_LEGEND,
   "/uploads/cuisse-genou-jambe.png": [
     {
       color: "#1A6B7A",
@@ -539,11 +544,51 @@ export const ILLUSTRATION_LEGENDS: Record<string, IllustrationLegendItem[]> = {
   ],
 };
 
+const LEGEND_LABEL_EN: Record<string, string> = {
+  omoplate: "scapula",
+  omoplates: "scapulas",
+  humérus: "humerus",
+  main: "hand",
+  cervicales: "cervicals",
+  "vertèbres thoraciques": "thoracic vertebrae",
+  clavicule: "clavicle",
+  côtes: "ribs",
+  fémur: "femur",
+  patella: "patella",
+  "long fibulaire": "fibularis longus",
+  sternum: "sternum",
+  triceps: "triceps",
+  biceps: "biceps",
+  deltoïde: "deltoid",
+  pectoraux: "pecs",
+  "grand dorsal": "latissimus dorsi",
+  trapèze: "trapezius",
+  "droit de l'abdomen": "rectus abdominis",
+  "obliques externes": "external obliques",
+  "moyen fessier": "gluteus medius",
+  "grand fessier": "gluteus maximus",
+  ischiojambiers: "hamstrings",
+  quadriceps: "quadriceps",
+  mollets: "calves",
+  soléaire: "soleus",
+  "jumeau interne": "medial gastrocnemius",
+  "jumeau externe": "lateral gastrocnemius",
+};
+
 export function getIllustrationLegend(
   illustrationUrl: string | null | undefined,
+  locale: "fr" | "en" = "fr",
 ): IllustrationLegendItem[] {
   if (!illustrationUrl) return [];
-  return ILLUSTRATION_LEGENDS[illustrationUrl] ?? [];
+  const items = ILLUSTRATION_LEGENDS[illustrationUrl] ?? [];
+  if (locale !== "en") return items;
+  return items.map((item) => ({
+    ...item,
+    label:
+      item.labelEn ??
+      LEGEND_LABEL_EN[item.label] ??
+      item.label,
+  }));
 }
 
 /** Normalise une réponse texte pour comparaison (casse, accents, ponctuation). */

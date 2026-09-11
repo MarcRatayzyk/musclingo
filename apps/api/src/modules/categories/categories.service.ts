@@ -2,7 +2,11 @@ import { Injectable } from "@nestjs/common";
 import { ProgressStatus } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { PathService } from "./path.service";
-
+import {
+  AppLocale,
+  resolveRequestLocale,
+} from "../../common/locale";
+import { pickCategoryName } from "../../common/content-l10n";
 @Injectable()
 export class CategoriesService {
   constructor(
@@ -10,15 +14,18 @@ export class CategoriesService {
     private readonly path: PathService,
   ) {}
 
-  getPath(categoryId: string, userId: string) {
-    return this.path.getCategoryPath(categoryId, userId);
+  async getPath(categoryId: string, userId: string, localeHeader?: string) {
+    const locale = await this.resolveLocale(userId, localeHeader);
+    return this.path.getCategoryPath(categoryId, userId, locale);
   }
 
-  listOngoing(userId: string) {
-    return this.path.listOngoing(userId);
+  async listOngoing(userId: string, localeHeader?: string) {
+    const locale = await this.resolveLocale(userId, localeHeader);
+    return this.path.listOngoing(userId, locale);
   }
 
-  async listForUser(userId: string) {
+  async listForUser(userId: string, localeHeader?: string) {
+    const locale = await this.resolveLocale(userId, localeHeader);
     const categories = await this.prisma.category.findMany({
       orderBy: { order: "asc" },
       include: {
@@ -58,7 +65,7 @@ export class CategoriesService {
       return {
         id: cat.id,
         slug: cat.slug,
-        name: cat.name,
+        name: pickCategoryName(cat.name, cat.nameEn, locale, cat.slug),
         color: cat.color,
         icon: cat.icon,
         order: cat.order,
@@ -73,5 +80,16 @@ export class CategoriesService {
 
   async listAll() {
     return this.prisma.category.findMany({ orderBy: { order: "asc" } });
+  }
+
+  private async resolveLocale(
+    userId: string,
+    localeHeader?: string,
+  ): Promise<AppLocale> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { locale: true },
+    });
+    return resolveRequestLocale({ "x-locale": localeHeader }, user?.locale);
   }
 }

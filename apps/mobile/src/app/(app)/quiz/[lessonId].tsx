@@ -6,15 +6,18 @@ import {
   Text,
   View,
 } from "react-native";
-import Animated, { FadeIn, FadeInDown, FadeInLeft, FadeInRight } from "react-native-reanimated";
 import { useMe } from "@/features/auth/api";
-import { ConfettiBurst } from "@/features/gamification/confetti";
+import { shouldShowClaimGate } from "@/features/auth/claimGate";
+import { SaveProgressGate } from "@/features/auth/SaveProgressGate";
+import { SoftPaywallGenius } from "@/features/shop/SoftPaywallGenius";
+import { activateDemoSub } from "@/features/retention/storage";
+import { analytics } from "@/shared/analytics/posthog";
+import type { PlanId } from "@/features/retention/types";
 import {
   useQuizByLesson,
   useQuizHint,
   useSubmitQuiz,
 } from "@/features/home/api";
-import { GorillaAvatar, quizResultMascotSource } from "@/features/mascot/components/GorillaAvatar";
 import { mascotKindFromCategorySlug } from "@/features/mascot/assets";
 import {
   MatchQuestion,
@@ -27,16 +30,14 @@ import {
   OrderQuestion,
   shuffleOrderIds,
 } from "@/features/quiz/components/OrderQuestion";
+import { QuizVictoryResult } from "@/features/quiz/components/QuizVictoryResult";
 import { TrueFalseQuestion } from "@/features/quiz/components/TrueFalseQuestion";
 import type { QuizQuestion } from "@/features/quiz/types";
 import { EXTRA_QUIZ_TIME_SEC, WATER_BOTTLE_QUIZ_RETRY_COST } from "@muscle-mind/types";
 import { ApiError } from "@/shared/api/client";
 import { PrimaryButton, Screen } from "@/shared/ui/primitives";
+import { QuizSkeleton } from "@/shared/ui/Skeleton";
 import { ExtraTimeIcon, QuizHintIcon } from "@/shared/ui/BoostIcons";
-import { NeuroliftAmount } from "@/shared/ui/Neurolift";
-import { NeuroCoinAmount } from "@/shared/ui/NeuroCoin";
-import { StarRow } from "@/shared/ui/Star";
-import { NeuroCoinsEarnAnimation } from "@/shared/ui/StarsEarnAnimation";
 import { WaterBottleIcon } from "@/shared/ui/WaterBottle";
 
 type SubmitResult = {
@@ -174,10 +175,13 @@ export default function QuizScreen() {
   const [eliminatedIds, setEliminatedIds] = useState<string[]>([]);
   const [hintUsedForQuestion, setHintUsedForQuestion] = useState(false);
   const [hintsLeft, setHintsLeft] = useState(0);
+  const [showClaimGate, setShowClaimGate] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const deadlineRef = useRef(Date.now() + 60_000);
   const accountedTimeRef = useRef(0);
   const coinsBeforeRef = useRef(0);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     if (me?.neuroCoinBalance != null && !result) {
@@ -190,6 +194,14 @@ export default function QuizScreen() {
       setCoinsAfter(me.neuroCoinBalance);
     }
   }, [result, me?.neuroCoinBalance]);
+
+  function navigateAfterQuiz(href: "/(app)/home" | `/(app)/lesson/${string}`) {
+    if (shouldShowClaimGate(!!me?.isGuest)) {
+      setShowClaimGate(true);
+      return;
+    }
+    router.replace(href);
+  }
 
   const quizTimeSec = quiz?.quizTimeSec ?? 60;
   const wrongPenaltySec = quiz?.wrongPenaltySec ?? 1;
@@ -232,6 +244,8 @@ export default function QuizScreen() {
     setEliminatedIds([]);
     setHintUsedForQuestion(false);
     setStarted(false);
+    setSubmitting(false);
+    submittingRef.current = false;
   }, []);
 
   useEffect(() => {
@@ -276,16 +290,17 @@ export default function QuizScreen() {
   }, [question?.id, quizQuestion]);
 
   useEffect(() => {
-    if (!quiz || result || failed) return;
+    if (!quiz || result || failed || submitting) return;
 
     syncTimerFromDeadline();
     const id = setInterval(() => {
+      if (submittingRef.current) return;
       const left = syncTimerFromDeadline();
       if (left <= 0) setFailed(true);
     }, 250);
 
     return () => clearInterval(id);
-  }, [quiz, result, failed, syncTimerFromDeadline]);
+  }, [quiz, result, failed, submitting, syncTimerFromDeadline]);
 
   const elapsedTotalSec = () => {
     const left = Math.max(
@@ -301,7 +316,7 @@ export default function QuizScreen() {
   };
 
   const commitQuestion = async (selectedAnswerIds: string[]) => {
-    if (!quiz || !question || result || failed) return;
+    if (!quiz || !question || result || failed || submittingRef.current) return;
 
     const totalSoFar = elapsedTotalSec();
     const questionSpent = Math.max(1, totalSoFar - accountedTimeRef.current);
@@ -323,6 +338,11 @@ export default function QuizScreen() {
       return;
     }
 
+    // Figé le chrono dès la dernière bonne réponse — le délai réseau ne doit
+    // plus consommer de secondes ni déclencher « Temps écoulé ».
+    submittingRef.current = true;
+    setSubmitting(true);
+
     const totalTimeSpentSec = Math.max(1, accountedTimeRef.current);
     try {
       const resSubmit = await submit.mutateAsync({
@@ -331,8 +351,11 @@ export default function QuizScreen() {
         answers: nextAnswers,
         totalTimeSpentSec,
       });
+      setFailed(false);
       setResult(resSubmit);
     } catch (err) {
+      submittingRef.current = false;
+      setSubmitting(false);
       setSubmitError(
         err instanceof Error ? err.message : "Impossible d'envoyer le quiz",
       );
@@ -518,28 +541,36 @@ export default function QuizScreen() {
       locked &&
       typeof error.message === "string" &&
       error.message.toLowerCase().includes("bouteille");
+    if (noBottles) {
+      return (
+        <SoftPaywallGenius
+          onGenius={() => {
+            activateDemoSub("sub-genius" as PlanId);
+            analytics.capture(analytics.events.PREMIUM_SUBSCRIBED, {
+              planId: "sub-genius",
+              source: "soft_paywall",
+            });
+            analytics.capture(analytics.events.SOFT_PAYWALL_CTA, {
+              cta: "genius",
+            });
+            router.replace("/(app)/shop");
+          }}
+          onRecharges={() => {
+            analytics.capture(analytics.events.SOFT_PAYWALL_CTA, {
+              cta: "recharges",
+            });
+            router.replace("/(app)/shop");
+          }}
+          onBack={() => router.replace("/(app)/home")}
+        />
+      );
+    }
     return (
       <Screen>
         <Text className="text-lg text-white">
-          {noBottles
-            ? "Plus assez de bouteilles"
-            : locked
-              ? "Leçon verrouillée"
-              : "Quiz indisponible"}
+          {locked ? "Leçon verrouillée" : "Quiz indisponible"}
         </Text>
-        {noBottles ? (
-          <Text className="mt-3 text-muted">
-            Relancer un quiz coûte {WATER_BOTTLE_QUIZ_RETRY_COST} bouteilles.
-            Passe à la boutique ou attends demain.
-          </Text>
-        ) : null}
         <View className="mt-8 gap-3">
-          {noBottles ? (
-            <PrimaryButton
-              label="Boutique"
-              onPress={() => router.replace("/(app)/shop")}
-            />
-          ) : null}
           <PrimaryButton
             label="Retour"
             onPress={() => router.replace("/(app)/home")}
@@ -549,10 +580,53 @@ export default function QuizScreen() {
     );
   }
 
+  if (showClaimGate) {
+    return (
+      <SaveProgressGate
+        onSkip={() => {
+          setShowClaimGate(false);
+          router.replace("/(app)/home");
+        }}
+      />
+    );
+  }
+
   if (isLoading || !quiz) {
     return (
       <Screen>
-        <Text className="text-muted">Préparation du quiz…</Text>
+        <QuizSkeleton />
+      </Screen>
+    );
+  }
+
+  if (result) {
+    const fromTotal = coinsBeforeRef.current;
+    const coinsEarned = result.neuroCoinsEarned ?? 0;
+    const toTotal =
+      coinsAfter ??
+      me?.neuroCoinBalance ??
+      fromTotal + coinsEarned;
+    const mascotKind = mascotKindFromCategorySlug(quiz?.categorySlug);
+
+    return (
+      <Screen>
+        <QuizVictoryResult
+          passed={result.passed}
+          stars={result.stars}
+          xpEarned={result.xpEarned}
+          coinsEarned={coinsEarned}
+          coinsFromTotal={fromTotal}
+          coinsToTotal={toTotal}
+          mascotKind={mascotKind}
+          nextLessonId={result.nextLessonId}
+          onNextLesson={() =>
+            navigateAfterQuiz(
+              `/(app)/lesson/${result.nextLessonId}` as `/(app)/lesson/${string}`,
+            )
+          }
+          onSeePath={() => navigateAfterQuiz("/(app)/home")}
+          onRetry={resetQuiz}
+        />
       </Screen>
     );
   }
@@ -583,122 +657,12 @@ export default function QuizScreen() {
     );
   }
 
-  if (result) {
-    const fromTotal = coinsBeforeRef.current;
-    const coinsEarned = result.neuroCoinsEarned ?? 0;
-    const toTotal =
-      coinsAfter ??
-      me?.neuroCoinBalance ??
-      fromTotal + coinsEarned;
-    const showCoinAnim = result.passed && coinsEarned > 0;
-    const mascotKind = mascotKindFromCategorySlug(quiz?.categorySlug);
-    const mascotPose = result.passed
-      ? result.stars >= 3
-        ? "present"
-        : "default"
-      : "doubt";
-    const mascotOverride = quizResultMascotSource(
-      mascotKind,
-      result.passed,
-      result.stars,
-    );
-
+  if (submitting) {
     return (
       <Screen>
-        <ConfettiBurst active={result.stars === 3} />
-        {showCoinAnim ? (
-          <NeuroCoinsEarnAnimation
-            active
-            earned={coinsEarned}
-            fromTotal={fromTotal}
-            toTotal={toTotal}
-          />
-        ) : null}
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerClassName="flex-grow justify-center pb-8"
-        >
-          <View className="flex-1 items-center justify-center">
-            <Animated.View entering={FadeIn.duration(420)}>
-              <GorillaAvatar
-                pose={mascotPose}
-                size="md"
-                kind={mascotKind}
-                sourceOverride={mascotOverride}
-              />
-            </Animated.View>
-
-            <Animated.View
-              entering={FadeInDown.delay(280).duration(420)}
-              className="mt-5 items-center"
-            >
-              <StarRow stars={result.stars} size={40} />
-              <Text className="mt-4 text-lg text-white">
-                {result.passed
-                  ? `${result.stars} étoile${result.stars > 1 ? "s" : ""}`
-                  : "Quiz non validé"}
-              </Text>
-            </Animated.View>
-
-            <View className="mt-8 w-full flex-row items-center justify-center gap-10">
-              <Animated.View entering={FadeInLeft.delay(700).duration(420)}>
-                <NeuroliftAmount
-                  amount={result.xpEarned}
-                  size="xl"
-                  signed
-                  color="#7CFFB2"
-                />
-              </Animated.View>
-              {coinsEarned > 0 ? (
-                <Animated.View entering={FadeInRight.delay(1050).duration(420)}>
-                  <NeuroCoinAmount
-                    amount={coinsEarned}
-                    size="xl"
-                    signed
-                    color="#E8B84A"
-                  />
-                </Animated.View>
-              ) : null}
-            </View>
-
-            <Animated.View
-              entering={FadeInDown.delay(coinsEarned > 0 ? 1450 : 1100).duration(
-                420,
-              )}
-              className="mt-12 w-full gap-4"
-            >
-              {!result.passed ? (
-                <Pressable
-                  onPress={resetQuiz}
-                  className="flex-row items-center justify-center gap-2 rounded-2xl bg-accent py-4 active:opacity-90"
-                >
-                  <Text className="text-base font-semibold text-background">
-                    Réessayer −{WATER_BOTTLE_QUIZ_RETRY_COST}
-                  </Text>
-                  <WaterBottleIcon size={20} />
-                </Pressable>
-              ) : result.nextLessonId ? (
-                <PrimaryButton
-                  label="Leçon suivante"
-                  onPress={() =>
-                    router.replace(`/(app)/lesson/${result.nextLessonId}`)
-                  }
-                />
-              ) : (
-                <PrimaryButton
-                  label="Retour au parcours"
-                  onPress={() => router.replace("/(app)/home")}
-                />
-              )}
-              <Pressable
-                onPress={() => router.replace("/(app)/home")}
-                className="items-center py-2 active:opacity-70"
-              >
-                <Text className="text-sm text-muted">Voir le parcours</Text>
-              </Pressable>
-            </Animated.View>
-          </View>
-        </ScrollView>
+        <View className="flex-1 items-center justify-center">
+          <Text className="text-lg text-white">Envoi du quiz…</Text>
+        </View>
       </Screen>
     );
   }

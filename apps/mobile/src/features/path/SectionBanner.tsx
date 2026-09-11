@@ -1,4 +1,5 @@
 import { Pressable, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 
 function bannerInk(hex: string) {
   const c = hex.replace("#", "");
@@ -21,13 +22,17 @@ export function SectionBanner({
   title: string;
   onPress: () => void;
 }) {
+  const { t } = useTranslation("home");
   const ink = bannerInk(color);
 
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`Section ${sectionIndex}, ${title}. Voir le détail du thème.`}
+      accessibilityLabel={t("sectionA11y", {
+        index: sectionIndex,
+        title,
+      })}
       className="mb-3 flex-row items-center rounded-[22px] px-4 py-3.5"
       style={{ backgroundColor: color }}
     >
@@ -36,7 +41,7 @@ export function SectionBanner({
           className="text-[11px] font-semibold uppercase tracking-[2px]"
           style={{ color: ink, opacity: 0.72 }}
         >
-          Section {sectionIndex}
+          {t("section", { index: sectionIndex })}
         </Text>
         <Text
           className="mt-1 text-lg font-semibold"

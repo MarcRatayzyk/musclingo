@@ -8,6 +8,12 @@ import {
 } from "@muscle-mind/types";
 import { PrismaService } from "../../prisma/prisma.service";
 import { GamificationService } from "../gamification/gamification.service";
+import {
+  AppLocale,
+  pickLocalized,
+  resolveRequestLocale,
+} from "../../common/locale";
+import { pickCategoryName } from "../../common/content-l10n";
 
 export type MiniGameChoice = {
   id: string;
@@ -68,7 +74,8 @@ export class MiniGamesService {
   ) {}
 
   /** Parcours jouables : ceux qui ont une banque dédiée. */
-  async list(userId: string) {
+  async list(userId: string, localeHeader?: string) {
+    const locale = await this.resolveLocale(userId, localeHeader);
     const grouped = await this.prisma.miniGameQuestion.groupBy({
       by: ["categoryId"],
       _count: { _all: true },
@@ -99,7 +106,7 @@ export class MiniGamesService {
       return {
         categoryId: category.id,
         slug: category.slug,
-        name: category.name,
+        name: pickCategoryName(category.name, category.nameEn, locale, category.slug),
         color: category.color,
         bestScore: best?._max.score ?? 0,
         gamesPlayed: best?._count._all ?? 0,
@@ -107,10 +114,11 @@ export class MiniGamesService {
     });
   }
 
-  async getQuestions(categoryId: string, userId: string) {
+  async getQuestions(categoryId: string, userId: string, localeHeader?: string) {
+    const locale = await this.resolveLocale(userId, localeHeader);
     const category = await this.prisma.category.findUnique({
       where: { id: categoryId },
-      select: { id: true, slug: true, name: true, color: true },
+      select: { id: true, slug: true, name: true, nameEn: true, color: true },
     });
     if (!category) throw new NotFoundException("Category not found");
 
@@ -153,12 +161,13 @@ export class MiniGamesService {
     for (const question of lessonQuestions) {
       const built =
         question.type === QuestionType.TEXT
-          ? this.buildImageQuestion(question)
+          ? this.buildImageQuestion(question, locale)
           : this.buildChoiceQuestion(
               `lesson:${question.id}`,
-              question.prompt,
-              question.explanation,
+              pickLocalized(question.prompt, question.promptEn, locale),
+              pickLocalized(question.explanation, question.explanationEn, locale),
               question.answers,
+              locale,
             );
       if (!built) continue;
       const target = learnedLessonIds.has(question.quiz.lessonId)
@@ -170,9 +179,10 @@ export class MiniGamesService {
     for (const question of dedicated) {
       const built = this.buildChoiceQuestion(
         `mini:${question.id}`,
-        question.prompt,
-        question.explanation,
+        pickLocalized(question.prompt, question.promptEn, locale),
+        pickLocalized(question.explanation, question.explanationEn, locale),
         question.answers,
+        locale,
       );
       if (!built) continue;
       const isLearned =
@@ -190,7 +200,7 @@ export class MiniGamesService {
     return {
       categoryId: category.id,
       slug: category.slug,
-      name: category.name,
+      name: pickCategoryName(category.name, category.nameEn, locale, category.slug),
       color: category.color,
       questions: pool.slice(0, POOL_SIZE),
     };
@@ -260,7 +270,8 @@ export class MiniGamesService {
     id: string,
     prompt: string,
     explanation: string,
-    answers: Array<{ id: string; label: string; isCorrect: boolean }>,
+    answers: Array<{ id: string; label: string; labelEn?: string | null; isCorrect: boolean }>,
+    locale: AppLocale,
   ): MiniGameQuestionPayload | null {
     if (!answers.some((a) => a.isCorrect)) return null;
     if (answers.length < 2) return null;
@@ -274,7 +285,7 @@ export class MiniGamesService {
       choices: shuffle(
         answers.map((a) => ({
           id: a.id,
-          label: a.label,
+          label: pickLocalized(a.label, a.labelEn, locale),
           isCorrect: a.isCorrect,
         })),
       ),
@@ -288,10 +299,12 @@ export class MiniGamesService {
   private buildImageQuestion(question: {
     id: string;
     prompt: string;
+    promptEn?: string | null;
     explanation: string;
+    explanationEn?: string | null;
     payload: Prisma.JsonValue | null;
-    answers: Array<{ id: string; label: string; isCorrect: boolean }>;
-  }): MiniGameQuestionPayload | null {
+    answers: Array<{ id: string; label: string; labelEn?: string | null; isCorrect: boolean }>;
+  }, locale: AppLocale): MiniGameQuestionPayload | null {
     const legend = readLegendPayload(question.payload);
     if (!legend?.color) return null;
 
@@ -322,12 +335,23 @@ export class MiniGamesService {
 
     return {
       id: `legend:${question.id}`,
-      prompt: "Quelle structure correspond à cette couleur ?",
-      explanation: question.explanation,
+      prompt:
+        locale === "en"
+          ? "Which structure matches this color?"
+          : "Quelle structure correspond à cette couleur ?",
+      explanation: pickLocalized(
+        question.explanation,
+        question.explanationEn,
+        locale,
+      ),
       imageUrl: legend.imageUrl,
       color: legend.color,
       choices: shuffle([
-        { id: correct.id, label: correct.label, isCorrect: true },
+        {
+          id: correct.id,
+          label: pickLocalized(correct.label, correct.labelEn, locale),
+          isCorrect: true,
+        },
         ...distractors.map((label, i) => ({
           id: `${question.id}-d${i}`,
           label,
@@ -335,5 +359,16 @@ export class MiniGamesService {
         })),
       ]),
     };
+  }
+
+  private async resolveLocale(
+    userId: string,
+    localeHeader?: string,
+  ): Promise<AppLocale> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { locale: true },
+    });
+    return resolveRequestLocale({ "x-locale": localeHeader }, user?.locale);
   }
 }

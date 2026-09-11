@@ -1,0 +1,20 @@
+{
+  "continue": "Continuer",
+  "retry": "Réessayer",
+  "cancel": "Annuler",
+  "back": "Retour",
+  "loading": "Chargement…",
+  "errorGeneric": "Une erreur est survenue.",
+  "save": "Enregistrer",
+  "logout": "Se déconnecter",
+  "level": "Niveau",
+  "streak": "Streak",
+  "global": "Global",
+  "daysShort": "{{count}}j",
+  "xp": "XP",
+  "free": "Gratuit",
+  "comingSoon": "Bientôt",
+  "language": "Langue",
+  "french": "Français",
+  "english": "English"
+}

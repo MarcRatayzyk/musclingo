@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  ActivityIndicator,
   Pressable,
   Text,
   useWindowDimensions,
@@ -15,12 +14,17 @@ import Animated, {
   useSharedValue,
 } from "react-native-reanimated";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
+import { useTranslation } from "react-i18next";
 import { useShopCatalog, useShopPurchase, type ShopOffer } from "@/features/shop/api";
+import { activateDemoSub } from "@/features/retention/storage";
+import type { PlanId } from "@/features/retention/types";
 import { ApiError } from "@/shared/api/client";
+import { analytics } from "@/shared/analytics/posthog";
 import { Screen } from "@/shared/ui/primitives";
 import { NeuroCoinIcon } from "@/shared/ui/NeuroCoin";
 import { WaterBottleIcon } from "@/shared/ui/WaterBottle";
 import { RewardsTopBar } from "@/shared/ui/RewardsTopBar";
+import { ShopSkeleton } from "@/shared/ui/Skeleton";
 
 const TAB_BAR_HEIGHT = 70;
 const TOP_BAR_BLOCK = 64;
@@ -34,7 +38,9 @@ function OfferCard({
   busy: boolean;
   onBuy: () => void;
 }) {
+  const { t } = useTranslation();
   const isCoins = offer.kind === "coins";
+  const euroPrice = offer.priceEuro?.toFixed(2).replace(".", ",");
   return (
     <View
       style={{
@@ -54,7 +60,7 @@ function OfferCard({
           gap: 12,
         }}
       >
-        <View style={{ flex: 1, gap: 8 }}>
+        <View style={{ flex: 1, gap: 6 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Text style={{ color: "#FFFFFF", fontSize: 17, fontWeight: "700" }}>
               {offer.title}
@@ -83,7 +89,7 @@ function OfferCard({
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <WaterBottleIcon size={18} />
             <Text style={{ color: "#5BCfff", fontWeight: "800", fontSize: 15 }}>
-              +{offer.rewardBottles}
+              {t("shop:rewardForLessons", { count: offer.rewardBottles })}
             </Text>
           </View>
         </View>
@@ -91,17 +97,26 @@ function OfferCard({
         <Pressable
           disabled={busy}
           onPress={onBuy}
+          accessibilityLabel={
+            isCoins
+              ? t("shop:accessibilityExchange", { price: offer.priceNeuroCoins })
+              : t("shop:accessibilityGet", { price: euroPrice })
+          }
           style={{
-            minWidth: 88,
+            minWidth: 96,
             alignItems: "center",
             justifyContent: "center",
             borderRadius: 14,
-            paddingVertical: 12,
+            paddingVertical: 10,
             paddingHorizontal: 12,
             backgroundColor: isCoins ? "#E8B84A" : "#7CFFB2",
             opacity: busy ? 0.6 : 1,
+            gap: 2,
           }}
         >
+          <Text style={{ color: "#0B0F14", fontWeight: "800", fontSize: 12 }}>
+            {isCoins ? t("shop:exchange") : t("shop:get")}
+          </Text>
           {isCoins ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
               <Text style={{ color: "#0B0F14", fontWeight: "800", fontSize: 15 }}>
@@ -127,6 +142,7 @@ function GeniusCard({
   busy: boolean;
   onBuy: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <View
       style={{
@@ -178,7 +194,7 @@ function GeniusCard({
         }}
       >
         <Text style={{ color: "#7CFFB2", fontSize: 11, fontWeight: "800" }}>
-          Recommandé
+          {t("shop:bestValue")}
         </Text>
       </View>
 
@@ -201,14 +217,14 @@ function GeniusCard({
           marginBottom: 16,
         }}
       >
-        Progression sans frein
+        {t("shop:geniusSubtitle")}
       </Text>
 
       <View style={{ gap: 10, marginBottom: 18 }}>
         {[
-          "Bouteilles illimitées",
-          "Sans publicités",
-          "Timer intégré",
+          t("shop:geniusFeature1"),
+          t("shop:geniusFeature2"),
+          t("shop:geniusFeature3"),
         ].map((feature) => (
           <View
             key={feature}
@@ -242,7 +258,7 @@ function GeniusCard({
         }}
       >
         <Text style={{ color: "#0B0F14", fontWeight: "900", fontSize: 17 }}>
-          5,99 € / mois
+          {t("shop:geniusCta")}
         </Text>
       </Pressable>
     </View>
@@ -256,6 +272,7 @@ function BoostCard({
   busy: boolean;
   onBuy: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <View
       style={{
@@ -282,14 +299,14 @@ function BoostCard({
           Boost
         </Text>
         <Text style={{ color: "#8B95A8", fontSize: 12, lineHeight: 17 }}>
-          35 / jour · pubs · recharge 1 / 30 min
+          {t("shop:boostBody")}
         </Text>
       </View>
       <Pressable
         disabled={busy}
         onPress={onBuy}
         style={{
-          minWidth: 84,
+          minWidth: 96,
           alignItems: "center",
           justifyContent: "center",
           borderRadius: 12,
@@ -299,8 +316,8 @@ function BoostCard({
           opacity: busy ? 0.6 : 1,
         }}
       >
-        <Text style={{ color: "#0B0F14", fontWeight: "800", fontSize: 14 }}>
-          2,99 €
+        <Text style={{ color: "#0B0F14", fontWeight: "800", fontSize: 13 }}>
+          {t("shop:boostCta")}
         </Text>
       </Pressable>
     </View>
@@ -308,6 +325,7 @@ function BoostCard({
 }
 
 export default function ShopScreen() {
+  const { t } = useTranslation();
   const { height: windowH } = useWindowDimensions();
   const { data: offers, isLoading } = useShopCatalog();
   const purchase = useShopPurchase();
@@ -358,11 +376,17 @@ export default function ShopScreen() {
     try {
       const res = await purchase.mutateAsync(offerId);
       if (res.demo && offerId.startsWith("sub-")) {
-        setToast(res.message ?? `${label} activé (démo)`);
+        const planId = offerId as PlanId;
+        activateDemoSub(planId);
+        analytics.capture(analytics.events.PREMIUM_SUBSCRIBED, {
+          planId,
+          source: "shop_demo",
+        });
+        setToast(res.message ?? t("shop:demoActivated", { label }));
       } else if (res.demo) {
-        setToast(res.message ?? `Démo : +${res.rewardBottles} bouteilles`);
+        setToast(res.message ?? t("shop:demoReward", { count: res.rewardBottles }));
       } else {
-        setToast(`+${res.rewardBottles} bouteilles`);
+        setToast(t("shop:rewardOnly", { count: res.rewardBottles }));
       }
     } catch (err) {
       const message =
@@ -370,7 +394,7 @@ export default function ShopScreen() {
           ? err.message
           : err instanceof Error
             ? err.message
-            : "Achat impossible";
+            : t("shop:purchaseError");
       setError(message);
     } finally {
       setBuyingId(null);
@@ -393,7 +417,7 @@ export default function ShopScreen() {
       ) : null}
 
       {isLoading ? (
-        <ActivityIndicator color="#7CFFB2" style={{ marginTop: 40 }} />
+        <ShopSkeleton />
       ) : (
         <Animated.ScrollView
           showsVerticalScrollIndicator={false}
@@ -424,11 +448,24 @@ export default function ShopScreen() {
                 hintStyle,
               ]}
             >
-              Glisse pour la boutique
+              {t("shop:scrollHint")}
             </Animated.Text>
           </View>
 
           <Animated.View style={packsStyle}>
+            {coinOffers.length > 0 ? (
+              <Text
+                style={{
+                  color: "#FFFFFF",
+                  fontSize: 18,
+                  fontWeight: "800",
+                  marginBottom: 12,
+                  marginTop: 4,
+                }}
+              >
+                {t("shop:exchangeNeuroCoins")}
+              </Text>
+            ) : null}
             {coinOffers.map((offer) => (
               <OfferCard
                 key={offer.id}
@@ -438,6 +475,19 @@ export default function ShopScreen() {
               />
             ))}
 
+            {moneyOffers.length > 0 ? (
+              <Text
+                style={{
+                  color: "#FFFFFF",
+                  fontSize: 18,
+                  fontWeight: "800",
+                  marginBottom: 12,
+                  marginTop: 16,
+                }}
+              >
+                {t("shop:bottlePacks")}
+              </Text>
+            ) : null}
             {moneyOffers.map((offer) => (
               <OfferCard
                 key={offer.id}

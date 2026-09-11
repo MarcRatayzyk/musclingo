@@ -90,6 +90,10 @@ export default function AppLayout() {
         options={{ href: null, tabBarStyle: { display: "none" } }}
       />
       <Tabs.Screen
+        name="manage-subscription"
+        options={{ href: null, tabBarStyle: { display: "none" } }}
+      />
+      <Tabs.Screen
         name="categories"
         options={{ href: null, tabBarStyle: { display: "none" } }}
       />

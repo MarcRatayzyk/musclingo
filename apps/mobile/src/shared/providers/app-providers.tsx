@@ -1,6 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { I18nextProvider } from "react-i18next";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { touchAppOpen } from "@/features/retention/storage";
+import i18n from "@/i18n";
 import { tokenStorage } from "../storage/mmkv";
 import { useSessionStore } from "../store/session";
 import { analytics } from "../analytics/posthog";
@@ -31,10 +34,6 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       setHydrated(true);
       setReady(true);
 
-      if (!OFFLINE) {
-        analytics.capture(analytics.events.SESSION_START);
-      }
-
       const key = OFFLINE ? "" : process.env.EXPO_PUBLIC_POSTHOG_KEY;
       if (key) {
         (
@@ -46,7 +45,10 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
             };
           }
         ).__posthog = {
-          capture: (event: string, props?: object) => {
+          capture: (event: string, props?: Record<string, unknown>) => {
+            const distinct =
+              (typeof props?.distinct_id === "string" && props.distinct_id) ||
+              analytics.getDistinctId();
             void fetch(
               `${process.env.EXPO_PUBLIC_POSTHOG_HOST ?? "https://eu.i.posthog.com"}/capture/`,
               {
@@ -55,7 +57,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
                 body: JSON.stringify({
                   api_key: key,
                   event,
-                  properties: { ...props, distinct_id: "anon" },
+                  properties: { ...props, distinct_id: distinct },
                 }),
               },
             ).catch(() => undefined);
@@ -64,6 +66,12 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
           reset: () => undefined,
         };
       }
+
+      if (!OFFLINE) {
+        analytics.capture(analytics.events.SESSION_START);
+      }
+
+      touchAppOpen();
     })();
   }, [setAuthenticated, setHydrated]);
 
@@ -71,7 +79,9 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <I18nextProvider i18n={i18n}>
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      </I18nextProvider>
     </GestureHandlerRootView>
   );
 }

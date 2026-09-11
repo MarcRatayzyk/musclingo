@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/shared/api/client";
+import { getAppLocale } from "@/i18n";
 
 export type ShopOffer = {
   id: string;
@@ -23,7 +24,7 @@ export type ShopPurchaseResult = {
 
 export function useShopCatalog() {
   return useQuery({
-    queryKey: ["shop", "catalog"],
+    queryKey: ["shop", "catalog", getAppLocale()],
     queryFn: () =>
       apiFetch<{ offers: ShopOffer[] }>("/shop/catalog").then((r) => r.offers),
   });

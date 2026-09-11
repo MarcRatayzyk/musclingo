@@ -1,0 +1,6 @@
+{
+  "network": "Network error",
+  "unauthorized": "Session expired",
+  "notFound": "Not found",
+  "forbidden": "Action not allowed"
+}

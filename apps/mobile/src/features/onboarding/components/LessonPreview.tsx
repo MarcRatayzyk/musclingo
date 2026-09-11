@@ -1,11 +1,18 @@
 import { Text, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
+import {
+  motion,
+  onboardingColors,
+  onboardingType,
+  radius,
+  space,
+} from "../theme";
+import { useReducedMotion } from "../useReducedMotion";
 
 type Props = {
   pathLabel: string;
   levelLabel?: string;
   title: string;
-  durationMin: number;
   xpReward: number;
   accentColor?: string;
 };
@@ -14,38 +21,72 @@ export function LessonPreview({
   pathLabel,
   levelLabel = "Niveau 1",
   title,
-  durationMin,
   xpReward,
-  accentColor = "#7CFFB2",
+  accentColor = onboardingColors.pulse,
 }: Props) {
+  const reduced = useReducedMotion();
+
   return (
     <Animated.View
-      entering={FadeInUp.duration(320)}
-      className="rounded-3xl border-2 bg-surface p-5"
-      style={{ borderColor: accentColor + "66" }}
+      entering={reduced ? undefined : FadeInUp.duration(motion.enter)}
+      style={{
+        borderRadius: radius.panel,
+        borderWidth: 1.5,
+        borderColor: accentColor + "55",
+        backgroundColor: onboardingColors.rubber,
+        padding: space.xl,
+        overflow: "hidden",
+      }}
     >
+      <View
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: 3,
+          backgroundColor: accentColor,
+        }}
+      />
       <Text
-        className="text-xs font-semibold uppercase tracking-[3px]"
-        style={{ color: accentColor }}
+        style={{
+          ...onboardingType.meta,
+          color: accentColor,
+          fontFamily: onboardingType.label.fontFamily,
+        }}
       >
-        {pathLabel} — {levelLabel}
+        {pathLabel} · {levelLabel}
       </Text>
-      <Text className="mt-3 text-2xl font-semibold leading-8 text-white">
+      <Text
+        style={{
+          ...onboardingType.hero,
+          marginTop: space.md,
+        }}
+      >
         {title}
       </Text>
 
-      <View className="mt-5 flex-row gap-3">
-        <View className="rounded-2xl bg-elevated px-3 py-2">
-          <Text className="text-sm text-muted">⏱ {durationMin} min</Text>
-        </View>
-        <View
-          className="rounded-2xl px-3 py-2"
-          style={{ backgroundColor: accentColor + "22" }}
+      <View
+        style={{
+          marginTop: space.xl,
+          alignSelf: "flex-start",
+          borderRadius: radius.control,
+          backgroundColor: accentColor + "28",
+          borderWidth: 1,
+          borderColor: accentColor + "66",
+          paddingHorizontal: space.lg,
+          paddingVertical: space.sm + 2,
+        }}
+      >
+        <Text
+          style={{
+            ...onboardingType.label,
+            color: accentColor,
+            fontSize: 15,
+          }}
         >
-          <Text className="text-sm font-semibold" style={{ color: accentColor }}>
-            +{xpReward} XP
-          </Text>
-        </View>
+          +{xpReward} XP
+        </Text>
       </View>
     </Animated.View>
   );

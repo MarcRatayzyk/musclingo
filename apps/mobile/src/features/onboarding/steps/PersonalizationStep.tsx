@@ -12,30 +12,39 @@ import { PATH_CHAPTERS, MASCOT_COPY } from "../content";
 import { pathLabel } from "../recommend";
 import { LessonPreview } from "../components/LessonPreview";
 import { MascotAskHeader } from "../components/MascotAskHeader";
-import { OnboardingPrimaryButton } from "../components/OnboardingPrimaryButton";
+import {
+  OnboardingButtonStack,
+  OnboardingPrimaryButton,
+} from "../components/OnboardingPrimaryButton";
+import { OnboardingErrorState } from "../components/OnboardingStates";
 import { PathPreview } from "../components/PathPreview";
+import {
+  motion,
+  onboardingColors,
+  onboardingType,
+  space,
+} from "../theme";
+import { useReducedMotion } from "../useReducedMotion";
 import type { PathChapterPreview, PathSlug } from "../types";
 
 type Props = {
   path: PathSlug;
   chaptersFromApi?: PathChapterPreview[];
   lessonTitle: string;
-  durationSec: number;
   xpReward: number;
   accentColor?: string;
   loading?: boolean;
   error?: string | null;
-  /** Appelé une fois l’écran prêt : finalise l’onboarding sans naviguer. */
   onReady: () => void;
   onStartLesson: () => void;
   onGoHome: () => void;
+  onRetry?: () => void;
 };
 
 export function PersonalizationStep({
   path,
   chaptersFromApi,
   lessonTitle,
-  durationSec,
   xpReward,
   accentColor,
   loading,
@@ -43,19 +52,26 @@ export function PersonalizationStep({
   onReady,
   onStartLesson,
   onGoHome,
+  onRetry,
 }: Props) {
   const [ready, setReady] = useState(false);
   const pulse = useSharedValue(0.35);
   const confetti = useFlash(1400);
   const { trigger } = confetti;
+  const reduced = useReducedMotion();
 
   useEffect(() => {
-    pulse.value = withRepeat(withTiming(1, { duration: 700 }), -1, true);
+    if (reduced) {
+      pulse.value = 0.85;
+    } else {
+      pulse.value = withRepeat(withTiming(1, { duration: 700 }), -1, true);
+    }
+    const delay = reduced ? 200 : 1400;
     const t = setTimeout(() => {
       setReady(true);
-      trigger();
+      if (!reduced) trigger();
       onReady();
-    }, 1400);
+    }, delay);
     return () => clearTimeout(t);
     // Intentional once-on-mount reveal + finalize onboarding.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -63,6 +79,7 @@ export function PersonalizationStep({
 
   const pulseStyle = useAnimatedStyle(() => ({
     opacity: pulse.value,
+    transform: [{ scale: 0.9 + pulse.value * 0.1 }],
   }));
 
   const chapters =
@@ -70,7 +87,7 @@ export function PersonalizationStep({
       ? chaptersFromApi
       : PATH_CHAPTERS[path];
   const label = pathLabel(path);
-  const durationMin = Math.max(1, Math.round(durationSec / 60));
+  const accent = accentColor ?? onboardingColors.pulse;
 
   if (!ready) {
     return (
@@ -79,31 +96,34 @@ export function PersonalizationStep({
           flex: 1,
           alignItems: "center",
           justifyContent: "center",
-          paddingHorizontal: 16,
+          paddingHorizontal: space.lg,
         }}
       >
         <Animated.View
           style={[
             pulseStyle,
             {
-              marginBottom: 24,
-              width: 64,
-              height: 64,
-              borderRadius: 32,
-              borderWidth: 4,
-              borderColor: "#7CFFB2",
+              marginBottom: space.xl,
+              width: 68,
+              height: 68,
+              borderRadius: 34,
+              borderWidth: 3,
+              borderColor: onboardingColors.pulse,
+              borderTopColor: "transparent",
             },
           ]}
         />
+        <Text style={{ ...onboardingType.title, textAlign: "center" }}>
+          {MASCOT_COPY.personalizing}
+        </Text>
         <Text
           style={{
-            color: "#FFFFFF",
-            fontSize: 22,
-            fontWeight: "600",
+            ...onboardingType.bodyMuted,
+            marginTop: space.sm,
             textAlign: "center",
           }}
         >
-          {MASCOT_COPY.personalizing}
+          Ta première leçon arrive dans quelques secondes.
         </Text>
       </View>
     );
@@ -111,45 +131,56 @@ export function PersonalizationStep({
 
   return (
     <View style={{ flex: 1 }}>
-      <ConfettiBurst active={confetti.on} />
+      {!reduced ? <ConfettiBurst active={confetti.on} /> : null}
       <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
-        <Animated.View entering={FadeIn.duration(280)}>
+        <Animated.View
+          entering={reduced ? undefined : FadeIn.duration(motion.enter)}
+        >
           <MascotAskHeader
             pose="present"
-            text="Une leçon est prête pour toi."
-            accentColor={accentColor ?? "#7CFFB2"}
+            text={MASCOT_COPY.pathReady}
+            accentColor={accent}
           />
         </Animated.View>
 
         <LessonPreview
           pathLabel={label}
           title={lessonTitle}
-          durationMin={durationMin}
           xpReward={xpReward}
-          accentColor={accentColor}
+          accentColor={accent}
         />
 
-        <View style={{ height: 16 }} />
-        <PathPreview pathLabel={label} chapters={chapters} />
+        <View style={{ height: space.lg }} />
+        <PathPreview
+          pathLabel={label}
+          chapters={chapters}
+          accentColor={accent}
+        />
 
         {error ? (
-          <Text style={{ marginTop: 12, color: "#FF6B7A", fontSize: 14 }}>
-            {error}
-          </Text>
+          <OnboardingErrorState
+            compact
+            message={error}
+            actionLabel="Réessayer"
+            onAction={onRetry ?? onStartLesson}
+          />
         ) : null}
-        <View style={{ height: 12 }} />
+        <View style={{ height: space.md }} />
       </ScrollView>
 
-      <OnboardingPrimaryButton
-        label={loading ? "Préparation…" : "Commencer la leçon"}
-        disabled={loading || !!error}
-        onPress={onStartLesson}
-      />
-      <OnboardingPrimaryButton
-        label="Aller à l’accueil"
-        variant="ghost"
-        onPress={onGoHome}
-      />
+      <OnboardingButtonStack>
+        <OnboardingPrimaryButton
+          label={loading ? "Préparation…" : "Lancer ma première leçon"}
+          disabled={loading || !!error}
+          loading={loading}
+          onPress={onStartLesson}
+        />
+        <OnboardingPrimaryButton
+          label="Voir l’accueil d’abord"
+          variant="ghost"
+          onPress={onGoHome}
+        />
+      </OnboardingButtonStack>
     </View>
   );
 }

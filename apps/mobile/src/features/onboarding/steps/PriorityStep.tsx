@@ -1,15 +1,21 @@
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
-import Animated, {
-  FadeIn,
-  FadeOut,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
-import { AVAILABLE_PATH_SLUGS, PATH_OPTIONS } from "../content";
+import { ScrollView, Text, View } from "react-native";
+import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+import { AVAILABLE_PATH_SLUGS, MASCOT_COPY, PATH_OPTIONS, getPathHint, getPathLabel } from "../content";
 import { MascotAskHeader } from "../components/MascotAskHeader";
-import { OnboardingPrimaryButton } from "../components/OnboardingPrimaryButton";
+import { PathGlyph } from "../components/OnboardingIcons";
+import {
+  OnboardingButtonStack,
+  OnboardingPrimaryButton,
+} from "../components/OnboardingPrimaryButton";
+import { SelectableCard } from "../components/SelectableCard";
+import {
+  onboardingColors,
+  onboardingType,
+  radius,
+  space,
+} from "../theme";
+import { useReducedMotion } from "../useReducedMotion";
 import type { PathSlug } from "../types";
 
 type Props = {
@@ -27,6 +33,7 @@ export function PriorityStep({
 }: Props) {
   const active = selected ?? recommended;
   const [soonHint, setSoonHint] = useState(false);
+  const reduced = useReducedMotion();
 
   useEffect(() => {
     if (!soonHint) return;
@@ -38,12 +45,8 @@ export function PriorityStep({
     <View style={{ flex: 1 }}>
       <MascotAskHeader
         pose="default"
-        text={
-          soonHint
-            ? "Ces parcours seront bientôt disponibles."
-            : "Par quoi on commence ?"
-        }
-        accentColor="#7CFFB2"
+        text={soonHint ? MASCOT_COPY.prioritySoon : MASCOT_COPY.priorityAsk}
+        accentColor={onboardingColors.pulse}
       />
 
       <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
@@ -56,16 +59,22 @@ export function PriorityStep({
           }}
         >
           {PATH_OPTIONS.map((option) => (
-            <PathTile
+            <SelectableCard
               key={option.slug}
-              emoji={option.emoji}
-              label={option.label}
-              accent={option.accent}
+              layout="tile"
+              reserveBadge
+              label={getPathLabel(option.slug)}
+              hint={getPathHint(option.slug)}
+              accentColor={option.accent}
               selected={!option.comingSoon && active === option.slug}
-              recommended={
+              badge={
                 !option.comingSoon && option.slug === recommended
+                  ? "Pour toi"
+                  : option.comingSoon
+                    ? "Bientôt"
+                    : undefined
               }
-              comingSoon={!!option.comingSoon}
+              dimmed={!!option.comingSoon}
               onPress={() => {
                 if (option.comingSoon) {
                   setSoonHint(true);
@@ -74,141 +83,51 @@ export function PriorityStep({
                 setSoonHint(false);
                 onSelect(option.slug);
               }}
+              icon={
+                <PathGlyph
+                  slug={option.slug}
+                  color={option.comingSoon ? onboardingColors.mist : option.accent}
+                  size={22}
+                />
+              }
             />
           ))}
         </View>
+
         {soonHint ? (
           <Animated.View
-            entering={FadeIn.duration(180)}
-            exiting={FadeOut.duration(180)}
+            entering={reduced ? undefined : FadeIn.duration(180)}
+            exiting={reduced ? undefined : FadeOut.duration(180)}
             style={{
-              marginTop: 12,
-              borderRadius: 16,
-              backgroundColor: "#1C2230",
+              marginTop: space.md,
+              borderRadius: radius.tile,
+              backgroundColor: onboardingColors.plate,
               borderWidth: 1,
-              borderColor: "#2A3344",
-              paddingHorizontal: 14,
-              paddingVertical: 12,
+              borderColor: onboardingColors.seam,
+              paddingHorizontal: space.lg,
+              paddingVertical: space.md,
             }}
           >
-            <Text style={{ color: "#8B95A8", fontSize: 14, lineHeight: 20 }}>
-              Les parcours seront bientôt disponibles.
+            <Text style={onboardingType.bodyMuted}>
+              Anatomie et nutrition sont dispo maintenant. Les autres suivent.
             </Text>
           </Animated.View>
         ) : null}
-        <View style={{ height: 12 }} />
+        <View style={{ height: space.md }} />
       </ScrollView>
 
-      <OnboardingPrimaryButton
-        label="Continuer"
-        onPress={() => {
-          const current = selected ?? recommended;
-          onSelect(
-            AVAILABLE_PATH_SLUGS.includes(current) ? current : recommended,
-          );
-          onContinue();
-        }}
-      />
-    </View>
-  );
-}
-
-function PathTile({
-  emoji,
-  label,
-  accent,
-  selected,
-  recommended,
-  comingSoon,
-  onPress,
-}: {
-  emoji: string;
-  label: string;
-  accent: string;
-  selected: boolean;
-  recommended: boolean;
-  comingSoon: boolean;
-  onPress: () => void;
-}) {
-  const scale = useSharedValue(1);
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected, disabled: false }}
-      onPressIn={() => {
-        scale.value = withSpring(0.96, { damping: 16, stiffness: 300 });
-      }}
-      onPressOut={() => {
-        scale.value = withSpring(1, { damping: 14, stiffness: 260 });
-      }}
-      onPress={onPress}
-      style={{ width: "48%" }}
-    >
-      <Animated.View
-        style={[
-          animatedStyle,
-          {
-            minHeight: 118,
-            borderRadius: 22,
-            borderWidth: 2,
-            borderColor: selected ? accent : "#2A3344",
-            backgroundColor: selected
-              ? accent + "1F"
-              : comingSoon
-                ? "#10141C"
-                : "#141820",
-            paddingHorizontal: 14,
-            paddingVertical: 14,
-            opacity: comingSoon ? 0.72 : 1,
-          },
-        ]}
-      >
-        {recommended ? (
-          <Text
-            style={{
-              alignSelf: "flex-start",
-              marginBottom: 8,
-              color: accent,
-              fontSize: 10,
-              fontWeight: "800",
-              letterSpacing: 0.6,
-              textTransform: "uppercase",
-            }}
-          >
-            Recommandé
-          </Text>
-        ) : comingSoon ? (
-          <Text
-            style={{
-              alignSelf: "flex-start",
-              marginBottom: 8,
-              color: "#8B95A8",
-              fontSize: 10,
-              fontWeight: "800",
-              letterSpacing: 0.6,
-              textTransform: "uppercase",
-            }}
-          >
-            Bientôt
-          </Text>
-        ) : (
-          <View style={{ height: 18, marginBottom: 8 }} />
-        )}
-        <Text style={{ fontSize: 28, marginBottom: 8 }}>{emoji}</Text>
-        <Text
-          style={{
-            color: "#FFFFFF",
-            fontSize: 16,
-            fontWeight: "700",
+      <OnboardingButtonStack>
+        <OnboardingPrimaryButton
+          label="Voir ma première leçon"
+          onPress={() => {
+            const current = selected ?? recommended;
+            onSelect(
+              AVAILABLE_PATH_SLUGS.includes(current) ? current : recommended,
+            );
+            onContinue();
           }}
-        >
-          {label}
-        </Text>
-      </Animated.View>
-    </Pressable>
+        />
+      </OnboardingButtonStack>
+    </View>
   );
 }

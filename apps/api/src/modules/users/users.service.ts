@@ -7,6 +7,13 @@ import {
   getXpProgress,
   listLevelRewardEntries,
 } from "@muscle-mind/types";
+import { Prisma } from "@prisma/client";
+import {
+  pickLocalized,
+  resolveRequestLocale,
+  type AppLocale,
+} from "../../common/locale";
+import { pickCategoryName } from "../../common/content-l10n";
 import { PrismaService } from "../../prisma/prisma.service";
 import { GamificationService } from "../gamification/gamification.service";
 
@@ -76,15 +83,19 @@ export class UsersService {
   }
 
   async spendStarBalance(userId: string, amount: number) {
-    const balance = await this.ensureStarBalanceSeeded(userId);
-    if (balance < amount) {
+    await this.ensureStarBalanceSeeded(userId);
+    const result = await this.prisma.user.updateMany({
+      where: { id: userId, starBalance: { gte: amount } },
+      data: { starBalance: { decrement: amount } },
+    });
+    if (result.count === 0) {
+      const balance = await this.ensureStarBalanceSeeded(userId);
       throw new ForbiddenException(
         `Pas assez d'étoiles (${amount} nécessaires, ${balance} disponibles)`,
       );
     }
-    const updated = await this.prisma.user.update({
+    const updated = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      data: { starBalance: { decrement: amount } },
       select: { starBalance: true },
     });
     return updated.starBalance;
@@ -112,18 +123,17 @@ export class UsersService {
   }
 
   async spendNeuroCoins(userId: string, amount: number) {
-    const balance = await this.getNeuroCoinBalance(userId);
-    if (balance < amount) {
+    const result = await this.prisma.user.updateMany({
+      where: { id: userId, neuroCoinBalance: { gte: amount } },
+      data: { neuroCoinBalance: { decrement: amount } },
+    });
+    if (result.count === 0) {
+      const balance = await this.getNeuroCoinBalance(userId);
       throw new ForbiddenException(
         `Pas assez de NeuroCoins (${amount} nécessaires, ${balance} disponibles)`,
       );
     }
-    const updated = await this.prisma.user.update({
-      where: { id: userId },
-      data: { neuroCoinBalance: { decrement: amount } },
-      select: { neuroCoinBalance: true },
-    });
-    return updated.neuroCoinBalance;
+    return this.getNeuroCoinBalance(userId);
   }
 
   /** Ajoute des bouteilles (achats peuvent dépasser le cap journalier). */
@@ -179,20 +189,27 @@ export class UsersService {
   }
 
   async consumeWaterBottles(userId: string, amount = WATER_BOTTLE_COST) {
-    const fresh = await this.ensureWaterBottlesFresh(userId);
-    if (fresh.waterBottles < amount) {
+    await this.ensureWaterBottlesFresh(userId);
+    const today = utcDay();
+    const result = await this.prisma.user.updateMany({
+      where: {
+        id: userId,
+        waterBottles: { gte: amount },
+      },
+      data: {
+        waterBottles: { decrement: amount },
+        waterBottlesDate: today,
+      },
+    });
+    if (result.count === 0) {
+      const fresh = await this.ensureWaterBottlesFresh(userId);
       throw new ForbiddenException(
         `Plus assez de bouteilles (${amount} nécessaires, ${fresh.waterBottles} restantes)`,
       );
     }
 
-    const today = utcDay();
-    const updated = await this.prisma.user.update({
+    const updated = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      data: {
-        waterBottles: { decrement: amount },
-        waterBottlesDate: today,
-      },
       select: { waterBottles: true },
     });
 
@@ -204,7 +221,39 @@ export class UsersService {
     };
   }
 
-  async getMe(userId: string) {
+  /** Décrémente une charge +10 s de façon atomique. */
+  async consumeExtraTimeCharge(userId: string) {
+    const result = await this.prisma.user.updateMany({
+      where: { id: userId, extraTimeCharges: { gte: 1 } },
+      data: { extraTimeCharges: { decrement: 1 } },
+    });
+    if (result.count === 0) {
+      throw new ForbiddenException("Aucune charge +10 s disponible");
+    }
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { extraTimeCharges: true },
+    });
+    return user.extraTimeCharges;
+  }
+
+  /** Décrémente un indice quiz de façon atomique. */
+  async consumeQuizHint(userId: string) {
+    const result = await this.prisma.user.updateMany({
+      where: { id: userId, quizHints: { gte: 1 } },
+      data: { quizHints: { decrement: 1 } },
+    });
+    if (result.count === 0) {
+      throw new ForbiddenException("Aucun indice disponible");
+    }
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { quizHints: true },
+    });
+    return user.quizHints;
+  }
+
+  async getMe(userId: string, localeHeader?: string) {
     await this.gamification.ensureLevelRewards(userId);
 
     const user = await this.prisma.user.findUnique({
@@ -223,6 +272,11 @@ export class UsersService {
 
     if (!user) throw new NotFoundException("User not found");
 
+    const locale = resolveRequestLocale(
+      { "x-locale": localeHeader },
+      user.locale,
+    );
+
     const water = await this.ensureWaterBottlesFresh(userId);
     const starsTotal = await this.getStarsTotal(userId);
     const starBalance = await this.ensureStarBalanceSeeded(userId);
@@ -233,9 +287,11 @@ export class UsersService {
     return {
       id: user.id,
       email: user.email,
+      isGuest: user.isGuest,
       displayName: user.displayName,
       avatarUrl: user.avatarUrl,
       role: user.role,
+      locale: user.locale === "en" ? "en" : "fr",
       xpTotal: user.xpTotal,
       level: user.level,
       memoryGameBestScore: user.memoryGameBestScore,
@@ -266,15 +322,40 @@ export class UsersService {
             lastActivityDate: user.streak.lastActivityDate,
           }
         : { current: 0, longest: 0, lastActivityDate: null },
-      preferredCategory: user.preferredCategory,
+      preferredCategory: user.preferredCategory
+        ? {
+            id: user.preferredCategory.id,
+            slug: user.preferredCategory.slug,
+            name: pickCategoryName(
+              user.preferredCategory.name,
+              user.preferredCategory.nameEn,
+              locale,
+              user.preferredCategory.slug,
+            ),
+            color: user.preferredCategory.color,
+            icon: user.preferredCategory.icon,
+          }
+        : null,
       recentBadges: user.badges.map((ub) => ({
         code: ub.badge.code,
-        name: ub.badge.name,
-        description: ub.badge.description,
+        name: pickLocalized(ub.badge.name, ub.badge.nameEn, locale),
+        description: pickLocalized(
+          ub.badge.description,
+          ub.badge.descriptionEn,
+          locale,
+        ),
         icon: ub.badge.icon,
         earnedAt: ub.earnedAt,
       })),
     };
+  }
+
+  async updateLocale(userId: string, locale: AppLocale) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { locale },
+    });
+    return this.getMe(userId, locale);
   }
 
   async submitMemoryGameScore(userId: string, score: number) {
@@ -312,6 +393,15 @@ export class UsersService {
     return this.getMe(userId);
   }
 
+  /** Remet preferredCategory à null pour rejouer l’onboarding. */
+  async clearPreferredCategory(userId: string) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { preferredCategoryId: null },
+    });
+    return this.getMe(userId);
+  }
+
   /**
    * Récompense d’objectif streak onboarding.
    * Attribuée uniquement si streak.current >= days et pas déjà claimée.
@@ -344,33 +434,43 @@ export class UsersService {
       );
     }
 
-    await this.prisma.$transaction(async (tx) => {
-      await tx.xpTransaction.create({
-        data: {
-          userId,
-          amount: 0,
-          reason,
-          refType: "streak_goal",
-          refId: String(days),
-        },
-      });
-      if (reward.neuroCoins > 0) {
-        await tx.user.update({
-          where: { id: userId },
-          data: { neuroCoinBalance: { increment: reward.neuroCoins } },
-        });
-      }
-      if (reward.waterBottles > 0) {
-        const today = utcDay();
-        await tx.user.update({
-          where: { id: userId },
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.xpTransaction.create({
           data: {
-            waterBottles: { increment: reward.waterBottles },
-            waterBottlesDate: today,
+            userId,
+            amount: 0,
+            reason,
+            refType: "streak_goal",
+            refId: String(days),
           },
         });
+        if (reward.neuroCoins > 0) {
+          await tx.user.update({
+            where: { id: userId },
+            data: { neuroCoinBalance: { increment: reward.neuroCoins } },
+          });
+        }
+        if (reward.waterBottles > 0) {
+          const today = utcDay();
+          await tx.user.update({
+            where: { id: userId },
+            data: {
+              waterBottles: { increment: reward.waterBottles },
+              waterBottlesDate: today,
+            },
+          });
+        }
+      });
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === "P2002"
+      ) {
+        return { claimed: false, alreadyClaimed: true, ...reward };
       }
-    });
+      throw err;
+    }
 
     return { claimed: true, alreadyClaimed: false, ...reward };
   }

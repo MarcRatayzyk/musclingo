@@ -5,6 +5,7 @@ export type AnatomieSeedLesson = {
   title: string;
   subtitle: string;
   markdown: string;
+  markdownEn?: string;
   durationSec: number;
   difficulty: Difficulty;
   order: number;

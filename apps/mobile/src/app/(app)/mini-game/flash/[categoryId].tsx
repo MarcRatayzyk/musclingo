@@ -21,6 +21,7 @@ import {
 import { clampDuration, useFlashQuiz } from "@/features/mini-games/useFlashQuiz";
 import { resolveMediaUrl } from "@/shared/api/client";
 import { PrimaryButton, Screen } from "@/shared/ui/primitives";
+import { FlashGameSkeleton } from "@/shared/ui/Skeleton";
 
 const DURATION_MODES = [
   { sec: 30, label: "Éclair", hint: "Tout donner" },
@@ -241,7 +242,7 @@ export default function FlashQuizScreen() {
         </Pressable>
       </View>
 
-      {isLoading && <Text className="text-muted">Préparation des questions…</Text>}
+      {isLoading && <FlashGameSkeleton />}
 
       {isError && (
         <Text className="text-muted">

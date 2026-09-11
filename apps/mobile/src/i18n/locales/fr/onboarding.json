@@ -1,0 +1,122 @@
+{
+  "language": {
+    "headline": "Choose your language",
+    "headlineFr": "Choisis ta langue",
+    "hint": "You can change this later in your profile.",
+    "hintFr": "Tu pourras changer ça plus tard dans ton profil.",
+    "cta": "Continue / Continuer"
+  },
+  "pain": {
+    "headline": "Tu t’entraînes.\nMais tu ne sais pas vraiment pourquoi.",
+    "body": "Repos scrollés. Conseils random. Et des séances que tu copies sans comprendre.",
+    "cta": "C’est exactement mon problème",
+    "login": "J’ai déjà un compte"
+  },
+  "amplify": {
+    "headline": "Ce n’est pas un manque de volonté.",
+    "body": "C’est une mécanique : sans savoir quoi cibler, tu répètes l’effort — pas le progrès.",
+    "bullets": [
+      "Repos perdus sur le téléphone",
+      "Programmes copiés sans logique",
+      "Stagnation que tu ne sais pas lire"
+    ],
+    "cta": "Voir ce qui me bloque"
+  },
+  "positioning": {
+    "headline": "Le problème n’est pas de faire plus.",
+    "insight": "C’est de savoir exactement quoi faire — et pourquoi — pendant que tu reposes.",
+    "solution": "Muscle Mind te donne la science du corps en micro-leçons de 2 minutes, entre deux séries.",
+    "cta": "Personnaliser mon diagnostic"
+  },
+  "personalize": {
+    "headline": "Qu’est-ce qui te freine le plus ?",
+    "hint": "Une réponse suffit. On construit ton diagnostic dessus.",
+    "cta": "Analyser mon profil",
+    "emptyTitle": "Choisis ce qui te freine",
+    "emptyHint": "Une réponse suffit pour construire ton diagnostic."
+  },
+  "value": {
+    "loading": "Analyse de ton profil…",
+    "cta": "Voir mon parcours"
+  },
+  "preview": {
+    "headline": "Voici comment on va t’y amener",
+    "freeLabel": "Gratuit — ta première leçon",
+    "lockedLabel": "Parcours complet",
+    "body": "Tu repars déjà avec une première victoire. La profondeur continue derrière.",
+    "cta": "Débloquer mon plan",
+    "loadingLesson": "Chargement de ta leçon…",
+    "fallbackLesson": "Comment fonctionne un muscle ?",
+    "loadLessonError": "Impossible de charger ta première leçon."
+  },
+  "paywall": {
+    "headline": "Va jusqu’au bout de ton plan",
+    "sub": "Tu as commencé. Genius enlève les freins pour que la science ne s’arrête pas entre deux séries.",
+    "benefits": [
+      "Parcours complet personnalisé",
+      "Leçons illimitées — plus jamais à court",
+      "Zéro pub entre les leçons",
+      "Timer de repos intégré à ta séance"
+    ],
+    "price": "5,99 € / mois",
+    "billing": "Renouvellement mensuel. Annulable à tout moment.",
+    "cta": "Débloquer Genius — 5,99 € / mois",
+    "skip": "Continuer gratuitement avec ma 1ʳᵉ leçon"
+  },
+  "briefing": "Préparation de ton briefing…",
+  "pathsError": "Impossible de charger les parcours.",
+  "savePathError": "Impossible d’enregistrer ton parcours.",
+  "blockers": {
+    "understand_training": "Je ne sais pas pourquoi je fais un exo",
+    "progress": "Je stagne malgré l’effort",
+    "anatomy": "Je ne comprends pas mon corps",
+    "build_workouts": "Mes séances sont mal construites",
+    "autonomy": "Je dépends trop d’un coach / TikTok",
+    "nutrition": "Je veux mieux manger pour progresser"
+  },
+  "insights": {
+    "understand_training": {
+      "echo": "Tu veux savoir pourquoi tu fais chaque exo.",
+      "diagnosis": "Sans le « pourquoi », tu copies des programmes. Le stimulus rate sa cible — et tu stagnes sans le voir.",
+      "firstStep": "Première leçon : comprendre ce qu’un muscle fait vraiment. 2 minutes, entre deux séries.",
+      "premiumHook": "Le parcours complet relie chaque exo à son muscle, son rôle et sa progression."
+    },
+    "progress": {
+      "echo": "Tu t’entraînes — mais les résultats ne suivent pas.",
+      "diagnosis": "La stagnation vient souvent d’un manque de structure scientifique, pas d’un manque de volonté.",
+      "firstStep": "On commence par les bases du corps : sans ça, impossible de progresser proprement.",
+      "premiumHook": "Genius débloque le suivi continu pour ne plus jamais rester bloqué entre deux leçons."
+    },
+    "anatomy": {
+      "echo": "Tu veux enfin comprendre ton corps.",
+      "diagnosis": "Sans carte mentale du corps, chaque séance reste floue. Tu bouges — tu n’apprends pas.",
+      "firstStep": "Micro-leçon anatomie : une pièce du puzzle, pendant un repos.",
+      "premiumHook": "Le parcours Anatomie entier te donne la carte complète, thème après thème."
+    },
+    "build_workouts": {
+      "echo": "Tu veux des séances qui tiennent la route.",
+      "diagnosis": "Assembler des exos au feeling crée du volume sans logique. Le corps s’adapte mal.",
+      "firstStep": "On pose d’abord la base anatomique : tu sauras ce que chaque mouvement cible.",
+      "premiumHook": "Ensuite : programmation, volume, progression — le plan complet derrière la première leçon."
+    },
+    "autonomy": {
+      "echo": "Tu veux décider sans dépendre d’un feed.",
+      "diagnosis": "Les conseils courts te disent quoi faire, rarement pourquoi. Tu restes dépendant.",
+      "firstStep": "Une leçon claire, sourcée, à toi — pendant le repos. Pas un scroll.",
+      "premiumHook": "Le parcours te forme pour juger seul : autonomie réelle, pas un autre coach dans la poche."
+    },
+    "nutrition": {
+      "echo": "Tu veux manger pour progresser.",
+      "diagnosis": "Sans bases nutrition, l’effort en salle se perd. Le carburant compte autant que la charge.",
+      "firstStep": "Première leçon nutrition : énergie et besoins, en 2 minutes.",
+      "premiumHook": "Le parcours Nutrition complet structure protéines, timing et assiette."
+    }
+  },
+  "paths": {
+    "anatomie": { "label": "Anatomie", "hint": "Savoir ce que tu travailles" },
+    "nutrition": { "label": "Nutrition", "hint": "Manger pour progresser" },
+    "biomecanique": { "label": "Biomécanique" },
+    "recuperation": { "label": "Récupération" },
+    "programmation": { "label": "Entraînement" }
+  }
+}

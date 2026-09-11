@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Headers, Param, Post, Query } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import {
   CheckQuizAnswerSchema,
@@ -20,12 +20,13 @@ export class QuizzesController {
     @Param("lessonId") lessonId: string,
     @CurrentUser() user: AuthUser,
     @Query("useExtraTime") useExtraTime?: string,
+    @Headers("x-locale") locale?: string,
   ) {
     const boost =
       useExtraTime === "1" ||
       useExtraTime === "true" ||
       useExtraTime === "yes";
-    return this.quizzes.getByLessonId(lessonId, user.userId, boost);
+    return this.quizzes.getByLessonId(lessonId, user.userId, boost, locale);
   }
 
   @Post(":id/check-answer")
@@ -51,7 +52,8 @@ export class QuizzesController {
     @Param("id") id: string,
     @CurrentUser() user: AuthUser,
     @Body(new ZodValidationPipe(SubmitQuizSchema)) body: unknown,
+    @Headers("x-locale") locale?: string,
   ) {
-    return this.quizzes.submit(id, user.userId, body as never);
+    return this.quizzes.submit(id, user.userId, body as never, locale);
   }
 }

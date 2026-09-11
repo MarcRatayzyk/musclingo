@@ -6,6 +6,7 @@ import {
   View,
   type ImageSourcePropType,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import Animated, {
   Easing,
   cancelAnimation,
@@ -266,6 +267,7 @@ function GateNode({
   isCurrent: boolean;
   onPress: () => void;
 }) {
+  const { t } = useTranslation("home");
   const locked = gate.state === "locked";
   const completed = gate.state === "completed";
   const available = gate.state === "available";
@@ -323,10 +325,10 @@ function GateNode({
                 source={locked ? LOCK_CLOSED : LOCK_OPEN}
                 accessibilityLabel={
                   locked
-                    ? "Checkpoint verrouillé"
+                    ? t("checkpointLocked")
                     : completed
-                      ? "Checkpoint validé"
-                      : "Checkpoint disponible"
+                      ? t("checkpointPassed")
+                      : t("checkpointAvailable")
                 }
                 resizeMode="contain"
                 style={{
@@ -374,10 +376,13 @@ function GateNode({
             </Text>
             <Text className="mt-0.5 text-center text-[11px] text-muted">
               {locked
-                ? `${gate.themeStars ?? 0}/${gate.themeStarsRequired ?? 0} ★ pour débloquer`
+                ? t("starsToUnlock", {
+                    current: gate.themeStars ?? 0,
+                    required: gate.themeStarsRequired ?? 0,
+                  })
                 : available
                   ? `${gate.questionCount} Q · ${gate.timeLimitSec}s`
-                  : "Validé"}
+                  : t("validated")}
             </Text>
           </View>
         </Pressable>
@@ -580,6 +585,7 @@ export function CategoryPathView({
   onLessonLayout,
   onUnitLayout,
 }: Props) {
+  const { t } = useTranslation("home");
   const [mountKey, setMountKey] = useState(0);
   const [previewLesson, setPreviewLesson] = useState<PathLessonNode | null>(
     null,
@@ -671,8 +677,8 @@ export function CategoryPathView({
         const illOnLeft = pathIllustration != null && sideOffset > 0;
         const mascotLabel =
           path.slug === "nutrition"
-            ? "Mascotte du parcours nutrition"
-            : "Illustration du parcours anatomie";
+            ? t("pathMascotNutrition")
+            : t("pathMascotAnatomy");
 
         return (
           <Fragment key={lesson.id}>

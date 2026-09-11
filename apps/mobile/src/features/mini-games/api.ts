@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { analytics } from "@/shared/analytics/posthog";
 import { apiFetch } from "@/shared/api/client";
+import { getAppLocale } from "@/i18n";
 
 export type MiniGameSummary = {
   categoryId: string;
@@ -63,14 +64,14 @@ export type SubmitMiniGameInput = {
 
 export function useMiniGames() {
   return useQuery({
-    queryKey: ["mini-games"],
+    queryKey: ["mini-games", getAppLocale()],
     queryFn: () => apiFetch<MiniGameSummary[]>("/mini-games"),
   });
 }
 
 export function useMiniGameQuestions(categoryId: string) {
   return useQuery({
-    queryKey: ["mini-games", categoryId, "questions"],
+    queryKey: ["mini-games", categoryId, "questions", getAppLocale()],
     queryFn: () => {
       analytics.capture(analytics.events.MINIGAME_STARTED, {
         game: "flash-quiz",

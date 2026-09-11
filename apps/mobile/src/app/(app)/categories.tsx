@@ -1,11 +1,15 @@
 import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { useUpdatePreferredCategory } from "@/features/auth/api";
 import { useCategories } from "@/features/home/api";
 import { getPathIcon } from "@/features/path/icons";
+import { localizeCategoryName } from "@/i18n/categoryNames";
 import { Screen, XpBar } from "@/shared/ui/primitives";
+import { CategoriesSkeleton } from "@/shared/ui/Skeleton";
 
 export default function CategoriesScreen() {
+  const { t } = useTranslation();
   const { mode } = useLocalSearchParams<{ mode?: string }>();
   const isPicker = mode !== "browse";
   const { data, isLoading, isError, error, refetch } = useCategories();
@@ -16,40 +20,40 @@ export default function CategoriesScreen() {
       <View className="mb-2 flex-row items-center justify-between">
         <View className="flex-1">
           <Text className="text-xs uppercase tracking-[3px] text-accent">
-            Parcours
+            {t("home:categories")}
           </Text>
           <Text className="mt-2 text-3xl font-semibold text-white">
-            {isPicker ? "Changer de parcours" : "Catégories"}
+            {isPicker ? t("home:changePath") : t("home:categoriesTitle")}
           </Text>
         </View>
         {isPicker && (
           <Pressable onPress={() => router.back()} hitSlop={12} className="px-2">
-            <Text className="text-sm text-muted">Retour</Text>
+            <Text className="text-sm text-muted">{t("common:back")}</Text>
           </Pressable>
         )}
       </View>
 
       <Text className="mb-6 text-sm text-muted">
         {isPicker
-          ? "Sélectionne le parcours affiché sur l'accueil."
-          : "Explore les parcours disponibles et ta progression."}
+          ? t("home:pickerHint")
+          : t("home:browseHint")}
       </Text>
 
-      {isLoading && <Text className="text-muted">Chargement…</Text>}
+      {isLoading && <CategoriesSkeleton />}
 
       {isError && (
         <View className="mb-6 rounded-2xl border border-border bg-surface p-4">
           <Text className="text-base text-white">
-            Impossible de charger les parcours
+            {t("home:categoriesLoadErrorTitle")}
           </Text>
           <Text className="mt-2 text-sm text-muted">
-            {error instanceof Error ? error.message : "Erreur réseau"}
+            {error instanceof Error ? error.message : t("errors:network")}
           </Text>
           <Pressable
             onPress={() => refetch()}
             className="mt-4 rounded-xl border border-accent py-3"
           >
-            <Text className="text-center text-accent">Réessayer</Text>
+            <Text className="text-center text-accent">{t("common:retry")}</Text>
           </Pressable>
         </View>
       )}
@@ -114,18 +118,22 @@ export default function CategoriesScreen() {
                 <View className="flex-1">
                   <View className="mb-2 flex-row items-center justify-between">
                     <Text className="text-xl font-semibold text-white">
-                      {cat.name}
+                      {localizeCategoryName(cat.name, cat.slug)}
                     </Text>
                     <Text
                       style={{ color: cat.color }}
                       className="font-semibold"
                     >
-                      Niv. {cat.level}
+                      {t("home:levelShort", { level: cat.level })}
                     </Text>
                   </View>
                   <XpBar progress={cat.progress} />
                   <Text className="mt-2 text-sm text-muted">
-                    {cat.completedCount}/{cat.lessonCount} leçons · {cat.xp} XP
+                    {t("home:categoryProgressLine", {
+                      completed: cat.completedCount,
+                      total: cat.lessonCount,
+                      xp: cat.xp,
+                    })}
                   </Text>
                 </View>
               </View>

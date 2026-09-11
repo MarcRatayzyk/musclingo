@@ -10,10 +10,11 @@ function run(cmd) {
 
 run("prisma migrate deploy");
 
-if (process.env.SKIP_SEED !== "1") {
+// Opt-in only: never seed on every production boot by default.
+if (process.env.RUN_SEED === "1") {
   run("prisma db seed");
 } else {
-  console.log("SKIP_SEED=1 — seed ignoré");
+  console.log("RUN_SEED unset — seed ignoré (set RUN_SEED=1 to seed)");
 }
 
 const result = spawnSync("node", ["dist/main.js"], {

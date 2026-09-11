@@ -29,6 +29,23 @@ En salle, ce pivot change tout : curl paume vers le haut, curl marteau en prise 
 ---
 
 Retiens la chaîne : humérus dans le bras, radius et ulna dans l'avant-bras. Ces trois os portent tous tes curls, tes extensions et tes dips.`,
+    markdownEn: `Three bones are enough to make your arm work, from shoulder to wrist.
+
+---
+
+The **humerus** is the single bone of the upper arm. Its head fits into the scapula, and its lower end forms the elbow with the two forearm bones.
+
+---
+
+The forearm: the **radius** on the thumb side, the **ulna** on the little-finger side. The ulna forms the elbow hinge; the radius pivots around the ulna. That rotation lets you turn the palm up (**supination**) or down (**pronation**).
+
+---
+
+In the gym, this pivot changes everything: palm-up curl, hammer curl in neutral grip, reverse curl palm-down. Same elbow flexion, different forearm position — and different muscles recruited.
+
+---
+
+Remember the chain: humerus in the upper arm, radius and ulna in the forearm. These three bones carry all your curls, extensions, and dips.`,
     durationSec: 60,
     difficulty: "BEGINNER",
     order: 0,
@@ -58,6 +75,23 @@ La cage elle-même — le sternum et douze paires de **côtes** — protège le 
 ---
 
 Ceinture scapulaire mobile sur une cage stable : c'est la base mécanique de toutes tes poussées et de tous tes tirages.`,
+    markdownEn: `Your shoulder does not sit in a classic joint socket: the **scapula** is not locked in a cavity — it glides freely over the rib cage.
+
+---
+
+With the **clavicle**, the scapula forms the **shoulder girdle**: the mobile base of the arm. The clavicle links the **sternum** to the shoulder and transfers arm forces into the trunk.
+
+---
+
+That mobility is an advantage: you can elevate, depress, or retract the scapulae. But it needs control. On the bench press, you set the scapulae back before pressing; on rows, you pull them toward the spine.
+
+---
+
+The cage itself — the sternum and twelve pairs of **ribs** — protects the heart and lungs and anchors the pecs and abs. It stiffens when you brace under a heavy bar. Higher up, the **cervicals** support the head; the **thoracic vertebrae** articulate with the ribs.
+
+---
+
+A mobile shoulder girdle on a stable cage: that is the mechanical base of every push and pull you do.`,
     durationSec: 65,
     difficulty: "BEGINNER",
     order: 1,
@@ -87,6 +121,23 @@ De chaque côté, l'os coxal — la fusion de l'**ilion**, de l'**ischion** et d
 ---
 
 La forme et l'orientation de cette emboîture varient d'une personne à l'autre. C'est une des raisons pour lesquelles la profondeur de squat confortable n'est pas la même pour tout le monde.`,
+    markdownEn: `Squat, deadlift: all the force travels through the hinge zone between your trunk and your legs.
+
+---
+
+Five **lumbar vertebrae** (L1 to L5), the thickest in the spine, carry trunk weight. Their natural forward curve, **lordosis**, should stay near neutral under load to spare the discs.
+
+---
+
+Below them sits the **sacrum**: a fused triangular bone between the lumbar spine above and the **coccyx** below. It transfers spinal forces into the pelvis.
+
+---
+
+On each side, the hip bone — the fusion of the **ilium**, **ischium**, and pubis. The ilium forms the pelvic wing you feel when you put your hands on your hips. Cut into that bone is the **acetabulum**: the socket that holds the femoral head.
+
+---
+
+The shape and orientation of that socket vary from person to person. That is one reason a comfortable squat depth is not the same for everyone.`,
     durationSec: 65,
     difficulty: "BEGINNER",
     order: 2,
@@ -116,6 +167,23 @@ En dessous, le **tibia** porte le poids du corps jusqu'à la cheville. La **fibu
 ---
 
 À l'intérieur du genou, les **ligaments croisés** relient fémur et tibia : l'antérieur (LCA) empêche le tibia de glisser vers l'avant, le postérieur (LCP) l'empêche de reculer. Les muscles de la cuisse les assistent à chaque réception et changement de direction.`,
+    markdownEn: `Why do some people drop into a squat like sitting into a chair while others struggle? Femur length has a lot to do with it.
+
+---
+
+The **femur** is the longest bone in the body. It links the hip to the knee. The longer it is, the more the torso must lean to keep the bar over the feet: two correct squats can look very different.
+
+---
+
+At the knee, the **patella** (kneecap) floats in the quadriceps tendon. Its job: move that tendon farther from the knee axis to give the quads more leverage when they straighten the leg.
+
+---
+
+Below, the **tibia** carries body weight down to the ankle. The thinner **fibula**, on the outer side, mainly anchors muscles and adds lateral stability.
+
+---
+
+Inside the knee, the **cruciate ligaments** link femur and tibia: the anterior (ACL) stops the tibia sliding forward, the posterior (PCL) stops it sliding back. Thigh muscles help them on every landing and change of direction.`,
     durationSec: 65,
     difficulty: "BEGINNER",
     order: 3,

@@ -7,18 +7,19 @@ import {
   Text,
   View,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { CategoryPathView } from "@/features/path/CategoryPath";
 import { useCategoryPath } from "@/features/path/api";
 import { SectionBanner } from "@/features/path/SectionBanner";
 import { unitKeyFromLessonScroll } from "@/features/path/scroll-sync";
 import { UnitDetailSheet } from "@/features/path/UnitDetailSheet";
-import {
-  AnatomyPathOnboarding,
-  hasSeenAnatomyOnboarding,
-} from "@/features/mascot";
+import { localizeCategoryName } from "@/i18n/categoryNames";
+import { localizeCheckpointTitle } from "@/i18n/contentL10n";
 import { Screen } from "@/shared/ui/primitives";
+import { HomeSkeleton } from "@/shared/ui/Skeleton";
 
 export default function CategoryPathScreen() {
+  const { t } = useTranslation("home");
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, isLoading, isError, error } = useCategoryPath(id);
 
@@ -27,7 +28,6 @@ export default function CategoryPathScreen() {
   const scrollY = useRef(0);
   const [activeUnitKey, setActiveUnitKey] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [anatomyOnboardingOpen, setAnatomyOnboardingOpen] = useState(false);
 
   const lessons = useMemo(
     () => data?.units.flatMap((u) => u.lessons) ?? [],
@@ -69,15 +69,6 @@ export default function CategoryPathScreen() {
     [],
   );
 
-  useEffect(() => {
-    if (isLoading || !data) return;
-    if (data.slug !== "anatomie") return;
-    const count = data.units.reduce((n, u) => n + u.lessons.length, 0);
-    if (count === 0) return;
-    if (hasSeenAnatomyOnboarding()) return;
-    setAnatomyOnboardingOpen(true);
-  }, [data, isLoading]);
-
   const onScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       if (!data) return;
@@ -99,7 +90,7 @@ export default function CategoryPathScreen() {
   if (isLoading) {
     return (
       <Screen>
-        <Text className="text-muted">Chargement du parcours…</Text>
+        <HomeSkeleton />
       </Screen>
     );
   }
@@ -126,18 +117,23 @@ export default function CategoryPathScreen() {
         className="text-xs uppercase tracking-[3px]"
         style={{ color: data.color }}
       >
-        Parcours
+        {t("categories")}
       </Text>
-      <Text className="mt-2 text-3xl font-semibold text-white">{data.name}</Text>
+      <Text className="mt-2 text-3xl font-semibold text-white">
+        {localizeCategoryName(data.name, data.slug)}
+      </Text>
       <Text className="mb-3 mt-1 text-sm text-muted">
-        {completedCount}/{lessonCount} leçons
+        {t("lessonsCount", {
+          completed: completedCount,
+          total: lessonCount,
+        })}
       </Text>
 
       {activeUnit && lessonCount > 0 && (
         <SectionBanner
           color={data.color}
           sectionIndex={activeUnit.checkpointOrder + 1}
-          title={activeUnit.label}
+          title={localizeCheckpointTitle(activeUnit.label)}
           onPress={() => setSheetOpen(true)}
         />
       )}
@@ -194,11 +190,6 @@ export default function CategoryPathScreen() {
           if (gate.state === "locked") return;
           router.push(`/(app)/checkpoint/${gate.id}` as never);
         }}
-      />
-      <AnatomyPathOnboarding
-        visible={anatomyOnboardingOpen}
-        onClose={() => setAnatomyOnboardingOpen(false)}
-        accentColor={data.color}
       />
     </Screen>
   );

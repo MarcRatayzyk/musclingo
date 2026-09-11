@@ -12,6 +12,10 @@ import {
   maxStarsForTheme,
   requiredStarsForTheme,
 } from "@muscle-mind/types";
+import {
+  AppLocale,
+} from "../../common/locale";
+import { pickCheckpointTitle, pickLessonSubtitle, pickLessonTitle, pickCategoryName } from "../../common/content-l10n";
 import { PrismaService } from "../../prisma/prisma.service";
 
 export type PathNodeState = "locked" | "available" | "completed";
@@ -72,7 +76,7 @@ export class PathService {
     return user?.email === DEMO_UNLOCK_EMAIL;
   }
 
-  async getCategoryPath(categoryId: string, userId: string) {
+  async getCategoryPath(categoryId: string, userId: string, locale: AppLocale = "fr") {
     const category = await this.prisma.category.findUnique({
       where: { id: categoryId },
     });
@@ -81,6 +85,7 @@ export class PathService {
     const { nodes, gates } = await this.buildPathForCategory(
       categoryId,
       userId,
+      locale,
     );
 
     const unitMap = new Map<
@@ -139,7 +144,7 @@ export class PathService {
     return {
       id: category.id,
       slug: category.slug,
-      name: category.name,
+      name: pickCategoryName(category.name, category.nameEn, locale, category.slug),
       color: category.color,
       icon: category.icon,
       passThreshold: QUIZ_PASS_THRESHOLD,
@@ -241,7 +246,7 @@ export class PathService {
     return null;
   }
 
-  async listOngoing(userId: string) {
+  async listOngoing(userId: string, locale: AppLocale = "fr") {
     const categories = await this.prisma.category.findMany({
       orderBy: { order: "asc" },
     });
@@ -270,7 +275,7 @@ export class PathService {
 
     const items = [];
     for (const cat of categories) {
-      const { nodes } = await this.buildPathForCategory(cat.id, userId);
+      const { nodes } = await this.buildPathForCategory(cat.id, userId, locale);
       if (!nodes.length) continue;
 
       const completedCount = nodes.filter((n) => n.state === "completed").length;
@@ -282,7 +287,7 @@ export class PathService {
         category: {
           id: cat.id,
           slug: cat.slug,
-          name: cat.name,
+          name: pickCategoryName(cat.name, cat.nameEn, locale, cat.slug),
           color: cat.color,
           icon: cat.icon,
           order: cat.order,
@@ -313,7 +318,11 @@ export class PathService {
     return items;
   }
 
-  private async buildPathForCategory(categoryId: string, userId: string) {
+  private async buildPathForCategory(
+    categoryId: string,
+    userId: string,
+    locale: AppLocale = "fr",
+  ) {
     const unlockAll = await this.shouldUnlockAll(userId);
     const [lessons, gatesRaw] = await Promise.all([
       this.prisma.lesson.findMany({
@@ -369,14 +378,22 @@ export class PathService {
 
       return {
         id: lesson.id,
-        title: lesson.title,
-        subtitle: lesson.subtitle,
+        title: pickLessonTitle(lesson.title, lesson.titleEn, locale),
+        subtitle: pickLessonSubtitle(
+          lesson.subtitle,
+          lesson.subtitleEn,
+          locale,
+        ),
         durationSec: lesson.durationSec,
         xpReward: lesson.xpReward,
         order: lesson.order,
         difficulty: lesson.difficulty,
         checkpointKey: lesson.checkpointKey,
-        checkpointTitle: lesson.checkpointTitle,
+        checkpointTitle: pickCheckpointTitle(
+          lesson.checkpointTitle,
+          lesson.checkpointTitleEn,
+          locale,
+        ),
         checkpointOrder: lesson.checkpointOrder,
         hasQuiz,
         bestScore,
@@ -456,7 +473,7 @@ export class PathService {
 
       return {
         id: gate.id,
-        title: gate.title,
+        title: pickCheckpointTitle(gate.title, gate.titleEn, locale),
         checkpointKey: gate.checkpointKey,
         checkpointOrder: gate.checkpointOrder,
         state,

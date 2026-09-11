@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../../shared/api/client";
+import { getAppLocale } from "@/i18n";
 
 export type PathNodeState = "locked" | "available" | "completed";
 
@@ -137,7 +138,7 @@ export function useSubmitCheckpointGate() {
 
 export function useCategoryPath(categoryId: string) {
   return useQuery({
-    queryKey: ["categories", categoryId, "path"],
+    queryKey: ["categories", categoryId, "path", getAppLocale()],
     queryFn: () => apiFetch<CategoryPath>(`/categories/${categoryId}/path`),
     enabled: !!categoryId,
   });

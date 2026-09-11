@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { recordLessonCompletion } from "../retention/storage";
 import { apiFetch } from "../../shared/api/client";
 import { analytics } from "../../shared/analytics/posthog";
+import { getAppLocale } from "@/i18n";
 
 export type Category = {
   id: string;
@@ -118,28 +120,28 @@ export type OngoingPath = {
 
 export function useCategories() {
   return useQuery({
-    queryKey: ["categories"],
+    queryKey: ["categories", getAppLocale()],
     queryFn: () => apiFetch<Category[]>("/categories"),
   });
 }
 
 export function useOngoingPaths() {
   return useQuery({
-    queryKey: ["categories", "ongoing"],
+    queryKey: ["categories", "ongoing", getAppLocale()],
     queryFn: () => apiFetch<OngoingPath[]>("/categories/ongoing"),
   });
 }
 
 export function useRecommendedLesson() {
   return useQuery({
-    queryKey: ["lessons", "recommended"],
+    queryKey: ["lessons", "recommended", getAppLocale()],
     queryFn: () => apiFetch<RecommendedLesson | null>("/lessons/recommended"),
   });
 }
 
 export function useLesson(id: string) {
   return useQuery({
-    queryKey: ["lessons", id],
+    queryKey: ["lessons", id, getAppLocale()],
     queryFn: () => {
       analytics.capture(analytics.events.LESSON_OPENED, { lessonId: id });
       return apiFetch<LessonDetail>(`/lessons/${id}`);
@@ -169,6 +171,7 @@ export function useCompleteLesson() {
       analytics.capture(analytics.events.LESSON_COMPLETED, {
         lessonId: vars.id,
       });
+      recordLessonCompletion();
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["me"] }),
         qc.invalidateQueries({ queryKey: ["categories"] }),

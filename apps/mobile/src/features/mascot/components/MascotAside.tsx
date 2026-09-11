@@ -7,12 +7,24 @@ export function MascotAside({
   dimmed = false,
   compact = true,
   showAvatar = true,
+  showName = true,
+  tailTipX,
+  fontSize,
+  lineHeight,
+  paddingHorizontal,
+  paddingVertical,
 }: {
   line: MascotLine;
   accentColor?: string;
   dimmed?: boolean;
   compact?: boolean;
   showAvatar?: boolean;
+  showName?: boolean;
+  tailTipX?: number;
+  fontSize?: number;
+  lineHeight?: number;
+  paddingHorizontal?: number;
+  paddingVertical?: number;
 }) {
   return (
     <MascotSpeechBubble
@@ -22,6 +34,12 @@ export function MascotAside({
       accentColor={accentColor}
       dimmed={dimmed}
       showAvatar={showAvatar}
+      showName={showName}
+      tailTipX={tailTipX}
+      fontSize={fontSize}
+      lineHeight={lineHeight}
+      paddingHorizontal={paddingHorizontal}
+      paddingVertical={paddingVertical}
     />
   );
 }

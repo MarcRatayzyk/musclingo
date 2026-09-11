@@ -1,0 +1,20 @@
+{
+  "continue": "Continue",
+  "retry": "Retry",
+  "cancel": "Cancel",
+  "back": "Back",
+  "loading": "Loading…",
+  "errorGeneric": "Something went wrong.",
+  "save": "Save",
+  "logout": "Log out",
+  "level": "Level",
+  "streak": "Streak",
+  "global": "Overall",
+  "daysShort": "{{count}}d",
+  "xp": "XP",
+  "free": "Free",
+  "comingSoon": "Coming soon",
+  "language": "Language",
+  "french": "Français",
+  "english": "English"
+}

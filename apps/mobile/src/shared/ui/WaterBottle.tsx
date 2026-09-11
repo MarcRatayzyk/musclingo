@@ -52,10 +52,10 @@ export function WaterBottleAmount({
         gap: config.gap,
       }}
     >
+      <WaterBottleIcon size={config.icon} />
       <Text style={valueStyle}>
         {showMax ? `${amount}/${max}` : amount}
       </Text>
-      <WaterBottleIcon size={config.icon} />
     </View>
   );
 }
